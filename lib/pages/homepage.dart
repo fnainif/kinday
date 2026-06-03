@@ -1,69 +1,61 @@
 import 'package:flutter/material.dart';
 import 'package:kinday/constant/app_colors.dart';
-import 'package:kinday/constant/app_container.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_textstyle.dart';
+import 'package:kinday/constant/app_widget.dart';
+import 'package:kinday/pages/pleaceholderpage.dart';
 
-class Homescreen extends StatefulWidget {
-  const Homescreen({super.key});
+class Homepage extends StatefulWidget {
+  const Homepage({super.key});
 
   @override
-  State<Homescreen> createState() => _HomescreenState();
+  State<Homepage> createState() => _HomepageState();
 }
 
-class _HomescreenState extends State<Homescreen> {
+class _HomepageState extends State<Homepage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: Column(
-        children: [
-          Container(
-            padding: EdgeInsets.only(top: 40, left: 20),
-            child: Row(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      "Good Morning",
-                      style: AppTextStyles.greeting, //greeting Textstyle
-                    ),
-
-                    Transform.translate(
-                      offset: Offset(0, -10),
-                      child: Text(
-                        "User",
-                        style: AppTextStyles.username, //greeting Textstyle
+      body: BgContainer(
+        child: Column(
+          children: [
+            // 1. Fixed Header Section (Does not scroll)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+              child: Row(
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text("Good Morning", style: AppTextStyles.greeting),
+                      Transform.translate(
+                        offset: const Offset(0, -10),
+                        child: const Text(
+                          "User",
+                          style: AppTextStyles.username,
+                        ),
                       ),
-                    ),
-
-                    Transform.translate(
-                      offset: Offset(0, -10),
-                      child: Text(
-                        "You've done your best today!",
-                        style: AppTextStyles
-                            .affirmation, //greeting affirmation textstyle
+                      Transform.translate(
+                        offset: const Offset(0, -5),
+                        child: const Text(
+                          "You've done your best today!",
+                          style: AppTextStyles.affirmation,
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-                Spacer(), //greetin column
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Image.asset(AppImage.placeholder, height: 150),
-                ),
-              ],
+                    ],
+                  ),
+                  const Spacer(),
+                  Image.asset(AppImage.mascotlogin, height: 120),
+                ],
+              ),
             ),
-          ), // greeting row
-          SizedBox(height: 20),
-          Expanded(
-            child: Column(
-              children: [
-                Expanded(
-                  flex: 3,
-                  child: Container1(
+            // 2. Wrap the content Column in Expanded to take up remaining height
+            Expanded(
+              child: Column(
+                children: [
+                  Container3(
+                    width: double.infinity,
                     child: Row(
                       children: [
                         Image.asset(
@@ -99,19 +91,26 @@ class _HomescreenState extends State<Homescreen> {
                       ],
                     ),
                   ),
-                ),
-
-                Expanded(
-                  flex: 5,
-                  child: Container2(
+                  Container1(
+                    width: double.infinity,
                     child: Row(
                       children: [
                         Column(
                           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Container3(
-                              height: 30,
+                            Container(
+                              margin: EdgeInsets.only(right: 10, left: 10),
+                              padding: EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppColors.container2,
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(
+                                  width: 1,
+                                  style: BorderStyle.solid,
+                                  color: AppColors.containerline2,
+                                ),
+                              ),
                               child: Center(
                                 child: Row(
                                   children: [
@@ -150,28 +149,20 @@ class _HomescreenState extends State<Homescreen> {
 
                             SizedBox(height: 15),
 
-                            ElevatedButton(
-                              onPressed: () {
-                                print("tes nav start focus");
-                              },
-                              child: Row(
-                                children: [
-                                  Text("Start focus session"),
-                                  SizedBox(width: 5),
-                                  Icon(Icons.arrow_forward),
-                                ],
-                              ),
+                            AccButton(
+                              sign: "Start Focus Session",
+                              warnaBox: AppColors.button,
+                              destination: Pleaceholderpage(),
+                              textbuttoncolor: Colors.white,
+                              leadImage: AppImage.placeholder,
                             ),
                           ],
                         ),
                       ],
                     ),
                   ),
-                ),
-
-                Expanded(
-                  flex: 2,
-                  child: Container1(
+                  Container2(
+                    width: double.infinity,
                     child: Row(
                       children: [
                         Image.asset(
@@ -193,11 +184,8 @@ class _HomescreenState extends State<Homescreen> {
                       ],
                     ),
                   ),
-                ),
-
-                Expanded(
-                  flex: 4,
-                  child: Container1(
+                  Container3(
+                    width: double.infinity,
                     child: Row(
                       children: [
                         Column(
@@ -209,11 +197,11 @@ class _HomescreenState extends State<Homescreen> {
                       ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
