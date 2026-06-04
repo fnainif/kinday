@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:kinday/pages/homepage.dart';
+import 'package:kinday/pages/energylog.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const Homepage(),
+      home: const EnergyPage(),
     );
   }
 }
