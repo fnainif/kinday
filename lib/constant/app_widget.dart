@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:kinday/constant/app_colors.dart';
+import 'package:kinday/constant/app_textstyle.dart';
 
 // Gradient BG
 class BgContainer extends StatelessWidget {
@@ -264,6 +265,182 @@ class Container3 extends StatelessWidget {
       ),
       height: height,
       child: child,
+    );
+  }
+}
+
+//Energy Indicator
+class EnergyIndicator extends StatelessWidget {
+  final int level;
+
+  const EnergyIndicator({super.key, required this.level});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: List.generate(
+        5,
+        (index) => Expanded(
+          child: Container(
+            margin: const EdgeInsets.only(right: 4),
+            width: 12,
+            height: 10,
+            decoration: BoxDecoration(
+              color: index < level ? AppColors.button : Colors.grey,
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class TaskCard extends StatelessWidget {
+  const TaskCard({
+    super.key,
+    required this.title,
+    this.description,
+    required this.energylvl,
+    this.prioritytask = 1,
+  });
+
+  final String title;
+  final String? description;
+  final int energylvl;
+  final int prioritytask;
+
+  String get _energyLabel {
+    switch (energylvl) {
+      case 5:
+        return "High";
+      case 4:
+        return "Mid-High";
+      case 3:
+        return "Mid";
+      case 2:
+        return "Mid-Low";
+      default:
+        return "Low";
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 200,
+      height: 150,
+      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(right: 5),
+      decoration: BoxDecoration(
+        color: Colors.white70,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          width: 1,
+          style: BorderStyle.solid,
+          color: AppColors.background,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            description ?? "",
+            style: AppTextStyles.bodytext.copyWith(fontSize: 13),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Spacer(),
+          Row(
+            children: [
+              Icon(
+                Icons.energy_savings_leaf,
+                size: 15,
+                color: AppColors.button,
+              ),
+              const SizedBox(width: 4),
+              Text(_energyLabel, style: const TextStyle(fontSize: 12)),
+              Spacer(),
+              Container(
+                width: 60,
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: AppColors.button,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+
+                child: Center(child: PriorityIndicator(priority: prioritytask)),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class PriorityIndicator extends StatelessWidget {
+  final int priority;
+
+  const PriorityIndicator({super.key, required this.priority});
+
+  Color flagColor() {
+    switch (priority) {
+      case 3:
+        return Colors.red; // High
+      case 2:
+        return Colors.orange; // Medium
+      default:
+        return Colors.green; // Low
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(
+        priority,
+        (index) => Icon(Icons.flag, size: 15, color: flagColor()),
+      ),
+    );
+  }
+}
+
+class EnergyLevel extends StatelessWidget {
+  final int energy;
+
+  const EnergyLevel({super.key, required this.energy});
+
+  String energyConvert() {
+    switch (energy) {
+      case 5:
+        return "High";
+      case 4:
+        return "Mid-High";
+      case 3:
+        return "Mid";
+      case 2:
+        return "Mid-Low";
+      case 1:
+        return "Low";
+      default:
+        return "Low";
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [Icon(Icons.energy_savings_leaf), Text(energyConvert())],
     );
   }
 }

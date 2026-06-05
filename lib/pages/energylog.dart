@@ -67,6 +67,10 @@ class _EnergyPageState extends State<EnergyPage> {
                   children: [
                     Text("Current Energy"),
                     Text("Medium", style: TextStyle(fontSize: 25)),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      child: EnergyIndicator(level: 3),
+                    ),
                     ElevatedButton(
                       onPressed: () {
                         print("tes log energy di Energy page");
