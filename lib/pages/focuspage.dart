@@ -5,7 +5,8 @@ import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_widget.dart';
 
 class FocusPage extends StatefulWidget {
-  const FocusPage({super.key});
+  final TaskCard? task;
+  const FocusPage({super.key, this.task});
 
   @override
   State<FocusPage> createState() => _FocusPageState();
@@ -32,8 +33,6 @@ class _FocusPageState extends State<FocusPage> {
       isPaused = false;
     });
 
-    // Use addPostFrameCallback to ensure the restart happens after the current
-    // build cycle finishes, avoiding state conflicts.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _controller.restart(duration: duration);
     });
@@ -42,15 +41,19 @@ class _FocusPageState extends State<FocusPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Focus Page"),
-        backgroundColor: AppColors.background,
-      ),
       body: BgContainer(
         child: Center(
           child: Column(
             children: [
-              Text("((Name of the task))"),
+              Text(
+                widget.task?.title ?? "((Name of the task))",
+                style: const TextStyle(
+                  fontFamily: "Quicksand",
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.button,
+                ),
+              ),
               Text(
                 isFocusSession ? "Focus Time" : "Break Time",
                 style: const TextStyle(fontSize: 24),

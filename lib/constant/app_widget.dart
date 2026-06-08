@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_textstyle.dart';
+import 'package:kinday/pages/botnavpage/pomodoropage.dart';
 
 // Gradient BG
 class BgContainer extends StatelessWidget {
@@ -296,19 +297,30 @@ class EnergyIndicator extends StatelessWidget {
   }
 }
 
+// ignore: must_be_immutable
 class TaskCard extends StatelessWidget {
-  const TaskCard({
+  TaskCard({
     super.key,
     required this.title,
     this.description,
     required this.energylvl,
     this.prioritytask = 1,
-  });
+    this.dueDate,
+    this.onTap,
+    this.isCompleted = false,
+    List<Map<String, dynamic>>? subtasks,
+  }) : subtasks = subtasks ?? [];
 
-  final String title;
-  final String? description;
-  final int energylvl;
-  final int prioritytask;
+  static TaskCard? activePomodoroTask;
+
+  String title;
+  String? description;
+  int energylvl;
+  int prioritytask;
+  DateTime? dueDate;
+  VoidCallback? onTap;
+  bool isCompleted;
+  List<Map<String, dynamic>> subtasks;
 
   String get _energyLabel {
     switch (energylvl) {
@@ -327,60 +339,116 @@ class TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 200,
-      height: 150,
-      padding: const EdgeInsets.all(20),
-      margin: const EdgeInsets.only(right: 5),
-      decoration: BoxDecoration(
-        color: Colors.white70,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          width: 1,
-          style: BorderStyle.solid,
-          color: AppColors.background,
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 250,
+        height: 240,
+        padding: const EdgeInsets.all(20),
+        margin: const EdgeInsets.only(right: 5),
+        decoration: BoxDecoration(
+          color: Colors.white70,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            width: 1,
+            style: BorderStyle.solid,
+            color: AppColors.background,
+          ),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            description ?? "",
-            style: AppTextStyles.bodytext.copyWith(fontSize: 13),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Spacer(),
-          Row(
-            children: [
-              Icon(
-                Icons.energy_savings_leaf,
-                size: 15,
-                color: AppColors.button,
-              ),
-              const SizedBox(width: 4),
-              Text(_energyLabel, style: const TextStyle(fontSize: 12)),
-              Spacer(),
-              Container(
-                width: 60,
-                padding: const EdgeInsets.all(5),
-                decoration: BoxDecoration(
-                  color: AppColors.button,
-                  borderRadius: BorderRadius.circular(10),
-                ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                if (dueDate != null) ...[
+                  Icon(Icons.calendar_today, size: 11, color: AppColors.button),
+                  const SizedBox(width: 3),
+                  Text(
+                    "${dueDate!.day}/${dueDate!.month}/${dueDate!.year}",
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.button,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            SizedBox(height: 10),
+            Text(
+              title,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              description ?? "",
+              style: AppTextStyles.bodytext.copyWith(fontSize: 13),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 8),
+            const Spacer(),
 
-                child: Center(child: PriorityIndicator(priority: prioritytask)),
+            Row(
+              children: [
+                Icon(
+                  Icons.energy_savings_leaf,
+                  size: 15,
+                  color: AppColors.button,
+                ),
+                const SizedBox(width: 4),
+                Text(_energyLabel, style: const TextStyle(fontSize: 12)),
+                Spacer(),
+                Container(
+                  width: 60,
+                  padding: const EdgeInsets.all(5),
+                  decoration: BoxDecoration(
+                    color: AppColors.button,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Center(
+                    child: PriorityIndicator(priority: prioritytask),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 36,
+              child: ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.button,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  padding: EdgeInsets.zero,
+                  elevation: 0,
+                ),
+                onPressed: () {
+                  TaskCard.activePomodoroTask = this;
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => Pomodoropage(task: this),
+                    ),
+                  );
+                },
+                child: const Text(
+                  "Start Focus",
+                  style: TextStyle(
+                    fontFamily: "Nunito",
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
               ),
-            ],
-          ),
-        ],
+            ),
+          ],
+        ),
       ),
     );
   }

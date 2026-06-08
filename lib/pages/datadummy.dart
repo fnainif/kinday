@@ -1,5 +1,9 @@
 import 'package:kinday/constant/app_widget.dart';
 
+final DateTime _today = DateTime.now();
+final DateTime _tomorrow = _today.add(const Duration(days: 1));
+final DateTime _upcoming = _today.add(const Duration(days: 2));
+
 List<TaskCard> dummydata = [
   TaskCard(
     title: "Slicing UI Dashboard Utama",
@@ -7,6 +11,12 @@ List<TaskCard> dummydata = [
         "Bikin halaman utama pakai CustomScrollView dan animasi transisi.",
     energylvl: 5, // High Energy
     prioritytask: 3, // High Priority
+    dueDate: _today,
+    subtasks: [
+      {"title": "Setup CustomScrollView", "isDone": true},
+      {"title": "Buat Widget Header Slide", "isDone": false},
+      {"title": "Implementasi Animasi Transisi", "isDone": false},
+    ],
   ),
   TaskCard(
     title: "Fixing Bug Overflow Form Login",
@@ -14,6 +24,11 @@ List<TaskCard> dummydata = [
         "Bungkus Column pakai SingleChildScrollView biar ga error pixel.",
     energylvl: 3, // Mid Energy
     prioritytask: 3, // High Priority
+    dueDate: _today,
+    subtasks: [
+      {"title": "Bungkus Column dengan SingleChildScrollView", "isDone": false},
+      {"title": "Test layout overflow di screen kecil", "isDone": false},
+    ],
   ),
   TaskCard(
     title: "Setup Integrasi SQFLite Database",
@@ -21,6 +36,12 @@ List<TaskCard> dummydata = [
         "Buat class DatabaseHelper, skema tabel task, dan fungsi CRUD.",
     energylvl: 5, // High Energy
     prioritytask: 3, // High Priority
+    dueDate: _today,
+    subtasks: [
+      {"title": "Buat class DatabaseHelper", "isDone": true},
+      {"title": "Definisikan skema tabel task", "isDone": true},
+      {"title": "Buat fungsi CRUD", "isDone": false},
+    ],
   ),
   TaskCard(
     title: "Meeting Evaluasi Mingguan",
@@ -28,6 +49,7 @@ List<TaskCard> dummydata = [
         "Bahas progress sprint 1 dan rintangan yang dihadapi bareng tim.",
     energylvl: 2, // Mid-Low
     prioritytask: 3, // High Priority
+    dueDate: _today,
   ),
   TaskCard(
     title: "Integrasi API Jadwal Harian",
@@ -35,6 +57,7 @@ List<TaskCard> dummydata = [
         "Setup service http request untuk fetch data user dari server.",
     energylvl: 4, // Mid-High
     prioritytask: 2, // Medium Priority
+    dueDate: _tomorrow,
   ),
   TaskCard(
     title: "Review Code Pull Request Tim",
@@ -42,6 +65,7 @@ List<TaskCard> dummydata = [
         "Cek codingan dari frontend developer lain untuk modul profile.",
     energylvl: 4, // Mid-High
     prioritytask: 2, // Medium Priority
+    dueDate: _tomorrow,
   ),
   TaskCard(
     title: "Bikin Dokumentasi Struktur Project",
@@ -49,6 +73,7 @@ List<TaskCard> dummydata = [
         "Tulis berkas README.md untuk panduan arsitektur folder folder.",
     energylvl: 2, // Mid-Low
     prioritytask: 2, // Medium Priority
+    dueDate: _tomorrow,
   ),
   TaskCard(
     title: "Desain Ulang Komponen Dialog Pop-up",
@@ -56,24 +81,28 @@ List<TaskCard> dummydata = [
         "Sesuaikan radius border dan skema warna biar makin aesthetic.",
     energylvl: 3, // Mid Energy
     prioritytask: 2, // Medium Priority
+    dueDate: _tomorrow,
   ),
   TaskCard(
     title: "Persiapan Presentasi Flutter",
     description: "Siapkan slide materi State Management dan demo widget dasar.",
     energylvl: 2, // Mid-Low
     prioritytask: 3, // Low Priority
+    dueDate: _upcoming,
   ),
   TaskCard(
     title: "Cari Aset Ikon Lucu di Figma",
     description: "Download beberapa ilustrasi 3D tambahan untuk dekorasi app.",
     energylvl: 1, // Low Energy
     prioritytask: 3, // Low Priority
+    dueDate: _upcoming,
   ),
   TaskCard(
     title: "Refactor Fungsi Validasi Form",
     description: "Sederhanakan regex validasi email dan password biar clean.",
     energylvl: 3, // Mid Energy
     prioritytask: 3, // Low Priority
+    dueDate: _upcoming,
   ),
   TaskCard(
     title: "Merapikan File Lipatan Assets",
@@ -81,6 +110,7 @@ List<TaskCard> dummydata = [
         "Kelompokkan gambar png, jpeg, dan svg ke foldernya masing-masing.",
     energylvl: 1, // Low Energy
     prioritytask: 3, // Low Priority
+    dueDate: _upcoming,
   ),
   TaskCard(
     title: "Research Package State Management",
@@ -88,6 +118,8 @@ List<TaskCard> dummydata = [
         "Bandingkan performa Provider, Bloc, dan Riverpod untuk skala besar.",
     energylvl: 4, // Mid-High
     prioritytask: 3, // High Priority
+    dueDate: _upcoming,
+    isCompleted: true,
   ),
   TaskCard(
     title: "Update Dependency pubspec.yaml",
@@ -95,6 +127,8 @@ List<TaskCard> dummydata = [
         "Naikkan versi beberapa package ke yang paling stabil (stable release).",
     energylvl: 2, // Mid-Low
     prioritytask: 3, // Low Priority
+    dueDate: _upcoming,
+    isCompleted: true,
   ),
   TaskCard(
     title: "Testing Aplikasi di Emulator Lama",
@@ -102,5 +136,7 @@ List<TaskCard> dummydata = [
         "Pastikan layout tidak hancur saat dijalankan di Android versi 9.",
     energylvl: 3, // Mid Energy
     prioritytask: 2, // Medium Priority
+    dueDate: _upcoming,
+    isCompleted: true,
   ),
 ];

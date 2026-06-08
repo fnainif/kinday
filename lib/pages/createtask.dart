@@ -5,6 +5,7 @@ import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
+import 'package:kinday/pages/datadummy.dart';
 import 'package:kinday/pages/pleaceholderpage.dart';
 
 class CreateTaskPage extends StatefulWidget {
@@ -16,13 +17,22 @@ class CreateTaskPage extends StatefulWidget {
 
 class _CreateTaskPageState extends State<CreateTaskPage> {
   final energylvlController = DropdownController();
+  final titleController = TextEditingController();
+  final descController = TextEditingController();
   List<Map<String, dynamic>> subtasks = [];
 
   String? selectedDropdown;
   DateTime? selectedDate;
   TimeOfDay? selectedTime;
   int selectedIndex = 0;
-  String selectedEnergy = "mid";
+  String selectedEnergy = "low";
+
+  @override
+  void dispose() {
+    titleController.dispose();
+    descController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,18 +86,21 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.star_border),
-                            SizedBox(width: 10),
-                            Text("What do you want to do today?"),
+                            const Icon(Icons.star_border),
+                            const SizedBox(width: 10),
+                            const Text("What do you want to do today?"),
                           ],
                         ),
-                        SizedBox(height: 5),
+                        const SizedBox(height: 5),
                         TextFormField(
+                          controller: titleController,
                           maxLines: 2,
-                          style: TextStyle(color: Color(0xFF5852A0)),
+                          style: const TextStyle(color: Color(0xFF5852A0)),
                           decoration: InputDecoration(
                             hintText: "eg. Study for Exam",
-                            hintStyle: TextStyle(color: AppColors.background),
+                            hintStyle: const TextStyle(
+                              color: AppColors.background,
+                            ),
 
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -111,20 +124,48 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             fillColor: Colors.grey.shade100,
                           ),
                         ),
-                        SizedBox(height: 10),
+                        const SizedBox(height: 15),
+                        Row(
+                          children: [
+                            const Icon(Icons.description_outlined),
+                            const SizedBox(width: 10),
+                            const Text("Description (Optional)"),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        TextFormField(
+                          controller: descController,
+                          maxLines: 3,
+                          style: const TextStyle(color: Color(0xFF5852A0)),
+                          decoration: InputDecoration(
+                            hintText: "Add details about this task...",
+                            hintStyle: const TextStyle(
+                              color: AppColors.background,
+                            ),
 
-                        // ElevatedButton(
-                        //   onPressed: () {
-                        //     print("tes task breakdown");
-                        //   },
-                        //   child: Row(
-                        //     children: [
-                        //       Icon(Icons.star_border),
-                        //       SizedBox(width: 5),
-                        //       Text("Break down task"),
-                        //     ],
-                        //   ),
-                        // ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide(
+                                color: Colors.indigo.shade200,
+                                width: 1.5,
+                              ),
+                            ),
+
+                            filled: true,
+                            fillColor: Colors.grey.shade100,
+                          ),
+                        ),
+                        const SizedBox(height: 15),
                         SmallButton(
                           sign: "Break down task",
                           warnaBox: AppColors.background,
@@ -391,11 +432,72 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   left: 20,
                   right: 20,
                 ),
-                child: AccButton(
-                  sign: "Save Task",
-                  warnaBox: AppColors.button,
-                  destination: Pleaceholderpage(),
-                  textbuttoncolor: Colors.white,
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final title = titleController.text.trim();
+                      if (title.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text("Task title cannot be empty"),
+                          ),
+                        );
+                        return;
+                      }
+
+                      // Convert string priority to int
+                      int priorityVal = 1; // Default low
+                      if (selectedDropdown == "Mid priority") {
+                        priorityVal = 2;
+                      } else if (selectedDropdown == "High priority") {
+                        priorityVal = 3;
+                      }
+
+                      // Convert string energy to int (1-5)
+                      int energyVal = 1; // Default low energy
+                      if (selectedEnergy == "low") {
+                        energyVal = 1;
+                      } else if (selectedEnergy == "midlow") {
+                        energyVal = 2;
+                      } else if (selectedEnergy == "mid") {
+                        energyVal = 3;
+                      } else if (selectedEnergy == "midhigh") {
+                        energyVal = 4;
+                      } else if (selectedEnergy == "high") {
+                        energyVal = 5;
+                      }
+
+                      final newTask = TaskCard(
+                        title: title,
+                        description: descController.text.trim().isEmpty
+                            ? null
+                            : descController.text.trim(),
+                        energylvl: energyVal,
+                        prioritytask: priorityVal,
+                        dueDate: selectedDate,
+                        subtasks: subtasks,
+                      );
+
+                      dummydata.add(newTask);
+                      Navigator.pop(context); // Go back to the previous screen
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.button,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        vertical: 16,
+                        horizontal: 20,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(40),
+                      ),
+                    ),
+                    child: const Text(
+                      "Save Task",
+                      style: TextStyle(color: Colors.white, fontSize: 16),
+                    ),
+                  ),
                 ),
               ),
             ],

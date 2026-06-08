@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:kinday/pages/tasklistpage.dart';
+import 'package:kinday/pages/mainpage.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,7 +31,7 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const Tasklistpage(),
+      home: const Mainpage(),
     );
   }
 }
