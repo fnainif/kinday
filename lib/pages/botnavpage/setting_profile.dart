@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
-import 'package:kinday/pages/pleaceholderpage.dart';
+import 'package:kinday/database/preference_handler.dart';
+import 'package:kinday/pages/auth/login.dart';
+import 'package:kinday/pages/db_viewer_page.dart';
+import 'package:kinday/pages/dummy/pleaceholderpage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingProfile extends StatefulWidget {
@@ -23,6 +26,7 @@ class _SettingProfileState extends State<SettingProfile> {
   bool _notificationsEnabled = true;
   bool _darkModeEnabled = false;
   String _aiBreakdownLevel = "Balanced";
+  final String _lastBackupTime = "Never";
 
   // Loading state
   bool _isLoading = true;
@@ -30,7 +34,26 @@ class _SettingProfileState extends State<SettingProfile> {
   @override
   void initState() {
     super.initState();
+    _clickBackupText();
     _loadSettings();
+  }
+
+  void _clickBackupText() {
+    // DIUBAH
+    DateTime? lastBackupTime;
+    final List<String> dates = [
+      "Yesterday, 14:20",
+      "Today, 09:15",
+      "05 June 2026, 18:45",
+      "08 June 2026, 23:10",
+      "Just now",
+      "2 hours ago",
+      "1 week ago",
+      "01 June 2026, 12:00",
+    ];
+    setState(() {
+      lastBackupTime = DateTime.now();
+    });
   }
 
   Future<void> _loadSettings() async {
@@ -40,7 +63,9 @@ class _SettingProfileState extends State<SettingProfile> {
         _name = prefs.getString('user_name') ?? "User";
         _email = prefs.getString('user_email') ?? "user@kinday.com";
         _focusDuration = prefs.getInt('focus_duration') ?? 25;
-        _focusSound = prefs.getString('focus_sound') ?? "None";
+        String sound = prefs.getString('focus_sound') ?? "None";
+
+        _focusSound = sound;
         _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
         _darkModeEnabled = prefs.getBool('dark_mode_enabled') ?? false;
         _aiBreakdownLevel = prefs.getString('ai_breakdown_level') ?? "Balanced";
@@ -180,11 +205,19 @@ class _SettingProfileState extends State<SettingProfile> {
               child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
             ),
             ElevatedButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text("Logged out successfully!")),
-                );
+              onPressed: () async {
+                await PreferenceHandler.logOut();
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text("Logged out successfully!")),
+                  );
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const LoginPage()),
+                    (route) => false,
+                  );
+                }
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.redAccent,
@@ -483,9 +516,14 @@ class _SettingProfileState extends State<SettingProfile> {
                                 items:
                                     const [
                                           "None",
-                                          "Rain",
+                                          "Fireplace",
                                           "Forest",
-                                          "White Noise",
+                                          "Gentle Rain",
+                                          "Heavy Rain",
+                                          "Night Ambience",
+                                          "Ocean Waves",
+                                          "Stream",
+                                          "Underwater Ambience",
                                         ]
                                         .map(
                                           (val) => DropdownMenuItem(
@@ -699,6 +737,122 @@ class _SettingProfileState extends State<SettingProfile> {
                       ),
                     ),
 
+                    _buildSectionHeader("Data Backup & Restore"),
+
+                    // Data Backup & Restore Container
+                    Container2(
+                      width: double.infinity,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.backup,
+                                color: AppColors.button,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                "Last Backup",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.button,
+                                ),
+                              ),
+                              const Spacer(),
+                              Text(
+                                _lastBackupTime,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.button,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          const Divider(
+                            height: 1,
+                            color: AppColors.containerline2,
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: () {
+                                    // ignore: avoid_print
+                                    print("berhasil di backup");
+                                    _clickBackupText();
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text("Berhasil di backup!"),
+                                        duration: Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(
+                                    Icons.cloud_upload,
+                                    color: Colors.white,
+                                    size: 16,
+                                  ),
+                                  label: const Text(
+                                    "Backup",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.button,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    elevation: 0,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    // ignore: avoid_print
+                                    print("berhasil di restore");
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text("Berhasil di restore!"),
+                                        duration: Duration(seconds: 1),
+                                      ),
+                                    );
+                                  },
+                                  icon: const Icon(
+                                    Icons.cloud_download,
+                                    color: AppColors.button,
+                                    size: 16,
+                                  ),
+                                  label: const Text(
+                                    "Restore",
+                                    style: TextStyle(
+                                      color: AppColors.button,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: const BorderSide(
+                                      color: AppColors.button,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+
                     // Logout Button Section
                     Padding(
                       padding: const EdgeInsets.symmetric(
@@ -729,6 +883,19 @@ class _SettingProfileState extends State<SettingProfile> {
                           ),
                         ),
                       ),
+                    ),
+
+                    SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const DatabaseViewerPage(),
+                          ),
+                        );
+                      },
+                      child: const Text("Database"),
                     ),
                     const SizedBox(height: 40),
                   ],

@@ -5,7 +5,7 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_widget.dart';
-import 'package:kinday/pages/datadummy.dart';
+import 'package:kinday/database/db_helper.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,6 +29,7 @@ class _PomodoropageState extends State<Pomodoropage> {
   late TaskCard? activeTask;
   final TextEditingController _pomodoroSubtaskController =
       TextEditingController();
+  String _selectedSound = "None";
 
   String get taskName => activeTask?.title ?? "Belajar Flutter";
 
@@ -46,31 +47,107 @@ class _PomodoropageState extends State<Pomodoropage> {
   @override
   void initState() {
     super.initState();
+    activeTask = TaskCard.activePomodoroTask ?? widget.task;
     _loadFocusSettings();
-    activeTask =
-        TaskCard.activePomodoroTask ??
-        widget.task ??
-        (dummydata.isNotEmpty ? dummydata.first : null);
+    _loadActiveTask();
     totalSeconds = focusDuration;
     secondsRemaining = focusDuration;
+  }
+
+  Future<void> _loadActiveTask() async {
+    if (activeTask != null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('user_id') ?? 1;
+    final dbHelper = DBHelper();
+    final userTasks = await dbHelper.getTasksForUser(userId);
+    final activeTasks = userTasks.where((t) => !t.isCompleted).toList();
+    if (mounted) {
+      setState(() {
+        if (activeTasks.isNotEmpty) {
+          activeTask = activeTasks.first;
+        } else if (userTasks.isNotEmpty) {
+          activeTask = userTasks.first;
+        }
+      });
+    }
   }
 
   Future<void> _loadFocusSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final savedDuration = prefs.getInt('focus_duration') ?? 25;
+    String savedSound = prefs.getString('focus_sound') ?? "None";
+    if (savedSound == "Rain") savedSound = "Gentle Rain";
+    if (savedSound == "White Noise") savedSound = "None";
+
     setState(() {
       focusDuration = savedDuration * 60;
       if (!isRunning && isFocusTime) {
         totalSeconds = focusDuration;
         secondsRemaining = focusDuration;
       }
+      _selectedSound = savedSound;
     });
+
+    _playBackgroundSound();
+  }
+
+  Future<void> _playBackgroundSound() async {
+    if (_selectedSound == "None") {
+      try {
+        await player.stop();
+      } catch (e) {
+        debugPrint("Error stopping background sound: $e");
+      }
+      return;
+    }
+
+    String assetPath = "";
+    switch (_selectedSound) {
+      case "Fireplace":
+        assetPath = "assets/audio/fireplace.mp3";
+        break;
+      case "Forest":
+        assetPath = "assets/audio/forest.mp3";
+        break;
+      case "Gentle Rain":
+        assetPath = "assets/audio/gentle-rain.mp3";
+        break;
+      case "Heavy Rain":
+        assetPath = "assets/audio/heavy-rain.mp3";
+        break;
+      case "Night Ambience":
+        assetPath = "assets/audio/night-ambience.mp3";
+        break;
+      case "Ocean Waves":
+        assetPath = "assets/audio/ocean-waves.mp3";
+        break;
+      case "Stream":
+        assetPath = "assets/audio/stream.mp3";
+        break;
+      case "Underwater Ambience":
+        assetPath = "assets/audio/underwater-ambience.mp3";
+        break;
+      default:
+        return;
+    }
+
+    try {
+      if (!mounted) return;
+      await player.setAsset(assetPath);
+      if (!mounted) return;
+      await player.setLoopMode(LoopMode.all);
+      if (!mounted) return;
+      await player.play();
+    } catch (e) {
+      debugPrint("Error playing background sound: $e");
+    }
   }
 
   @override
   void dispose() {
     timer?.cancel();
     _pomodoroSubtaskController.dispose();
+    player.dispose();
     super.dispose();
   }
 
@@ -148,10 +225,13 @@ class _PomodoropageState extends State<Pomodoropage> {
                     final sub = subtasks[index];
                     final isDone = sub["isDone"] ?? false;
                     return InkWell(
-                      onTap: () {
+                      onTap: () async {
                         setState(() {
                           sub["isDone"] = !isDone;
                         });
+                        if (activeTask != null) {
+                          await DBHelper().updateTask(activeTask!);
+                        }
                         // Also update state of StatefulBuilder
                         setSubtaskState(() {});
                       },
@@ -187,10 +267,13 @@ class _PomodoropageState extends State<Pomodoropage> {
                                 color: Colors.redAccent,
                                 size: 18,
                               ),
-                              onPressed: () {
+                              onPressed: () async {
                                 setState(() {
                                   subtasks.removeAt(index);
                                 });
+                                if (activeTask != null) {
+                                  await DBHelper().updateTask(activeTask!);
+                                }
                                 setSubtaskState(() {});
                               },
                               padding: EdgeInsets.zero,
@@ -234,12 +317,15 @@ class _PomodoropageState extends State<Pomodoropage> {
                   ),
                   const SizedBox(width: 8),
                   ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       final text = _pomodoroSubtaskController.text.trim();
                       if (text.isNotEmpty) {
                         setState(() {
                           subtasks.add({"title": text, "isDone": false});
                         });
+                        if (activeTask != null) {
+                          await DBHelper().updateTask(activeTask!);
+                        }
                         setSubtaskState(() {});
                         _pomodoroSubtaskController.clear();
                       }

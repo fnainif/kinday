@@ -36,6 +36,7 @@ class AccButton extends StatelessWidget {
     this.leadImage,
     this.buttonSize = 16,
     required this.textbuttoncolor,
+    this.onPressed,
   });
 
   final String sign;
@@ -44,13 +45,14 @@ class AccButton extends StatelessWidget {
   final double buttonSize;
   final Widget destination;
   final String? leadImage;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       // width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {
+        onPressed: onPressed ?? () {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => destination),
@@ -145,16 +147,21 @@ class InputField extends StatelessWidget {
     required this.hint,
     required this.icon,
     this.pwhide = false,
+    this.controller,
+    this.validator,
   });
 
   final String hint;
   final IconData icon;
   final bool pwhide;
+  final TextEditingController? controller;
+  final String? Function(String?)? validator;
 
   @override
   Widget build(BuildContext context) {
     return TextFormField(
-      style: TextStyle(color: Color(0xFF5852A0)),
+      controller: controller,
+      style: const TextStyle(color: Color(0xFF5852A0)),
       decoration: InputDecoration(
         prefixIcon: Padding(
           padding: const EdgeInsets.only(bottom: 10.0),
@@ -182,6 +189,7 @@ class InputField extends StatelessWidget {
         fillColor: Colors.grey.shade100,
       ),
       obscureText: pwhide,
+      validator: validator,
     );
   }
 }
@@ -301,6 +309,7 @@ class EnergyIndicator extends StatelessWidget {
 class TaskCard extends StatelessWidget {
   TaskCard({
     super.key,
+    this.id,
     required this.title,
     this.description,
     required this.energylvl,
@@ -308,11 +317,14 @@ class TaskCard extends StatelessWidget {
     this.dueDate,
     this.onTap,
     this.isCompleted = false,
+    this.maxlinesdesc = 1,
+    this.maxlinestitle = 2,
     List<Map<String, dynamic>>? subtasks,
   }) : subtasks = subtasks ?? [];
 
   static TaskCard? activePomodoroTask;
 
+  int? id;
   String title;
   String? description;
   int energylvl;
@@ -320,6 +332,8 @@ class TaskCard extends StatelessWidget {
   DateTime? dueDate;
   VoidCallback? onTap;
   bool isCompleted;
+  int maxlinesdesc;
+  int maxlinestitle;
   List<Map<String, dynamic>> subtasks;
 
   String get _energyLabel {
@@ -378,14 +392,14 @@ class TaskCard extends StatelessWidget {
             Text(
               title,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-              maxLines: 2,
+              maxLines: maxlinestitle,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 6),
             Text(
               description ?? "",
               style: AppTextStyles.bodytext.copyWith(fontSize: 13),
-              maxLines: 1,
+              maxLines: maxlinesdesc,
               overflow: TextOverflow.ellipsis,
             ),
             const SizedBox(height: 8),

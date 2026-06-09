@@ -4,8 +4,9 @@ import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
+import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/pages/createtask.dart';
-import 'package:kinday/pages/datadummy.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class Tasklistpage extends StatefulWidget {
   const Tasklistpage({super.key});
@@ -21,7 +22,17 @@ class _TasklistpageState extends State<Tasklistpage> {
   @override
   void initState() {
     super.initState();
-    _tasks = List.from(dummydata);
+    _tasks = [];
+    _loadTasks();
+  }
+
+  Future<void> _loadTasks() async {
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('user_id') ?? 1;
+    final dbTasks = await DBHelper().getTasksForUser(userId);
+    setState(() {
+      _tasks = dbTasks;
+    });
   }
 
   void _showEditTaskBottomSheet(TaskCard task) {
@@ -468,7 +479,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                           const SizedBox(width: 12),
                           Expanded(
                             child: ElevatedButton(
-                              onPressed: () {
+                              onPressed: () async {
                                 setState(() {
                                   task.title = titleController.text.trim();
                                   task.description = descController.text.trim();
@@ -479,10 +490,15 @@ class _TasklistpageState extends State<Tasklistpage> {
                                   task.subtasks =
                                       tempSubtasks; // Commit subtasks
                                 });
+                                await DBHelper().updateTask(task);
+                                await _loadTasks();
+
                                 titleController.dispose();
                                 descController.dispose();
                                 newSubtaskController.dispose();
-                                Navigator.pop(context);
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                }
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.button,
@@ -605,9 +621,7 @@ class _TasklistpageState extends State<Tasklistpage> {
             context,
             MaterialPageRoute(builder: (context) => const CreateTaskPage()),
           );
-          setState(() {
-            _tasks = List.from(dummydata);
-          });
+          await _loadTasks();
         },
         child: const Icon(Icons.add, color: Colors.white),
       ),
@@ -777,7 +791,7 @@ class DueDateView extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
-                    Icon(Icons.recommend, size: 20),
+                    Icon(Icons.today, size: 20),
                     SizedBox(width: 10),
                     Text("Today", style: TextStyle(fontSize: 15)),
                   ],
@@ -801,7 +815,7 @@ class DueDateView extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
-                    Icon(Icons.favorite, size: 20),
+                    Icon(Icons.schedule, size: 20),
                     SizedBox(width: 10),
                     Text("Tomorrow", style: TextStyle(fontSize: 15)),
                   ],
@@ -825,7 +839,7 @@ class DueDateView extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
-                    Icon(Icons.local_fire_department, size: 20),
+                    Icon(Icons.upcoming, size: 20),
                     SizedBox(width: 10),
                     Text("Upcoming", style: TextStyle(fontSize: 15)),
                   ],

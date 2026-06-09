@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:kinday/pages/mainpage.dart';
+import 'package:kinday/database/preference_handler.dart';
+import 'package:kinday/pages/splash_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await PreferenceHandler.init();
   runApp(const MyApp());
 }
 
@@ -31,7 +34,7 @@ class MyApp extends StatelessWidget {
         // tested with just a hot reload.
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const Mainpage(),
+      home: const SplashScreen(),
     );
   }
 }

@@ -5,8 +5,9 @@ import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
-import 'package:kinday/pages/datadummy.dart';
-import 'package:kinday/pages/pleaceholderpage.dart';
+import 'package:kinday/database/db_helper.dart';
+import 'package:kinday/pages/dummy/pleaceholderpage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CreateTaskPage extends StatefulWidget {
   const CreateTaskPage({super.key});
@@ -435,7 +436,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 child: SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       final title = titleController.text.trim();
                       if (title.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -479,8 +480,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         subtasks: subtasks,
                       );
 
-                      dummydata.add(newTask);
-                      Navigator.pop(context); // Go back to the previous screen
+                      final navigator = Navigator.of(context);
+                      final prefs = await SharedPreferences.getInstance();
+                      final userId = prefs.getInt('user_id') ?? 1;
+
+                      await DBHelper().insertTask(newTask, userId);
+
+                      navigator.pop(); // Go back to the previous screen
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.button,
