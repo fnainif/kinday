@@ -5,6 +5,7 @@ import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
+import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/pages/createtask.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -43,6 +44,7 @@ class _TasklistpageState extends State<Tasklistpage> {
     int tempPriority = task.prioritytask;
     int tempEnergyLvl = task.energylvl;
     DateTime? tempDueDate = task.dueDate;
+    int? tempReminderMinutes = task.reminderMinutes;
     bool tempIsCompleted = task.isCompleted;
     final List<Map<String, dynamic>> tempSubtasks = List.from(
       task.subtasks.map((e) => Map<String, dynamic>.from(e)),
@@ -431,6 +433,38 @@ class _TasklistpageState extends State<Tasklistpage> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              "Reminder",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            DropdownButton<int?>(
+                              value: tempReminderMinutes,
+                              dropdownColor: Colors.white,
+                              style: const TextStyle(color: AppColors.button),
+                              items: const [
+                                DropdownMenuItem(value: null, child: Text("No reminder")),
+                                DropdownMenuItem(value: 5, child: Text("5 minutes before")),
+                                DropdownMenuItem(value: 10, child: Text("10 minutes before")),
+                                DropdownMenuItem(value: 15, child: Text("15 minutes before")),
+                                DropdownMenuItem(value: 30, child: Text("30 minutes before")),
+                                DropdownMenuItem(value: 60, child: Text("1 hour before")),
+                                DropdownMenuItem(value: 1440, child: Text("1 day before")),
+                              ],
+                              onChanged: (int? value) {
+                                setModalState(() {
+                                  tempReminderMinutes = value;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
                       ],
                       const SizedBox(height: 16),
                       // Energy Level Selection
@@ -676,9 +710,19 @@ class _TasklistpageState extends State<Tasklistpage> {
                                   task.isCompleted = tempIsCompleted;
                                   task.subtasks =
                                       tempSubtasks; // Commit subtasks
+                                  task.reminderMinutes = tempDueDate != null ? tempReminderMinutes : null;
                                 });
                                 await DBHelper().updateTask(task);
                                 await _loadTasks();
+
+                                // Manage Scheduled Notification
+                                if (task.reminderMinutes != null && !task.isCompleted) {
+                                  await NotificationHelper().scheduleTaskNotification(task);
+                                } else {
+                                  if (task.id != null) {
+                                    await NotificationHelper().cancelTaskNotification(task.id!);
+                                  }
+                                }
 
                                 titleController.dispose();
                                 descController.dispose();

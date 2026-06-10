@@ -1,10 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:kinday/database/preference_handler.dart';
+import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/pages/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await PreferenceHandler.init();
+
+  // Initialize notification helper
+  final notificationHelper = NotificationHelper();
+  await notificationHelper.init();
+  await notificationHelper.requestPermissions();
+
   runApp(const MyApp());
 }
 

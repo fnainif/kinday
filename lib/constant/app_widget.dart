@@ -321,6 +321,7 @@ class TaskCard extends StatelessWidget {
     this.isCompleted = false,
     this.maxlinesdesc = 1,
     this.maxlinestitle = 2,
+    this.reminderMinutes,
     List<Map<String, dynamic>>? subtasks,
   }) : subtasks = subtasks ?? [];
 
@@ -337,6 +338,7 @@ class TaskCard extends StatelessWidget {
   bool isCompleted;
   int maxlinesdesc;
   int maxlinestitle;
+  int? reminderMinutes;
   List<Map<String, dynamic>> subtasks;
 
   String get _energyLabel {

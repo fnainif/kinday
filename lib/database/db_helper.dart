@@ -25,7 +25,7 @@ class DBHelper {
 
     return await openDatabase(
       path,
-      version: 3,
+      version: 4,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE users(
@@ -46,7 +46,8 @@ class DBHelper {
             dueDate TEXT,
             dueTime TEXT,
             isCompleted INTEGER,
-            subtasks TEXT
+            subtasks TEXT,
+            reminderMinutes INTEGER
           )
         ''');
         await db.execute('''
@@ -83,7 +84,8 @@ class DBHelper {
               dueDate TEXT,
               dueTime TEXT,
               isCompleted INTEGER,
-              subtasks TEXT
+              subtasks TEXT,
+              reminderMinutes INTEGER
             )
           ''');
           await db.execute('''
@@ -100,6 +102,13 @@ class DBHelper {
             await db.execute('ALTER TABLE tasks ADD COLUMN dueTime TEXT');
           } catch (e) {
             debugPrint("Error migrating database to v3: $e");
+          }
+        }
+        if (oldVersion < 4) {
+          try {
+            await db.execute('ALTER TABLE tasks ADD COLUMN reminderMinutes INTEGER');
+          } catch (e) {
+            debugPrint("Error migrating database to v4: $e");
           }
         }
       },
@@ -189,6 +198,7 @@ class DBHelper {
       'dueTime': task.dueTime,
       'isCompleted': task.isCompleted ? 1 : 0,
       'subtasks': jsonEncode(task.subtasks),
+      'reminderMinutes': task.reminderMinutes,
     };
     final id = await db.insert('tasks', map);
     return id;
@@ -229,6 +239,7 @@ class DBHelper {
         dueTime: map['dueTime'] as String?,
         isCompleted: (map['isCompleted'] as int) == 1,
         subtasks: parsedSubtasks,
+        reminderMinutes: map['reminderMinutes'] as int?,
       );
     }).toList();
   }
@@ -245,6 +256,7 @@ class DBHelper {
       'dueTime': task.dueTime,
       'isCompleted': task.isCompleted ? 1 : 0,
       'subtasks': jsonEncode(task.subtasks),
+      'reminderMinutes': task.reminderMinutes,
     };
 
     int count = await db.update(

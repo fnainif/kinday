@@ -6,6 +6,7 @@ import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
+import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/pages/dummy/pleaceholderpage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -27,6 +28,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   String? selectedDropdown;
   DateTime? selectedDate;
   TimeOfDay? selectedTime;
+  int? selectedReminderMinutes;
   int selectedIndex = 0;
   String selectedEnergy = "low";
 
@@ -305,6 +307,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                   setState(() {
                                     selectedDate = null;
                                     selectedTime = null;
+                                    selectedReminderMinutes = null;
                                   });
                                 },
                               ),
@@ -378,6 +381,40 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                       : selectedTime!.format(context),
                                   style: const TextStyle(color: AppColors.button),
                                 ),
+                              ),
+                            ],
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10.0),
+                            child: Divider(
+                              thickness: 1,
+                              color: AppColors.background,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              const Icon(Icons.notifications_active_outlined, size: 20, color: AppColors.button),
+                              const SizedBox(width: 10),
+                              const Text("Reminder"),
+                              const Spacer(),
+                              DropdownButton<int?>(
+                                value: selectedReminderMinutes,
+                                dropdownColor: Colors.white,
+                                style: const TextStyle(color: AppColors.button),
+                                items: const [
+                                  DropdownMenuItem(value: null, child: Text("No reminder")),
+                                  DropdownMenuItem(value: 5, child: Text("5 minutes before")),
+                                  DropdownMenuItem(value: 10, child: Text("10 minutes before")),
+                                  DropdownMenuItem(value: 15, child: Text("15 minutes before")),
+                                  DropdownMenuItem(value: 30, child: Text("30 minutes before")),
+                                  DropdownMenuItem(value: 60, child: Text("1 hour before")),
+                                  DropdownMenuItem(value: 1440, child: Text("1 day before")),
+                                ],
+                                onChanged: (int? value) {
+                                  setState(() {
+                                    selectedReminderMinutes = value;
+                                  });
+                                },
                               ),
                             ],
                           ),
@@ -644,13 +681,19 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         dueDate: selectedDate,
                         dueTime: selectedTime?.format(context),
                         subtasks: subtasks,
+                        reminderMinutes: selectedReminderMinutes,
                       );
 
                       final navigator = Navigator.of(context);
                       final prefs = await SharedPreferences.getInstance();
                       final userId = prefs.getInt('user_id') ?? 1;
 
-                      await DBHelper().insertTask(newTask, userId);
+                      final insertedId = await DBHelper().insertTask(newTask, userId);
+                      newTask.id = insertedId;
+
+                      if (selectedReminderMinutes != null) {
+                        await NotificationHelper().scheduleTaskNotification(newTask);
+                      }
 
                       navigator.pop(); // Go back to the previous screen
                     },
