@@ -5,6 +5,7 @@ import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/pages/botnavpage/pomodoropage.dart';
+import 'package:kinday/pages/mainpage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Homepage extends StatefulWidget {
@@ -106,7 +107,10 @@ class _HomepageState extends State<Homepage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text("Good Morning", style: AppTextStyles.greeting),
+                      const Text(
+                        "Good Morning,",
+                        style: AppTextStyles.greeting,
+                      ),
                       Transform.translate(
                         offset: const Offset(0, -10),
                         child: Text(_name, style: AppTextStyles.username),
@@ -121,7 +125,7 @@ class _HomepageState extends State<Homepage> {
                     ],
                   ),
                   const Spacer(),
-                  Image.asset(AppImage.mascotlogin, height: 120),
+                  Image.asset(AppImage.mascottask, height: 120),
                 ],
               ),
             ),
@@ -135,7 +139,7 @@ class _HomepageState extends State<Homepage> {
                       child: Row(
                         children: [
                           Image.asset(
-                            AppImage.placeholder,
+                            AppImage.iconenergy,
                             height: 50,
                             width: 50,
                           ),
@@ -143,10 +147,20 @@ class _HomepageState extends State<Homepage> {
                           Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text("Current Energy"),
+                              const Text(
+                                "Current Energy",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.button,
+                                ),
+                              ),
                               Text(
                                 _getEnergyLabel(_currentEnergyLvl),
-                                style: const TextStyle(fontSize: 25),
+                                style: const TextStyle(
+                                  fontSize: 25,
+
+                                  color: AppColors.button,
+                                ),
                               ),
                               Text(
                                 _lastUpdated,
@@ -297,7 +311,7 @@ class _HomepageState extends State<Homepage> {
                           Row(
                             children: [
                               Image.asset(
-                                AppImage.placeholder,
+                                AppImage.icontask,
                                 height: 80,
                                 width: 80,
                               ),
@@ -317,6 +331,54 @@ class _HomepageState extends State<Homepage> {
                                           "No description",
                                       maxLines: 1,
                                     ),
+                                    if (_suggestedTask != null) ...[
+                                      const SizedBox(height: 8),
+                                      if (_suggestedTask!.dueDate != null) ...[
+                                        Row(
+                                          children: [
+                                            Icon(
+                                              Icons.calendar_today,
+                                              size: 12,
+                                              color: AppColors.button,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Expanded(
+                                              child: Text(
+                                                _suggestedTask!.dueTime != null && _suggestedTask!.dueTime!.isNotEmpty
+                                                    ? "${_suggestedTask!.dueDate!.day}/${_suggestedTask!.dueDate!.month}/${_suggestedTask!.dueDate!.year}  ${_suggestedTask!.dueTime}"
+                                                    : "${_suggestedTask!.dueDate!.day}/${_suggestedTask!.dueDate!.month}/${_suggestedTask!.dueDate!.year}",
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AppColors.button,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 6),
+                                      ],
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.energy_savings_leaf,
+                                            size: 14,
+                                            color: AppColors.button,
+                                          ),
+                                          const SizedBox(width: 4),
+                                          Text(
+                                            _getEnergyLabel(_suggestedTask!.energylvl),
+                                            style: const TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.black87,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 12),
+                                          PriorityIndicator(priority: _suggestedTask!.prioritytask),
+                                        ],
+                                      ),
+                                    ],
                                   ],
                                 ),
                               ),
@@ -329,16 +391,20 @@ class _HomepageState extends State<Homepage> {
                             onPressed: () {
                               if (_suggestedTask != null) {
                                 TaskCard.activePomodoroTask = _suggestedTask;
-
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        Pomodoropage(task: _suggestedTask),
-                                  ),
-                                ).then((_) {
-                                  _loadHomepageData();
-                                });
+                                final mainState = context.findAncestorStateOfType<MainpageState>();
+                                if (mainState != null) {
+                                  mainState.changeTab(2);
+                                } else {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          Pomodoropage(task: _suggestedTask),
+                                    ),
+                                  ).then((_) {
+                                    _loadHomepageData();
+                                  });
+                                }
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
@@ -379,7 +445,7 @@ class _HomepageState extends State<Homepage> {
                       child: Row(
                         children: [
                           Image.asset(
-                            AppImage.placeholder,
+                            AppImage.iconprogress,
                             height: 50,
                             width: 50,
                           ),
@@ -391,7 +457,13 @@ class _HomepageState extends State<Homepage> {
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text("Today's progress"),
+                                const Text(
+                                  "Today's progress",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.button,
+                                  ),
+                                ),
                                 Text(
                                   "$_completedTasksCount out of $_totalTasks tasks completed",
                                 ),
@@ -406,7 +478,13 @@ class _HomepageState extends State<Homepage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Turn big tasks into small, doable steps"),
+                          const Text(
+                            "Turn big tasks into small, doable steps",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.button,
+                            ),
+                          ),
                           const SizedBox(height: 10),
                           TextFormField(
                             controller: breakdowncontroller,

@@ -4,10 +4,10 @@ import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
+import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/models/user_model_sql.dart';
 import 'package:kinday/pages/auth/login.dart';
 import 'package:kinday/pages/dummy/pleaceholderpage.dart';
-import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/pages/mainpage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -145,6 +145,9 @@ class _RegisterPageState extends State<RegisterPage> {
                               if (value == null || value.trim().isEmpty) {
                                 return "Please enter your name";
                               }
+                              if (value.length > 10 || value.trim().isEmpty) {
+                                return "Name has to be up to 10 letters";
+                              }
                               return null;
                             },
                           ),
@@ -168,7 +171,9 @@ class _RegisterPageState extends State<RegisterPage> {
                               if (value == null || value.trim().isEmpty) {
                                 return "Please enter your email";
                               }
-                              final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                              final emailRegex = RegExp(
+                                r'^[^@]+@[^@]+\.[^@]+$',
+                              );
                               if (!emailRegex.hasMatch(value.trim())) {
                                 return "Please enter a valid email address";
                               }
@@ -257,7 +262,8 @@ class _RegisterPageState extends State<RegisterPage> {
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) => const LoginPage(),
+                                          builder: (context) =>
+                                              const LoginPage(),
                                         ),
                                       );
                                     },

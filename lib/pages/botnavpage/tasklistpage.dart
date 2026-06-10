@@ -7,6 +7,8 @@ import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/pages/createtask.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:kinday/widgets/speech_mic_button.dart';
 
 class Tasklistpage extends StatefulWidget {
   const Tasklistpage({super.key});
@@ -46,6 +48,122 @@ class _TasklistpageState extends State<Tasklistpage> {
       task.subtasks.map((e) => Map<String, dynamic>.from(e)),
     );
     final newSubtaskController = TextEditingController();
+
+    final stt.SpeechToText speech = stt.SpeechToText();
+    bool isListeningTitle = false;
+    bool isListeningDesc = false;
+
+    void listenForField(TextEditingController controller, bool isTitle, StateSetter setModalState) async {
+      final messenger = ScaffoldMessenger.of(context);
+
+      if (isTitle ? isListeningTitle : isListeningDesc) {
+        await speech.stop();
+        setModalState(() {
+          if (isTitle) {
+            isListeningTitle = false;
+          } else {
+            isListeningDesc = false;
+          }
+        });
+        return;
+      }
+
+      if (isTitle && isListeningDesc) {
+        await speech.stop();
+        setModalState(() {
+          isListeningDesc = false;
+        });
+      } else if (!isTitle && isListeningTitle) {
+        await speech.stop();
+        setModalState(() {
+          isListeningTitle = false;
+        });
+      }
+
+      bool available = await speech.initialize(
+        onStatus: (status) {
+          debugPrint('STT status: $status');
+          if (status == 'done' || status == 'notListening') {
+            setModalState(() {
+              if (isTitle) {
+                isListeningTitle = false;
+              } else {
+                isListeningDesc = false;
+              }
+            });
+          }
+        },
+        onError: (error) {
+          debugPrint('STT error: $error');
+          setModalState(() {
+            if (isTitle) {
+              isListeningTitle = false;
+            } else {
+              isListeningDesc = false;
+            }
+          });
+          messenger.showSnackBar(
+            SnackBar(content: Text("Speech recognition error: ${error.errorMsg}")),
+          );
+        },
+      );
+
+      if (available) {
+        setModalState(() {
+          if (isTitle) {
+            isListeningTitle = true;
+          } else {
+            isListeningDesc = true;
+          }
+        });
+
+        String baseText = controller.text;
+        if (baseText.isNotEmpty && !baseText.endsWith(' ')) {
+          baseText += ' ';
+        }
+
+        speech.listen(
+          onResult: (val) {
+            setModalState(() {
+              if (val.recognizedWords.isNotEmpty) {
+                controller.text = baseText + val.recognizedWords;
+                controller.selection = TextSelection.fromPosition(
+                  TextPosition(offset: controller.text.length),
+                );
+              }
+            });
+          },
+        );
+      } else {
+        messenger.showSnackBar(
+          const SnackBar(content: Text("Speech recognition is not available or permission denied")),
+        );
+      }
+    }
+
+    TimeOfDay? parseTimeOfDay(String? timeStr) {
+      if (timeStr == null || timeStr.isEmpty) return null;
+      try {
+        final parts = timeStr.split(':');
+        if (parts.length >= 2) {
+          final hourPart = parts[0].trim();
+          final minutePart = parts[1].trim();
+          int hour = int.parse(hourPart.replaceAll(RegExp(r'\D'), ''));
+          int minute = int.parse(minutePart.replaceAll(RegExp(r'\D'), ''));
+          if (timeStr.toLowerCase().contains('pm') && hour < 12) {
+            hour += 12;
+          } else if (timeStr.toLowerCase().contains('am') && hour == 12) {
+            hour = 0;
+          }
+          return TimeOfDay(hour: hour, minute: minute);
+        }
+      } catch (e) {
+        debugPrint("Error parsing TimeOfDay: $e");
+      }
+      return null;
+    }
+
+    TimeOfDay? tempDueTime = parseTimeOfDay(task.dueTime);
 
     showModalBottomSheet(
       context: context,
@@ -108,6 +226,10 @@ class _TasklistpageState extends State<Tasklistpage> {
                               width: 1.5,
                             ),
                           ),
+                          suffixIcon: SpeechMicButton(
+                            isListening: isListeningTitle,
+                            onTap: () => listenForField(titleController, true, setModalState),
+                          ),
                         ),
                       ),
                       const SizedBox(height: 16),
@@ -130,6 +252,10 @@ class _TasklistpageState extends State<Tasklistpage> {
                               color: AppColors.background,
                               width: 1.5,
                             ),
+                          ),
+                          suffixIcon: SpeechMicButton(
+                            isListening: isListeningDesc,
+                            onTap: () => listenForField(descController, false, setModalState),
                           ),
                         ),
                       ),
@@ -248,6 +374,64 @@ class _TasklistpageState extends State<Tasklistpage> {
                           ),
                         ],
                       ),
+                      if (tempDueDate != null) ...[
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              "Due Time",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                if (tempDueTime != null)
+                                  IconButton(
+                                    icon: const Icon(Icons.clear, color: Colors.redAccent, size: 20),
+                                    onPressed: () {
+                                      setModalState(() {
+                                        tempDueTime = null;
+                                      });
+                                    },
+                                  ),
+                                ElevatedButton.icon(
+                                  onPressed: () async {
+                                    final picked = await showTimePicker(
+                                      context: context,
+                                      initialTime: tempDueTime ?? TimeOfDay.now(),
+                                    );
+                                    if (picked != null) {
+                                      setModalState(() {
+                                        tempDueTime = picked;
+                                      });
+                                    }
+                                  },
+                                  icon: const Icon(
+                                    Icons.access_time,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                  label: Text(
+                                    tempDueTime == null
+                                        ? "Pilih Jam"
+                                        : tempDueTime!.format(context),
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.button,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 16),
                       // Energy Level Selection
                       Column(
@@ -486,6 +670,9 @@ class _TasklistpageState extends State<Tasklistpage> {
                                   task.prioritytask = tempPriority;
                                   task.energylvl = tempEnergyLvl;
                                   task.dueDate = tempDueDate;
+                                  task.dueTime = tempDueDate != null
+                                      ? tempDueTime?.format(context)
+                                      : null;
                                   task.isCompleted = tempIsCompleted;
                                   task.subtasks =
                                       tempSubtasks; // Commit subtasks
@@ -525,7 +712,9 @@ class _TasklistpageState extends State<Tasklistpage> {
           },
         );
       },
-    );
+    ).whenComplete(() {
+      speech.stop();
+    });
   }
 
   String _getEnergyLabel(int level) {
@@ -568,7 +757,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                     ],
                   ),
                   const Spacer(),
-                  Image.asset(AppImage.mascotlogin, height: 120),
+                  Image.asset(AppImage.mascotfocus, height: 120),
                 ],
               ),
             ),
@@ -662,9 +851,16 @@ class EnergyLevelView extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
-                    Icon(Icons.recommend, size: 20),
+                    Icon(Icons.recommend, size: 20, color: AppColors.button),
                     SizedBox(width: 10),
-                    Text("Recommended Task", style: TextStyle(fontSize: 15)),
+                    Text(
+                      "Recommended Task",
+                      style: TextStyle(
+                        fontFamily: "Quicksand",
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.button,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -689,9 +885,16 @@ class EnergyLevelView extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
-                    Icon(Icons.favorite, size: 20),
+                    Icon(Icons.favorite, size: 20, color: AppColors.button),
                     SizedBox(width: 10),
-                    Text("Low Energy Task", style: TextStyle(fontSize: 15)),
+                    Text(
+                      "Low Energy Task",
+                      style: TextStyle(
+                        fontFamily: "Quicksand",
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.button,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -716,9 +919,20 @@ class EnergyLevelView extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
-                    Icon(Icons.local_fire_department, size: 20),
+                    Icon(
+                      Icons.local_fire_department,
+                      size: 20,
+                      color: AppColors.button,
+                    ),
                     SizedBox(width: 10),
-                    Text("High Focus Task", style: TextStyle(fontSize: 15)),
+                    Text(
+                      "High Focus Task",
+                      style: TextStyle(
+                        fontFamily: "Quicksand",
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.button,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -791,9 +1005,16 @@ class DueDateView extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
-                    Icon(Icons.today, size: 20),
+                    Icon(Icons.today, size: 20, color: AppColors.button),
                     SizedBox(width: 10),
-                    Text("Today", style: TextStyle(fontSize: 15)),
+                    Text(
+                      "Today",
+                      style: TextStyle(
+                        fontFamily: "Quicksand",
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.button,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -815,9 +1036,16 @@ class DueDateView extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
-                    Icon(Icons.schedule, size: 20),
+                    Icon(Icons.schedule, size: 20, color: AppColors.button),
                     SizedBox(width: 10),
-                    Text("Tomorrow", style: TextStyle(fontSize: 15)),
+                    Text(
+                      "Tomorrow",
+                      style: TextStyle(
+                        fontFamily: "Quicksand",
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.button,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -839,9 +1067,16 @@ class DueDateView extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
-                    Icon(Icons.upcoming, size: 20),
+                    Icon(Icons.upcoming, size: 20, color: AppColors.button),
                     SizedBox(width: 10),
-                    Text("Upcoming", style: TextStyle(fontSize: 15)),
+                    Text(
+                      "Upcoming",
+                      style: TextStyle(
+                        fontFamily: "Quicksand",
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.button,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -863,9 +1098,20 @@ class DueDateView extends StatelessWidget {
                 padding: EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
-                    Icon(Icons.check_circle_outline, size: 20),
+                    Icon(
+                      Icons.check_circle_outline,
+                      size: 20,
+                      color: AppColors.button,
+                    ),
                     SizedBox(width: 10),
-                    Text("Completed", style: TextStyle(fontSize: 15)),
+                    Text(
+                      "Completed",
+                      style: TextStyle(
+                        fontFamily: "Quicksand",
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.button,
+                      ),
+                    ),
                   ],
                 ),
               ),

@@ -484,7 +484,7 @@ class _SettingProfileState extends State<SettingProfile> {
                           ),
                           const SizedBox(height: 12),
                           // Focus Sound Selection
-                          Row(
+                          Column(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(

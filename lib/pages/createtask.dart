@@ -8,6 +8,8 @@ import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/pages/dummy/pleaceholderpage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+import 'package:kinday/widgets/speech_mic_button.dart';
 
 class CreateTaskPage extends StatefulWidget {
   const CreateTaskPage({super.key});
@@ -28,8 +30,102 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   int selectedIndex = 0;
   String selectedEnergy = "low";
 
+  final stt.SpeechToText _speech = stt.SpeechToText();
+  bool _isListeningTitle = false;
+  bool _isListeningDesc = false;
+
+  void _listenForField(TextEditingController controller, bool isTitle) async {
+    final messenger = ScaffoldMessenger.of(context);
+
+    if (isTitle ? _isListeningTitle : _isListeningDesc) {
+      await _speech.stop();
+      setState(() {
+        if (isTitle) {
+          _isListeningTitle = false;
+        } else {
+          _isListeningDesc = false;
+        }
+      });
+      return;
+    }
+
+    if (isTitle && _isListeningDesc) {
+      await _speech.stop();
+      setState(() {
+        _isListeningDesc = false;
+      });
+    } else if (!isTitle && _isListeningTitle) {
+      await _speech.stop();
+      setState(() {
+        _isListeningTitle = false;
+      });
+    }
+
+    bool available = await _speech.initialize(
+      onStatus: (status) {
+        debugPrint('STT status: $status');
+        if (status == 'done' || status == 'notListening') {
+          setState(() {
+            if (isTitle) {
+              _isListeningTitle = false;
+            } else {
+              _isListeningDesc = false;
+            }
+          });
+        }
+      },
+      onError: (error) {
+        debugPrint('STT error: $error');
+        if (!mounted) return;
+        setState(() {
+          if (isTitle) {
+            _isListeningTitle = false;
+          } else {
+            _isListeningDesc = false;
+          }
+        });
+        messenger.showSnackBar(
+          SnackBar(content: Text("Speech recognition error: ${error.errorMsg}")),
+        );
+      },
+    );
+
+    if (available) {
+      setState(() {
+        if (isTitle) {
+          _isListeningTitle = true;
+        } else {
+          _isListeningDesc = true;
+        }
+      });
+
+      String baseText = controller.text;
+      if (baseText.isNotEmpty && !baseText.endsWith(' ')) {
+        baseText += ' ';
+      }
+
+      _speech.listen(
+        onResult: (val) {
+          setState(() {
+            if (val.recognizedWords.isNotEmpty) {
+              controller.text = baseText + val.recognizedWords;
+              controller.selection = TextSelection.fromPosition(
+                TextPosition(offset: controller.text.length),
+              );
+            }
+          });
+        },
+      );
+    } else {
+      messenger.showSnackBar(
+        const SnackBar(content: Text("Speech recognition is not available or permission denied")),
+      );
+    }
+  }
+
   @override
   void dispose() {
+    _speech.stop();
     titleController.dispose();
     descController.dispose();
     super.dispose();
@@ -123,6 +219,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
                             filled: true,
                             fillColor: Colors.grey.shade100,
+                            suffixIcon: SpeechMicButton(
+                              isListening: _isListeningTitle,
+                              onTap: () => _listenForField(titleController, true),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 15),
@@ -164,6 +264,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
                             filled: true,
                             fillColor: Colors.grey.shade100,
+                            suffixIcon: SpeechMicButton(
+                              isListening: _isListeningDesc,
+                              onTap: () => _listenForField(descController, false),
+                            ),
                           ),
                         ),
                         const SizedBox(height: 15),
@@ -190,9 +294,20 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                               height: 20,
                               width: 20,
                             ),
-                            SizedBox(width: 10),
-                            Text("Due Date"),
-                            Spacer(),
+                            const SizedBox(width: 10),
+                            const Text("Due Date"),
+                            const Spacer(),
+
+                            if (selectedDate != null)
+                              IconButton(
+                                icon: const Icon(Icons.clear, color: Colors.redAccent, size: 18),
+                                onPressed: () {
+                                  setState(() {
+                                    selectedDate = null;
+                                    selectedTime = null;
+                                  });
+                                },
+                              ),
 
                             ElevatedButton.icon(
                               onPressed: () async {
@@ -217,6 +332,56 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             ),
                           ],
                         ),
+
+                        if (selectedDate != null) ...[
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10.0),
+                            child: Divider(
+                              thickness: 1,
+                              color: AppColors.background,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Image.asset(
+                                AppImage.placeholder,
+                                height: 20,
+                                width: 20,
+                              ),
+                              const SizedBox(width: 10),
+                              const Text("Due Time (Optional)"),
+                              const Spacer(),
+                              if (selectedTime != null)
+                                IconButton(
+                                  icon: const Icon(Icons.clear, color: Colors.redAccent, size: 18),
+                                  onPressed: () {
+                                    setState(() {
+                                      selectedTime = null;
+                                    });
+                                  },
+                                ),
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  final TimeOfDay? picked = await showTimePicker(
+                                    context: context,
+                                    initialTime: selectedTime ?? TimeOfDay.now(),
+                                  );
+                                  if (picked != null) {
+                                    setState(() {
+                                      selectedTime = picked;
+                                    });
+                                  }
+                                },
+                                label: Text(
+                                  selectedTime == null
+                                      ? "Pilih Jam"
+                                      : selectedTime!.format(context),
+                                  style: const TextStyle(color: AppColors.button),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
 
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 10.0),
@@ -477,6 +642,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         energylvl: energyVal,
                         prioritytask: priorityVal,
                         dueDate: selectedDate,
+                        dueTime: selectedTime?.format(context),
                         subtasks: subtasks,
                       );
 

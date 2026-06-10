@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/pages/botnavpage/pomodoropage.dart';
+import 'package:kinday/pages/mainpage.dart';
 
 // Gradient BG
 class BgContainer extends StatelessWidget {
@@ -315,6 +316,7 @@ class TaskCard extends StatelessWidget {
     required this.energylvl,
     this.prioritytask = 1,
     this.dueDate,
+    this.dueTime,
     this.onTap,
     this.isCompleted = false,
     this.maxlinesdesc = 1,
@@ -330,6 +332,7 @@ class TaskCard extends StatelessWidget {
   int energylvl;
   int prioritytask;
   DateTime? dueDate;
+  String? dueTime;
   VoidCallback? onTap;
   bool isCompleted;
   int maxlinesdesc;
@@ -378,7 +381,9 @@ class TaskCard extends StatelessWidget {
                   Icon(Icons.calendar_today, size: 11, color: AppColors.button),
                   const SizedBox(width: 3),
                   Text(
-                    "${dueDate!.day}/${dueDate!.month}/${dueDate!.year}",
+                    dueTime != null && dueTime!.isNotEmpty
+                        ? "${dueDate!.day}/${dueDate!.month}/${dueDate!.year}  $dueTime"
+                        : "${dueDate!.day}/${dueDate!.month}/${dueDate!.year}",
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w600,
@@ -444,12 +449,17 @@ class TaskCard extends StatelessWidget {
                 ),
                 onPressed: () {
                   TaskCard.activePomodoroTask = this;
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => Pomodoropage(task: this),
-                    ),
-                  );
+                  final mainState = context.findAncestorStateOfType<MainpageState>();
+                  if (mainState != null) {
+                    mainState.changeTab(2);
+                  } else {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => Pomodoropage(task: this),
+                      ),
+                    );
+                  }
                 },
                 child: const Text(
                   "Start Focus",

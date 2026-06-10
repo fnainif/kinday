@@ -309,7 +309,7 @@ class _EnergyPageState extends State<EnergyPage> {
                       ],
                     ),
                     const Spacer(),
-                    Image.asset(AppImage.mascotlogin, height: 120),
+                    Image.asset(AppImage.mascotstar, height: 120),
                   ],
                 ),
               ),
@@ -320,10 +320,19 @@ class _EnergyPageState extends State<EnergyPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text("Current Energy"),
+                    const Text(
+                      "Current Energy",
+                      style: TextStyle(
+                        color: AppColors.button,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     Text(
                       _getEnergyLabel(_currentEnergyLvl),
-                      style: const TextStyle(fontSize: 25),
+                      style: const TextStyle(
+                        fontSize: 25,
+                        color: AppColors.button,
+                      ),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),

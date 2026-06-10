@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:kinday/constant/app_image.dart';
+import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/pages/auth/login.dart';
 import 'package:kinday/pages/mainpage.dart';
@@ -39,8 +41,16 @@ class _SplashScreenState extends State<SplashScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Image.asset("assets/images/Mascot_login.png"),
+          Expanded(
+            child: BgContainer(
+              child: Padding(
+                padding: const EdgeInsets.all(40.0),
+                child: Image.asset(AppImage.mascotlogin),
+              ),
+            ),
+          ),
 
           // kIsWeb
           //     ? SizedBox(

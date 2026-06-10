@@ -11,11 +11,20 @@ class Mainpage extends StatefulWidget {
   const Mainpage({super.key});
 
   @override
-  State<Mainpage> createState() => _MainpageState();
+  State<Mainpage> createState() => MainpageState();
 }
 
-class _MainpageState extends State<Mainpage> {
+class MainpageState extends State<Mainpage> {
   int selectedIndex = 0;
+  final GlobalKey<CurvedNavigationBarState> _bottomNavigationKey = GlobalKey();
+
+  void changeTab(int index) {
+    setState(() {
+      selectedIndex = index;
+    });
+    final CurvedNavigationBarState? navBarState = _bottomNavigationKey.currentState;
+    navBarState?.setPage(index);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -30,6 +39,8 @@ class _MainpageState extends State<Mainpage> {
     return Scaffold(
       body: pages[selectedIndex],
       bottomNavigationBar: CurvedNavigationBar(
+        key: _bottomNavigationKey,
+        index: selectedIndex,
         backgroundColor: AppColors.button,
         items: const <Widget>[
           Icon(Icons.home, size: 30, color: AppColors.button),

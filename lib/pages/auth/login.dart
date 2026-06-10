@@ -6,8 +6,8 @@ import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/pages/auth/register.dart';
-import 'package:kinday/pages/mainpage.dart';
 import 'package:kinday/pages/dummy/pleaceholderpage.dart';
+import 'package:kinday/pages/mainpage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
@@ -48,9 +48,9 @@ class _LoginPageState extends State<LoginPage> {
       await PreferenceHandler.setLogin(true);
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Login successful!")),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text("Login successful!")));
         Navigator.pushAndRemoveUntil(
           context,
           MaterialPageRoute(builder: (context) => const Mainpage()),
@@ -121,7 +121,9 @@ class _LoginPageState extends State<LoginPage> {
                               if (value == null || value.trim().isEmpty) {
                                 return "Please enter your email";
                               }
-                              final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                              final emailRegex = RegExp(
+                                r'^[^@]+@[^@]+\.[^@]+$',
+                              );
                               if (!emailRegex.hasMatch(value.trim())) {
                                 return "Please enter a valid email address";
                               }
@@ -159,7 +161,8 @@ class _LoginPageState extends State<LoginPage> {
                                   Navigator.push(
                                     context,
                                     MaterialPageRoute(
-                                      builder: (context) => const Pleaceholderpage(),
+                                      builder: (context) =>
+                                          const Pleaceholderpage(),
                                     ),
                                   );
                                 },
@@ -252,7 +255,8 @@ class _LoginPageState extends State<LoginPage> {
                                       Navigator.push(
                                         context,
                                         MaterialPageRoute(
-                                          builder: (context) => const RegisterPage(),
+                                          builder: (context) =>
+                                              const RegisterPage(),
                                         ),
                                       );
                                     },

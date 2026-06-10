@@ -6,18 +6,26 @@ class AppTextStyles {
     fontFamily: "Quicksand",
     fontSize: 20,
     letterSpacing: 0,
+
+    fontWeight: FontWeight.bold,
+    color: AppColors.button,
   );
 
   static const TextStyle username = TextStyle(
-    fontFamily: "Quicksand",
+    fontFamily: "Nunito",
     fontSize: 30,
     letterSpacing: 0,
+
+    color: Colors.white,
   );
 
   static const TextStyle affirmation = TextStyle(
     fontFamily: "Nunito",
     fontSize: 15,
     letterSpacing: 0,
+
+    fontWeight: FontWeight.bold,
+    color: AppColors.button,
   );
 
   static const TextStyle bodytext = TextStyle(

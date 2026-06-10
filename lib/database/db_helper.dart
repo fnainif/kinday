@@ -25,7 +25,7 @@ class DBHelper {
 
     return await openDatabase(
       path,
-      version: 2,
+      version: 3,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE users(
@@ -44,6 +44,7 @@ class DBHelper {
             energylvl INTEGER,
             prioritytask INTEGER,
             dueDate TEXT,
+            dueTime TEXT,
             isCompleted INTEGER,
             subtasks TEXT
           )
@@ -80,6 +81,7 @@ class DBHelper {
               energylvl INTEGER,
               prioritytask INTEGER,
               dueDate TEXT,
+              dueTime TEXT,
               isCompleted INTEGER,
               subtasks TEXT
             )
@@ -92,6 +94,13 @@ class DBHelper {
               timestamp TEXT
             )
           ''');
+        }
+        if (oldVersion < 3) {
+          try {
+            await db.execute('ALTER TABLE tasks ADD COLUMN dueTime TEXT');
+          } catch (e) {
+            debugPrint("Error migrating database to v3: $e");
+          }
         }
       },
     );
@@ -177,6 +186,7 @@ class DBHelper {
       'energylvl': task.energylvl,
       'prioritytask': task.prioritytask,
       'dueDate': task.dueDate?.toIso8601String(),
+      'dueTime': task.dueTime,
       'isCompleted': task.isCompleted ? 1 : 0,
       'subtasks': jsonEncode(task.subtasks),
     };
@@ -216,6 +226,7 @@ class DBHelper {
         energylvl: map['energylvl'] as int,
         prioritytask: map['prioritytask'] as int,
         dueDate: dueDateStr != null ? DateTime.parse(dueDateStr) : null,
+        dueTime: map['dueTime'] as String?,
         isCompleted: (map['isCompleted'] as int) == 1,
         subtasks: parsedSubtasks,
       );
@@ -231,6 +242,7 @@ class DBHelper {
       'energylvl': task.energylvl,
       'prioritytask': task.prioritytask,
       'dueDate': task.dueDate?.toIso8601String(),
+      'dueTime': task.dueTime,
       'isCompleted': task.isCompleted ? 1 : 0,
       'subtasks': jsonEncode(task.subtasks),
     };
