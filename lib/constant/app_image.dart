@@ -8,4 +8,11 @@ class AppImage {
   static String iconenergy = "$folderAsset/Icon1.png";
   static String icontask = "$folderAsset/Icon2.png";
   static String iconprogress = "$folderAsset/Icon4.png";
+  static String icongoogle = "$folderAsset/google-logo-9827.png";
+  static String iconfacebook = "$folderAsset/logo-facebookpng-32254.png";
+  static String iconduedate = "$folderAsset/duedate.png";
+  static String iconduetime = "$folderAsset/duetime.png";
+  static String iconpriority = "$folderAsset/priority.png";
+  static String iconsubtask = "$folderAsset/subtask.png";
+  static String iconenergylvl = "$folderAsset/energylvl.png";
 }

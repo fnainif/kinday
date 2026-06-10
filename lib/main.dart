@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/database/notification_helper.dart';
+import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/pages/splash_screen.dart';
 
 void main() async {
@@ -22,6 +22,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Flutter Demo',
       theme: ThemeData(
         // This is the theme of your application.

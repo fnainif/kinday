@@ -56,12 +56,43 @@ class _HomepageState extends State<Homepage> {
 
     final activeTasks = userTasks.where((t) => !t.isCompleted).toList();
     TaskCard? suggested;
-    if (activeTasks.isNotEmpty) {
-      // Find a task matching energy level if possible, else just first active task
-      suggested = activeTasks.firstWhere(
-        (t) => t.energylvl == (latestEnergy ?? 3),
-        orElse: () => activeTasks.first,
-      );
+    final userEnergy = latestEnergy ?? 3;
+    final filteredTasks = activeTasks.where((t) => t.energylvl <= userEnergy).toList();
+
+    if (filteredTasks.isNotEmpty) {
+      filteredTasks.sort((a, b) {
+        // 1. Closest due date first (ascending)
+        if (a.dueDate != null && b.dueDate != null) {
+          final dateCompare = a.dueDate!.compareTo(b.dueDate!);
+          if (dateCompare != 0) {
+            return dateCompare;
+          }
+        } else if (a.dueDate != null && b.dueDate == null) {
+          return -1;
+        } else if (a.dueDate == null && b.dueDate != null) {
+          return 1;
+        }
+
+        // 2. Closest due time first (ascending)
+        final timeA = _parseTimeOfDay(a.dueTime);
+        final timeB = _parseTimeOfDay(b.dueTime);
+        if (timeA != null && timeB != null) {
+          final minA = timeA.hour * 60 + timeA.minute;
+          final minB = timeB.hour * 60 + timeB.minute;
+          final timeCompare = minA.compareTo(minB);
+          if (timeCompare != 0) {
+            return timeCompare;
+          }
+        } else if (timeA != null && timeB == null) {
+          return -1;
+        } else if (timeA == null && timeB != null) {
+          return 1;
+        }
+
+        // 3. Highest priority first (descending)
+        return b.prioritytask.compareTo(a.prioritytask);
+      });
+      suggested = filteredTasks.first;
     }
 
     setState(() {
@@ -75,6 +106,28 @@ class _HomepageState extends State<Homepage> {
       _totalTasks = userTasks.length;
       _completedTasksCount = userTasks.where((t) => t.isCompleted).length;
     });
+  }
+
+  TimeOfDay? _parseTimeOfDay(String? timeStr) {
+    if (timeStr == null || timeStr.isEmpty) return null;
+    try {
+      final parts = timeStr.split(':');
+      if (parts.length >= 2) {
+        final hourPart = parts[0].trim();
+        final minutePart = parts[1].trim();
+        int hour = int.parse(hourPart.replaceAll(RegExp(r'\D'), ''));
+        int minute = int.parse(minutePart.replaceAll(RegExp(r'\D'), ''));
+        if (timeStr.toLowerCase().contains('pm') && hour < 12) {
+          hour += 12;
+        } else if (timeStr.toLowerCase().contains('am') && hour == 12) {
+          hour = 0;
+        }
+        return TimeOfDay(hour: hour, minute: minute);
+      }
+    } catch (e) {
+      // ignore
+    }
+    return null;
   }
 
   String _getEnergyLabel(int level) {
@@ -344,7 +397,11 @@ class _HomepageState extends State<Homepage> {
                                             const SizedBox(width: 4),
                                             Expanded(
                                               child: Text(
-                                                _suggestedTask!.dueTime != null && _suggestedTask!.dueTime!.isNotEmpty
+                                                _suggestedTask!.dueTime !=
+                                                            null &&
+                                                        _suggestedTask!
+                                                            .dueTime!
+                                                            .isNotEmpty
                                                     ? "${_suggestedTask!.dueDate!.day}/${_suggestedTask!.dueDate!.month}/${_suggestedTask!.dueDate!.year}  ${_suggestedTask!.dueTime}"
                                                     : "${_suggestedTask!.dueDate!.day}/${_suggestedTask!.dueDate!.month}/${_suggestedTask!.dueDate!.year}",
                                                 style: TextStyle(
@@ -367,7 +424,9 @@ class _HomepageState extends State<Homepage> {
                                           ),
                                           const SizedBox(width: 4),
                                           Text(
-                                            _getEnergyLabel(_suggestedTask!.energylvl),
+                                            _getEnergyLabel(
+                                              _suggestedTask!.energylvl,
+                                            ),
                                             style: const TextStyle(
                                               fontSize: 11,
                                               fontWeight: FontWeight.w600,
@@ -375,7 +434,10 @@ class _HomepageState extends State<Homepage> {
                                             ),
                                           ),
                                           const SizedBox(width: 12),
-                                          PriorityIndicator(priority: _suggestedTask!.prioritytask),
+                                          PriorityIndicator(
+                                            priority:
+                                                _suggestedTask!.prioritytask,
+                                          ),
                                         ],
                                       ),
                                     ],
@@ -391,7 +453,8 @@ class _HomepageState extends State<Homepage> {
                             onPressed: () {
                               if (_suggestedTask != null) {
                                 TaskCard.activePomodoroTask = _suggestedTask;
-                                final mainState = context.findAncestorStateOfType<MainpageState>();
+                                final mainState = context
+                                    .findAncestorStateOfType<MainpageState>();
                                 if (mainState != null) {
                                   mainState.changeTab(2);
                                 } else {

@@ -5,6 +5,7 @@ import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/preference_handler.dart';
+import 'package:kinday/pages/auth/forgotpass.dart';
 import 'package:kinday/pages/auth/register.dart';
 import 'package:kinday/pages/dummy/pleaceholderpage.dart';
 import 'package:kinday/pages/mainpage.dart';
@@ -162,7 +163,7 @@ class _LoginPageState extends State<LoginPage> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (context) =>
-                                          const Pleaceholderpage(),
+                                          const ForgotPasswordPage(),
                                     ),
                                   );
                                 },
@@ -223,18 +224,18 @@ class _LoginPageState extends State<LoginPage> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               AccButton(
-                                sign: "Gmail",
+                                sign: "Google",
                                 warnaBox: AppColors.background,
                                 destination: const Pleaceholderpage(),
                                 textbuttoncolor: AppColors.button,
-                                leadImage: AppImage.placeholder,
+                                leadImage: AppImage.icongoogle,
                               ),
                               AccButton(
                                 sign: "Facebook",
                                 warnaBox: AppColors.background,
                                 destination: const Pleaceholderpage(),
                                 textbuttoncolor: AppColors.button,
-                                leadImage: AppImage.placeholder,
+                                leadImage: AppImage.iconfacebook,
                               ),
                             ],
                           ),

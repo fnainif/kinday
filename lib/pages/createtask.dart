@@ -8,9 +8,9 @@ import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/pages/dummy/pleaceholderpage.dart';
+import 'package:kinday/widgets/speech_mic_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:kinday/widgets/speech_mic_button.dart';
 
 class CreateTaskPage extends StatefulWidget {
   const CreateTaskPage({super.key});
@@ -87,7 +87,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           }
         });
         messenger.showSnackBar(
-          SnackBar(content: Text("Speech recognition error: ${error.errorMsg}")),
+          SnackBar(
+            content: Text("Speech recognition error: ${error.errorMsg}"),
+          ),
         );
       },
     );
@@ -120,7 +122,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       );
     } else {
       messenger.showSnackBar(
-        const SnackBar(content: Text("Speech recognition is not available or permission denied")),
+        const SnackBar(
+          content: Text(
+            "Speech recognition is not available or permission denied",
+          ),
+        ),
       );
     }
   }
@@ -185,7 +191,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       children: [
                         Row(
                           children: [
-                            const Icon(Icons.star_border),
+                            const Icon(
+                              Icons.star_border,
+                              size: 20,
+                              color: AppColors.containerline1,
+                            ),
                             const SizedBox(width: 10),
                             const Text("What do you want to do today?"),
                           ],
@@ -223,14 +233,19 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             fillColor: Colors.grey.shade100,
                             suffixIcon: SpeechMicButton(
                               isListening: _isListeningTitle,
-                              onTap: () => _listenForField(titleController, true),
+                              onTap: () =>
+                                  _listenForField(titleController, true),
                             ),
                           ),
                         ),
                         const SizedBox(height: 15),
                         Row(
                           children: [
-                            const Icon(Icons.description_outlined),
+                            const Icon(
+                              Icons.description_outlined,
+                              size: 20,
+                              color: AppColors.containerline1,
+                            ),
                             const SizedBox(width: 10),
                             const Text("Description (Optional)"),
                           ],
@@ -268,7 +283,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             fillColor: Colors.grey.shade100,
                             suffixIcon: SpeechMicButton(
                               isListening: _isListeningDesc,
-                              onTap: () => _listenForField(descController, false),
+                              onTap: () =>
+                                  _listenForField(descController, false),
                             ),
                           ),
                         ),
@@ -278,7 +294,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           warnaBox: AppColors.background,
                           destination: Pleaceholderpage(),
                           textbuttoncolor: Colors.white,
-                          leadImage: AppImage.placeholder,
+                          leadImage: AppImage.iconsubtask,
                         ),
 
                         Padding(
@@ -292,7 +308,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         Row(
                           children: [
                             Image.asset(
-                              AppImage.placeholder,
+                              AppImage.iconduedate,
                               height: 20,
                               width: 20,
                             ),
@@ -302,7 +318,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
                             if (selectedDate != null)
                               IconButton(
-                                icon: const Icon(Icons.clear, color: Colors.redAccent, size: 18),
+                                icon: const Icon(
+                                  Icons.clear,
+                                  color: Colors.redAccent,
+                                  size: 18,
+                                ),
                                 onPressed: () {
                                   setState(() {
                                     selectedDate = null;
@@ -347,7 +367,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           Row(
                             children: [
                               Image.asset(
-                                AppImage.placeholder,
+                                AppImage.iconduetime,
                                 height: 20,
                                 width: 20,
                               ),
@@ -356,7 +376,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                               const Spacer(),
                               if (selectedTime != null)
                                 IconButton(
-                                  icon: const Icon(Icons.clear, color: Colors.redAccent, size: 18),
+                                  icon: const Icon(
+                                    Icons.clear,
+                                    color: Colors.redAccent,
+                                    size: 18,
+                                  ),
                                   onPressed: () {
                                     setState(() {
                                       selectedTime = null;
@@ -365,10 +389,12 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 ),
                               ElevatedButton.icon(
                                 onPressed: () async {
-                                  final TimeOfDay? picked = await showTimePicker(
-                                    context: context,
-                                    initialTime: selectedTime ?? TimeOfDay.now(),
-                                  );
+                                  final TimeOfDay? picked =
+                                      await showTimePicker(
+                                        context: context,
+                                        initialTime:
+                                            selectedTime ?? TimeOfDay.now(),
+                                      );
                                   if (picked != null) {
                                     setState(() {
                                       selectedTime = picked;
@@ -379,7 +405,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                   selectedTime == null
                                       ? "Pilih Jam"
                                       : selectedTime!.format(context),
-                                  style: const TextStyle(color: AppColors.button),
+                                  style: const TextStyle(
+                                    color: AppColors.button,
+                                  ),
                                 ),
                               ),
                             ],
@@ -393,7 +421,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           ),
                           Row(
                             children: [
-                              const Icon(Icons.notifications_active_outlined, size: 20, color: AppColors.button),
+                              const Icon(
+                                Icons.notifications_active_outlined,
+                                size: 20,
+                                color: AppColors.button,
+                              ),
                               const SizedBox(width: 10),
                               const Text("Reminder"),
                               const Spacer(),
@@ -402,13 +434,34 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 dropdownColor: Colors.white,
                                 style: const TextStyle(color: AppColors.button),
                                 items: const [
-                                  DropdownMenuItem(value: null, child: Text("No reminder")),
-                                  DropdownMenuItem(value: 5, child: Text("5 minutes before")),
-                                  DropdownMenuItem(value: 10, child: Text("10 minutes before")),
-                                  DropdownMenuItem(value: 15, child: Text("15 minutes before")),
-                                  DropdownMenuItem(value: 30, child: Text("30 minutes before")),
-                                  DropdownMenuItem(value: 60, child: Text("1 hour before")),
-                                  DropdownMenuItem(value: 1440, child: Text("1 day before")),
+                                  DropdownMenuItem(
+                                    value: null,
+                                    child: Text("No reminder"),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 5,
+                                    child: Text("5 minutes before"),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 10,
+                                    child: Text("10 minutes before"),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 15,
+                                    child: Text("15 minutes before"),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 30,
+                                    child: Text("30 minutes before"),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 60,
+                                    child: Text("1 hour before"),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 1440,
+                                    child: Text("1 day before"),
+                                  ),
                                 ],
                                 onChanged: (int? value) {
                                   setState(() {
@@ -431,7 +484,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         Row(
                           children: [
                             Image.asset(
-                              AppImage.placeholder,
+                              AppImage.iconpriority,
                               height: 20,
                               width: 20,
                             ),
@@ -479,7 +532,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Image.asset(
-                              AppImage.placeholder,
+                              AppImage.iconenergylvl,
                               height: 20,
                               width: 20,
                             ),
@@ -530,7 +583,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Image.asset(
-                              AppImage.placeholder,
+                              AppImage.iconsubtask,
                               height: 20,
                               width: 20,
                             ),
@@ -688,11 +741,16 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       final prefs = await SharedPreferences.getInstance();
                       final userId = prefs.getInt('user_id') ?? 1;
 
-                      final insertedId = await DBHelper().insertTask(newTask, userId);
+                      final insertedId = await DBHelper().insertTask(
+                        newTask,
+                        userId,
+                      );
                       newTask.id = insertedId;
 
                       if (selectedReminderMinutes != null) {
-                        await NotificationHelper().scheduleTaskNotification(newTask);
+                        await NotificationHelper().scheduleTaskNotification(
+                          newTask,
+                        );
                       }
 
                       navigator.pop(); // Go back to the previous screen
