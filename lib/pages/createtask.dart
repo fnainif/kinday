@@ -372,7 +372,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 width: 20,
                               ),
                               const SizedBox(width: 10),
-                              const Text("Due Time (Optional)"),
+                              const Text("Due Time (Opt)"),
                               const Spacer(),
                               if (selectedTime != null)
                                 IconButton(
@@ -821,27 +821,27 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
   final List<CoolDropdownItem<String>> energylvl = [
     CoolDropdownItem<String>(
-      icon: Image.asset(AppImage.placeholder, height: 25, width: 25),
+      icon: Image.asset(AppImage.elvllow, height: 25, width: 25),
       label: 'Low Energy',
       value: 'low',
     ),
     CoolDropdownItem<String>(
-      icon: Image.asset(AppImage.placeholder, height: 25, width: 25),
+      icon: Image.asset(AppImage.elvlmidlo, height: 25, width: 25),
       label: 'Mid-Low Energy',
       value: 'midlow',
     ),
     CoolDropdownItem<String>(
-      icon: Image.asset(AppImage.placeholder, height: 25, width: 25),
+      icon: Image.asset(AppImage.elvlmid, height: 25, width: 25),
       label: 'Medium Energy',
       value: 'mid',
     ),
     CoolDropdownItem<String>(
-      icon: Image.asset(AppImage.placeholder, height: 25, width: 25),
+      icon: Image.asset(AppImage.elvlmidhi, height: 25, width: 25),
       label: 'Mid-High Energy',
       value: 'midhigh',
     ),
     CoolDropdownItem<String>(
-      icon: Image.asset(AppImage.placeholder, height: 25, width: 25),
+      icon: Image.asset(AppImage.elvlhi, height: 25, width: 25),
       label: 'High Energy',
       value: 'high',
     ),

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_widget.dart';
+import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/pages/auth/login.dart';
 import 'package:kinday/pages/mainpage.dart';
@@ -20,11 +21,28 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkLoginStatus() async {
-    await Future.delayed(Duration(seconds: 3));
-    print("STATUS LOGIN:");
-    print(PreferenceHandler.isLogin);
+    // 1. Safely initialize configurations in the background while splash is showing
+    try {
+      await PreferenceHandler.init();
+      final notificationHelper = NotificationHelper();
+      await notificationHelper.init();
+    } catch (e) {
+      debugPrint("Error initializing configuration/plugins: $e");
+    }
+
+    // 2. Allow splash screen to show for a brief moment
+    await Future.delayed(const Duration(seconds: 3));
     if (!mounted) return;
-    if (PreferenceHandler.isLogin) {
+
+    // 3. Navigate to appropriate page
+    bool isLoggedIn = false;
+    try {
+      isLoggedIn = PreferenceHandler.isLogin;
+    } catch (e) {
+      debugPrint("Failed to read login preference: $e");
+    }
+
+    if (isLoggedIn) {
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (context) => Mainpage()),

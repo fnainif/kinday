@@ -1,6 +1,7 @@
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:kinday/constant/app_colors.dart';
+import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/pages/botnavpage/energylog.dart';
 import 'package:kinday/pages/botnavpage/homepage.dart';
 import 'package:kinday/pages/botnavpage/pomodoropage.dart';
@@ -17,6 +18,14 @@ class Mainpage extends StatefulWidget {
 class MainpageState extends State<Mainpage> {
   int selectedIndex = 0;
   final GlobalKey<CurvedNavigationBarState> _bottomNavigationKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationHelper().requestPermissions();
+    });
+  }
 
   void changeTab(int index) {
     setState(() {

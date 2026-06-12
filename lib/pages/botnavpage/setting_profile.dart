@@ -4,7 +4,6 @@ import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/pages/auth/login.dart';
-import 'package:kinday/pages/db_viewer_page.dart';
 import 'package:kinday/pages/dummy/pleaceholderpage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -885,18 +884,18 @@ class _SettingProfileState extends State<SettingProfile> {
                       ),
                     ),
 
-                    SizedBox(height: 20),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const DatabaseViewerPage(),
-                          ),
-                        );
-                      },
-                      child: const Text("Database"),
-                    ),
+                    // SizedBox(height: 20),
+                    // ElevatedButton(
+                    //   onPressed: () {
+                    //     Navigator.push(
+                    //       context,
+                    //       MaterialPageRoute(
+                    //         builder: (context) => const DatabaseViewerPage(),
+                    //       ),
+                    //     );
+                    //   },
+                    //   child: const Text("Database"),
+                    // ),
                     const SizedBox(height: 40),
                   ],
                 ),

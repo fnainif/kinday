@@ -5,6 +5,7 @@ import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/preference_handler.dart';
+import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/pages/auth/forgotpass.dart';
 import 'package:kinday/pages/auth/register.dart';
 import 'package:kinday/pages/dummy/pleaceholderpage.dart';
@@ -22,6 +23,14 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      NotificationHelper().requestPermissions();
+    });
+  }
 
   @override
   void dispose() {

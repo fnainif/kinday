@@ -7,9 +7,9 @@ import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/pages/createtask.dart';
+import 'package:kinday/widgets/speech_mic_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
-import 'package:kinday/widgets/speech_mic_button.dart';
 
 class Tasklistpage extends StatefulWidget {
   const Tasklistpage({super.key});
@@ -21,6 +21,7 @@ class Tasklistpage extends StatefulWidget {
 class _TasklistpageState extends State<Tasklistpage> {
   int selectedTab = 1;
   late List<TaskCard> _tasks;
+  int _currentEnergyLvl = 3;
 
   @override
   void initState() {
@@ -33,8 +34,12 @@ class _TasklistpageState extends State<Tasklistpage> {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('user_id') ?? 1;
     final dbTasks = await DBHelper().getTasksForUser(userId);
+    final latestEnergy = await DBHelper().getLatestEnergyForUser(userId);
     setState(() {
       _tasks = dbTasks;
+      if (latestEnergy != null) {
+        _currentEnergyLvl = latestEnergy;
+      }
     });
   }
 
@@ -55,7 +60,11 @@ class _TasklistpageState extends State<Tasklistpage> {
     bool isListeningTitle = false;
     bool isListeningDesc = false;
 
-    void listenForField(TextEditingController controller, bool isTitle, StateSetter setModalState) async {
+    void listenForField(
+      TextEditingController controller,
+      bool isTitle,
+      StateSetter setModalState,
+    ) async {
       final messenger = ScaffoldMessenger.of(context);
 
       if (isTitle ? isListeningTitle : isListeningDesc) {
@@ -105,7 +114,9 @@ class _TasklistpageState extends State<Tasklistpage> {
             }
           });
           messenger.showSnackBar(
-            SnackBar(content: Text("Speech recognition error: ${error.errorMsg}")),
+            SnackBar(
+              content: Text("Speech recognition error: ${error.errorMsg}"),
+            ),
           );
         },
       );
@@ -138,7 +149,11 @@ class _TasklistpageState extends State<Tasklistpage> {
         );
       } else {
         messenger.showSnackBar(
-          const SnackBar(content: Text("Speech recognition is not available or permission denied")),
+          const SnackBar(
+            content: Text(
+              "Speech recognition is not available or permission denied",
+            ),
+          ),
         );
       }
     }
@@ -200,13 +215,85 @@ class _TasklistpageState extends State<Tasklistpage> {
                           ),
                         ),
                       ),
-                      const Text(
-                        "Edit Task Details",
-                        style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.button,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            "Edit Task Details",
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.button,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.redAccent,
+                            ),
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (BuildContext context) {
+                                  return AlertDialog(
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
+                                    ),
+                                    title: const Text(
+                                      "Hapus Tugas",
+                                      style: TextStyle(
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.redAccent,
+                                      ),
+                                    ),
+                                    content: const Text(
+                                        "Apakah Anda yakin ingin menghapus tugas ini?"),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: const Text(
+                                          "Batal",
+                                          style: TextStyle(color: Colors.grey),
+                                        ),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.redAccent,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(20),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          "Hapus",
+                                          style: TextStyle(color: Colors.white),
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                              if (confirm == true) {
+                                if (task.id != null) {
+                                  await NotificationHelper()
+                                      .cancelTaskNotification(task.id!);
+                                  await DBHelper().deleteTask(task.id!);
+                                }
+                                await _loadTasks();
+                                titleController.dispose();
+                                descController.dispose();
+                                newSubtaskController.dispose();
+                                if (context.mounted) {
+                                  Navigator.pop(context);
+                                }
+                              }
+                            },
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 20),
                       TextFormField(
@@ -230,7 +317,11 @@ class _TasklistpageState extends State<Tasklistpage> {
                           ),
                           suffixIcon: SpeechMicButton(
                             isListening: isListeningTitle,
-                            onTap: () => listenForField(titleController, true, setModalState),
+                            onTap: () => listenForField(
+                              titleController,
+                              true,
+                              setModalState,
+                            ),
                           ),
                         ),
                       ),
@@ -257,7 +348,11 @@ class _TasklistpageState extends State<Tasklistpage> {
                           ),
                           suffixIcon: SpeechMicButton(
                             isListening: isListeningDesc,
-                            onTap: () => listenForField(descController, false, setModalState),
+                            onTap: () => listenForField(
+                              descController,
+                              false,
+                              setModalState,
+                            ),
                           ),
                         ),
                       ),
@@ -392,7 +487,11 @@ class _TasklistpageState extends State<Tasklistpage> {
                               children: [
                                 if (tempDueTime != null)
                                   IconButton(
-                                    icon: const Icon(Icons.clear, color: Colors.redAccent, size: 20),
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      color: Colors.redAccent,
+                                      size: 20,
+                                    ),
                                     onPressed: () {
                                       setModalState(() {
                                         tempDueTime = null;
@@ -403,7 +502,8 @@ class _TasklistpageState extends State<Tasklistpage> {
                                   onPressed: () async {
                                     final picked = await showTimePicker(
                                       context: context,
-                                      initialTime: tempDueTime ?? TimeOfDay.now(),
+                                      initialTime:
+                                          tempDueTime ?? TimeOfDay.now(),
                                     );
                                     if (picked != null) {
                                       setModalState(() {
@@ -449,13 +549,34 @@ class _TasklistpageState extends State<Tasklistpage> {
                               dropdownColor: Colors.white,
                               style: const TextStyle(color: AppColors.button),
                               items: const [
-                                DropdownMenuItem(value: null, child: Text("No reminder")),
-                                DropdownMenuItem(value: 5, child: Text("5 minutes before")),
-                                DropdownMenuItem(value: 10, child: Text("10 minutes before")),
-                                DropdownMenuItem(value: 15, child: Text("15 minutes before")),
-                                DropdownMenuItem(value: 30, child: Text("30 minutes before")),
-                                DropdownMenuItem(value: 60, child: Text("1 hour before")),
-                                DropdownMenuItem(value: 1440, child: Text("1 day before")),
+                                DropdownMenuItem(
+                                  value: null,
+                                  child: Text("No reminder"),
+                                ),
+                                DropdownMenuItem(
+                                  value: 5,
+                                  child: Text("5 minutes before"),
+                                ),
+                                DropdownMenuItem(
+                                  value: 10,
+                                  child: Text("10 minutes before"),
+                                ),
+                                DropdownMenuItem(
+                                  value: 15,
+                                  child: Text("15 minutes before"),
+                                ),
+                                DropdownMenuItem(
+                                  value: 30,
+                                  child: Text("30 minutes before"),
+                                ),
+                                DropdownMenuItem(
+                                  value: 60,
+                                  child: Text("1 hour before"),
+                                ),
+                                DropdownMenuItem(
+                                  value: 1440,
+                                  child: Text("1 day before"),
+                                ),
                               ],
                               onChanged: (int? value) {
                                 setModalState(() {
@@ -710,17 +831,22 @@ class _TasklistpageState extends State<Tasklistpage> {
                                   task.isCompleted = tempIsCompleted;
                                   task.subtasks =
                                       tempSubtasks; // Commit subtasks
-                                  task.reminderMinutes = tempDueDate != null ? tempReminderMinutes : null;
+                                  task.reminderMinutes = tempDueDate != null
+                                      ? tempReminderMinutes
+                                      : null;
                                 });
                                 await DBHelper().updateTask(task);
                                 await _loadTasks();
 
                                 // Manage Scheduled Notification
-                                if (task.reminderMinutes != null && !task.isCompleted) {
-                                  await NotificationHelper().scheduleTaskNotification(task);
+                                if (task.reminderMinutes != null &&
+                                    !task.isCompleted) {
+                                  await NotificationHelper()
+                                      .scheduleTaskNotification(task);
                                 } else {
                                   if (task.id != null) {
-                                    await NotificationHelper().cancelTaskNotification(task.id!);
+                                    await NotificationHelper()
+                                        .cancelTaskNotification(task.id!);
                                   }
                                 }
 
@@ -835,6 +961,7 @@ class _TasklistpageState extends State<Tasklistpage> {
               child: selectedTab == 1
                   ? EnergyLevelView(
                       tasks: _tasks,
+                      userEnergy: _currentEnergyLvl,
                       onEdit: _showEditTaskBottomSheet,
                     )
                   : selectedTab == 2
@@ -864,16 +991,78 @@ class _TasklistpageState extends State<Tasklistpage> {
 
 //Category Task berdasarkan Energy Level
 class EnergyLevelView extends StatelessWidget {
-  const EnergyLevelView({super.key, required this.tasks, required this.onEdit});
+  const EnergyLevelView({
+    super.key,
+    required this.tasks,
+    required this.userEnergy,
+    required this.onEdit,
+  });
   final List<TaskCard> tasks;
+  final int userEnergy;
   final Function(TaskCard) onEdit;
 
   @override
   Widget build(BuildContext context) {
+    TimeOfDay? parseTimeOfDay(String? timeStr) {
+      if (timeStr == null || timeStr.isEmpty) return null;
+      try {
+        final parts = timeStr.split(':');
+        if (parts.length >= 2) {
+          final hourPart = parts[0].trim();
+          final minutePart = parts[1].trim();
+          int hour = int.parse(hourPart.replaceAll(RegExp(r'\D'), ''));
+          int minute = int.parse(minutePart.replaceAll(RegExp(r'\D'), ''));
+          if (timeStr.toLowerCase().contains('pm') && hour < 12) {
+            hour += 12;
+          } else if (timeStr.toLowerCase().contains('am') && hour == 12) {
+            hour = 0;
+          }
+          return TimeOfDay(hour: hour, minute: minute);
+        }
+      } catch (e) {
+        debugPrint("Error parsing TimeOfDay: $e");
+      }
+      return null;
+    }
+
     final activeTasks = tasks.where((t) => !t.isCompleted).toList();
     final recommendedTasks = activeTasks
-        .where((t) => t.energylvl >= 3)
+        .where((t) => t.energylvl <= userEnergy)
         .toList();
+
+    recommendedTasks.sort((a, b) {
+      // 1. Closest due date first (ascending)
+      if (a.dueDate != null && b.dueDate != null) {
+        final dateCompare = a.dueDate!.compareTo(b.dueDate!);
+        if (dateCompare != 0) {
+          return dateCompare;
+        }
+      } else if (a.dueDate != null && b.dueDate == null) {
+        return -1;
+      } else if (a.dueDate == null && b.dueDate != null) {
+        return 1;
+      }
+
+      // 2. Closest due time first (ascending)
+      final timeA = parseTimeOfDay(a.dueTime);
+      final timeB = parseTimeOfDay(b.dueTime);
+      if (timeA != null && timeB != null) {
+        final minA = timeA.hour * 60 + timeA.minute;
+        final minB = timeB.hour * 60 + timeB.minute;
+        final timeCompare = minA.compareTo(minB);
+        if (timeCompare != 0) {
+          return timeCompare;
+        }
+      } else if (timeA != null && timeB == null) {
+        return -1;
+      } else if (timeA == null && timeB != null) {
+        return 1;
+      }
+
+      // 3. Highest priority first (descending)
+      return b.prioritytask.compareTo(a.prioritytask);
+    });
+
     final lowEnergyTasks = activeTasks.where((t) => t.energylvl <= 2).toList();
     final highFocusTasks = activeTasks.where((t) => t.energylvl >= 4).toList()
       ..sort(

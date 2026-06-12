@@ -5,12 +5,22 @@ import 'package:kinday/pages/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await PreferenceHandler.init();
 
-  // Initialize notification helper
-  final notificationHelper = NotificationHelper();
-  await notificationHelper.init();
-  await notificationHelper.requestPermissions();
+  try {
+    await PreferenceHandler.init();
+  } catch (e) {
+    debugPrint("Error initializing PreferenceHandler in main: $e");
+  }
+
+  try {
+    final notificationHelper = NotificationHelper();
+    await notificationHelper.init();
+    // Do NOT call await notificationHelper.requestPermissions() here.
+    // It will cause the app to hang on the splash screen in release mode!
+    // The permission is already requested inside the initState of LoginPage and Mainpage.
+  } catch (e) {
+    debugPrint("Error initializing NotificationHelper in main: $e");
+  }
 
   runApp(const MyApp());
 }

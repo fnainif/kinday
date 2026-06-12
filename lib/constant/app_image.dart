@@ -15,4 +15,9 @@ class AppImage {
   static String iconpriority = "$folderAsset/priority.png";
   static String iconsubtask = "$folderAsset/subtask.png";
   static String iconenergylvl = "$folderAsset/energylvl.png";
+  static String elvlhi = "$folderAsset/elvl1.png";
+  static String elvlmidhi = "$folderAsset/elvl2.png";
+  static String elvlmid = "$folderAsset/elvl3.png";
+  static String elvlmidlo = "$folderAsset/elvl4.png";
+  static String elvllow = "$folderAsset/elvl5.png";
 }
