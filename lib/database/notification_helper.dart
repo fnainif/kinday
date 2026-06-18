@@ -58,10 +58,24 @@ class NotificationHelper {
       enableVibration: true,
     );
 
+    const AndroidNotificationChannel pomodoroChannel = AndroidNotificationChannel(
+      'kinday_pomodoro_reminders', // id
+      'Pomodoro Reminders', // title
+      description: 'This channel is used for Pomodoro focus and break reminders.', // description
+      importance: Importance.high,
+      playSound: true,
+      enableVibration: true,
+    );
+
     await flutterLocalNotificationsPlugin
         .resolvePlatformSpecificImplementation<
             AndroidFlutterLocalNotificationsPlugin>()
         ?.createNotificationChannel(channel);
+
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(pomodoroChannel);
   }
 
   Future<void> requestPermissions() async {
@@ -172,6 +186,55 @@ class NotificationHelper {
   Future<void> cancelTaskNotification(int taskId) async {
     await flutterLocalNotificationsPlugin.cancel(id: taskId);
     debugPrint("Cancelled notification for task $taskId");
+  }
+
+  Future<void> schedulePomodoroNotification({
+    required int id,
+    required String title,
+    required String body,
+    required int seconds,
+  }) async {
+    if (seconds <= 0) return;
+
+    final scheduledTime = tz.TZDateTime.now(tz.local).add(Duration(seconds: seconds));
+
+    final androidNotificationDetails = AndroidNotificationDetails(
+      'kinday_pomodoro_reminders',
+      'Pomodoro Reminders',
+      channelDescription: 'This channel is used for Pomodoro focus and break reminders.',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+
+    const darwinNotificationDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    final notificationDetails = NotificationDetails(
+      android: androidNotificationDetails,
+      iOS: darwinNotificationDetails,
+    );
+
+    await flutterLocalNotificationsPlugin.zonedSchedule(
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: scheduledTime,
+      notificationDetails: notificationDetails,
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    );
+
+    debugPrint("Scheduled Pomodoro notification $id at $scheduledTime");
+  }
+
+  Future<void> cancelPomodoroNotifications() async {
+    await flutterLocalNotificationsPlugin.cancel(id: 9990);
+    await flutterLocalNotificationsPlugin.cancel(id: 9991);
+    await flutterLocalNotificationsPlugin.cancel(id: 9992);
+    await flutterLocalNotificationsPlugin.cancel(id: 9993);
+    debugPrint("Cancelled all scheduled Pomodoro notifications");
   }
 
   TimeOfDay? _parseTimeOfDay(String timeStr) {

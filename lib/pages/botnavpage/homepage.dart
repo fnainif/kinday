@@ -3,6 +3,7 @@ import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
+import 'package:kinday/constant/task_notifier.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/pages/botnavpage/pomodoropage.dart';
 import 'package:kinday/pages/mainpage.dart';
@@ -30,6 +31,14 @@ class _HomepageState extends State<Homepage> {
   void initState() {
     super.initState();
     _loadHomepageData();
+    TaskNotifier.taskUpdated.addListener(_loadHomepageData);
+  }
+
+  @override
+  void dispose() {
+    TaskNotifier.taskUpdated.removeListener(_loadHomepageData);
+    breakdowncontroller.dispose();
+    super.dispose();
   }
 
   Future<void> _loadHomepageData() async {

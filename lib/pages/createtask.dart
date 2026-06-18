@@ -5,6 +5,7 @@ import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
+import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/pages/dummy/pleaceholderpage.dart';
@@ -25,8 +26,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final descController = TextEditingController();
   List<Map<String, dynamic>> subtasks = [];
 
-  String? selectedDropdown;
-  DateTime? selectedDate;
+  String? selectedDropdown = "Mid priority";
+  DateTime? selectedDate = DateTime.now();
   TimeOfDay? selectedTime;
   int? selectedReminderMinutes;
   int selectedIndex = 0;
@@ -348,7 +349,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                               },
                               label: Text(
                                 selectedDate == null
-                                    ? "Pilih Tanggal"
+                                    ? L10n.tr("Choose Date", "Pilih Tanggal")
                                     : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
                                 style: const TextStyle(color: AppColors.button),
                               ),
@@ -403,7 +404,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 },
                                 label: Text(
                                   selectedTime == null
-                                      ? "Pilih Jam"
+                                      ? L10n.tr("Choose Time", "Pilih Jam")
                                       : selectedTime!.format(context),
                                   style: const TextStyle(
                                     color: AppColors.button,

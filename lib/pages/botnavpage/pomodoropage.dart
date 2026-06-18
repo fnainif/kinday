@@ -5,7 +5,10 @@ import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_widget.dart';
+import 'package:kinday/constant/l10n.dart';
+import 'package:kinday/constant/task_notifier.dart';
 import 'package:kinday/database/db_helper.dart';
+import 'package:kinday/database/notification_helper.dart';
 import 'package:percent_indicator/circular_percent_indicator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -31,7 +34,7 @@ class _PomodoropageState extends State<Pomodoropage> {
       TextEditingController();
   String _selectedSound = "None";
 
-  String get taskName => activeTask?.title ?? "Belajar Flutter";
+  String get taskName => activeTask?.title ?? L10n.tr("Learn Flutter", "Belajar Flutter");
 
   double get progress {
     return secondsRemaining / totalSeconds;
@@ -52,6 +55,7 @@ class _PomodoropageState extends State<Pomodoropage> {
     _loadActiveTask();
     totalSeconds = focusDuration;
     secondsRemaining = focusDuration;
+    TaskNotifier.taskUpdated.addListener(_loadActiveTask);
   }
 
   Future<void> _loadActiveTask() async {
@@ -146,6 +150,7 @@ class _PomodoropageState extends State<Pomodoropage> {
   @override
   void dispose() {
     timer?.cancel();
+    TaskNotifier.taskUpdated.removeListener(_loadActiveTask);
     _pomodoroSubtaskController.dispose();
     player.dispose();
     super.dispose();
@@ -361,9 +366,25 @@ class _PomodoropageState extends State<Pomodoropage> {
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.only(top: 40),
-                child: Center(
-                  child: Text(taskName, style: const TextStyle(fontSize: 18)),
+                padding: const EdgeInsets.only(top: 40, left: 20, right: 20),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const SizedBox(width: 40),
+                    Expanded(
+                      child: Center(
+                        child: Text(
+                          taskName,
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.settings, color: AppColors.button),
+                      onPressed: _showSettingsBottomSheet,
+                    ),
+                  ],
                 ),
               ),
 
@@ -465,6 +486,167 @@ class _PomodoropageState extends State<Pomodoropage> {
     );
   }
 
+  void _schedulePomodoroNotifications() {
+    NotificationHelper().cancelPomodoroNotifications();
+
+    if (isFocusTime) {
+      if (secondsRemaining > 300) {
+        NotificationHelper().schedulePomodoroNotification(
+          id: 9990,
+          title: L10n.tr("Focus Time Almost Over", "Waktu Fokus Hampir Selesai"),
+          body: L10n.tr("5 minutes left before break time starts.", "Tersisa 5 menit sebelum waktu istirahat dimulai."),
+          seconds: secondsRemaining - 300,
+        );
+      }
+      NotificationHelper().schedulePomodoroNotification(
+        id: 9991,
+        title: L10n.tr("Focus Time Ended", "Waktu Fokus Selesai"),
+        body: L10n.tr("Great job! Now take a break.", "Kerja bagus! Sekarang waktunya istirahat."),
+        seconds: secondsRemaining,
+      );
+    } else {
+      if (secondsRemaining > 60) {
+        NotificationHelper().schedulePomodoroNotification(
+          id: 9992,
+          title: L10n.tr("Break Time Almost Over", "Waktu Istirahat Hampir Selesai"),
+          body: L10n.tr("1 minute left before focus time starts.", "Tersisa 1 menit sebelum waktu fokus dimulai."),
+          seconds: secondsRemaining - 60,
+        );
+      }
+      NotificationHelper().schedulePomodoroNotification(
+        id: 9993,
+        title: L10n.tr("Break Time Ended", "Waktu Istirahat Selesai"),
+        body: L10n.tr("Time to focus again! Let's get back to work.", "Waktunya fokus kembali! Mari kembali bekerja."),
+        seconds: secondsRemaining,
+      );
+    }
+  }
+
+  void _showSettingsBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    L10n.tr("Focus Settings", "Pengaturan Fokus"),
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.button,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        L10n.tr("Focus Session Duration", "Durasi Sesi Fokus"),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.button,
+                        ),
+                      ),
+                      Text(
+                        "${focusDuration ~/ 60} mins",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.button,
+                        ),
+                      ),
+                    ],
+                  ),
+                  Slider(
+                    value: (focusDuration ~/ 60).toDouble(),
+                    min: 10,
+                    max: 60,
+                    divisions: 10,
+                    activeColor: AppColors.button,
+                    inactiveColor: AppColors.button.withValues(alpha: 0.2),
+                    onChanged: (val) async {
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setInt('focus_duration', val.round());
+                      setModalState(() {
+                        focusDuration = val.round() * 60;
+                      });
+                      setState(() {
+                        focusDuration = val.round() * 60;
+                        if (!isRunning && isFocusTime) {
+                          totalSeconds = focusDuration;
+                          secondsRemaining = focusDuration;
+                        }
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        L10n.tr("Background Sound", "Suara Latar Belakang"),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.button,
+                        ),
+                      ),
+                      DropdownButton<String>(
+                        value: _selectedSound,
+                        dropdownColor: Colors.white,
+                        iconEnabledColor: AppColors.button,
+                        style: const TextStyle(
+                          color: AppColors.button,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        underline: const SizedBox(),
+                        items: const [
+                          "None",
+                          "Fireplace",
+                          "Forest",
+                          "Gentle Rain",
+                          "Heavy Rain",
+                          "Night Ambience",
+                          "Ocean Waves",
+                          "Stream",
+                          "Underwater Ambience",
+                        ].map((val) => DropdownMenuItem(
+                          value: val,
+                          child: Text(val),
+                        )).toList(),
+                        onChanged: (value) async {
+                          if (value != null) {
+                            final prefs = await SharedPreferences.getInstance();
+                            await prefs.setString('focus_sound', value);
+                            setModalState(() {
+                              _selectedSound = value;
+                            });
+                            setState(() {
+                              _selectedSound = value;
+                            });
+                            _playBackgroundSound();
+                          }
+                        },
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   void startTimer() {
     timer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (secondsRemaining > 0) {
@@ -479,7 +661,7 @@ class _PomodoropageState extends State<Pomodoropage> {
 
   void pauseTimer() {
     timer?.cancel();
-
+    NotificationHelper().cancelPomodoroNotifications();
     setState(() {
       isRunning = false;
     });
@@ -487,7 +669,7 @@ class _PomodoropageState extends State<Pomodoropage> {
 
   void resumeTimer() {
     startTimer();
-
+    _schedulePomodoroNotifications();
     setState(() {
       isRunning = true;
     });
@@ -513,11 +695,12 @@ class _PomodoropageState extends State<Pomodoropage> {
         secondsRemaining = breakDuration;
       }
     });
+    _schedulePomodoroNotifications();
   }
 
   void resetTimer() {
     timer?.cancel();
-
+    NotificationHelper().cancelPomodoroNotifications();
     setState(() {
       isRunning = false;
       isFocusTime = true;

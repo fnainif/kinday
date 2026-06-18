@@ -7,6 +7,7 @@ class PreferenceHandler {
   }
 
   static const _keyIsLogin = "isLogin";
+  static const _keyLanguage = "language";
 
   static Future<void> setLogin(bool isLogin) async {
     await _prefs.setBool(_keyIsLogin, isLogin);
@@ -18,5 +19,13 @@ class PreferenceHandler {
 
   static Future<void> logOut() async {
     await _prefs.remove(_keyIsLogin);
+  }
+
+  static Future<void> setLanguage(String languageCode) async {
+    await _prefs.setString(_keyLanguage, languageCode);
+  }
+
+  static String get language {
+    return _prefs.getString(_keyLanguage) ?? "en";
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
+import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/pages/auth/login.dart';
 import 'package:kinday/pages/dummy/pleaceholderpage.dart';
@@ -20,8 +21,6 @@ class _SettingProfileState extends State<SettingProfile> {
   String _email = "user@kinday.com";
 
   // Setting states
-  int _focusDuration = 25;
-  String _focusSound = "None";
   bool _notificationsEnabled = true;
   bool _darkModeEnabled = false;
   String _aiBreakdownLevel = "Balanced";
@@ -39,20 +38,6 @@ class _SettingProfileState extends State<SettingProfile> {
 
   void _clickBackupText() {
     // DIUBAH
-    DateTime? lastBackupTime;
-    final List<String> dates = [
-      "Yesterday, 14:20",
-      "Today, 09:15",
-      "05 June 2026, 18:45",
-      "08 June 2026, 23:10",
-      "Just now",
-      "2 hours ago",
-      "1 week ago",
-      "01 June 2026, 12:00",
-    ];
-    setState(() {
-      lastBackupTime = DateTime.now();
-    });
   }
 
   Future<void> _loadSettings() async {
@@ -61,10 +46,7 @@ class _SettingProfileState extends State<SettingProfile> {
       setState(() {
         _name = prefs.getString('user_name') ?? "User";
         _email = prefs.getString('user_email') ?? "user@kinday.com";
-        _focusDuration = prefs.getInt('focus_duration') ?? 25;
-        String sound = prefs.getString('focus_sound') ?? "None";
 
-        _focusSound = sound;
         _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
         _darkModeEnabled = prefs.getBool('dark_mode_enabled') ?? false;
         _aiBreakdownLevel = prefs.getString('ai_breakdown_level') ?? "Balanced";
@@ -408,143 +390,7 @@ class _SettingProfileState extends State<SettingProfile> {
                       ),
                     ),
 
-                    _buildSectionHeader("Focus Settings"),
 
-                    // Focus Settings Container (Container 2: Leaning blue/purple)
-                    Container2(
-                      width: double.infinity,
-                      child: Column(
-                        children: [
-                          // Focus Session Slider
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Row(
-                                    children: const [
-                                      Icon(
-                                        Icons.timer,
-                                        color: AppColors.button,
-                                        size: 20,
-                                      ),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        "Focus Session Duration",
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.button,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  Text(
-                                    "$_focusDuration mins",
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.button,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              SliderTheme(
-                                data: SliderThemeData(
-                                  activeTrackColor: AppColors.button,
-                                  inactiveTrackColor: AppColors.containerline2
-                                      .withValues(alpha: 0.3),
-                                  thumbColor: AppColors.button,
-                                  overlayColor: AppColors.button.withValues(
-                                    alpha: 0.2,
-                                  ),
-                                ),
-                                child: Slider(
-                                  value: _focusDuration.toDouble(),
-                                  min: 10,
-                                  max: 60,
-                                  divisions: 10,
-                                  onChanged: (val) {
-                                    setState(() {
-                                      _focusDuration = val.round();
-                                    });
-                                  },
-                                  onChangeEnd: (val) {
-                                    _saveSetting('focus_duration', val.round());
-                                  },
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          const Divider(
-                            height: 1,
-                            color: AppColors.containerline2,
-                          ),
-                          const SizedBox(height: 12),
-                          // Focus Sound Selection
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Row(
-                                children: const [
-                                  Icon(
-                                    Icons.volume_up,
-                                    color: AppColors.button,
-                                    size: 20,
-                                  ),
-                                  SizedBox(width: 8),
-                                  Text(
-                                    "Background Sound",
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.button,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              DropdownButton<String>(
-                                value: _focusSound,
-                                dropdownColor: Colors.white,
-                                iconEnabledColor: AppColors.button,
-                                style: const TextStyle(
-                                  color: AppColors.button,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                underline: const SizedBox(),
-                                items:
-                                    const [
-                                          "None",
-                                          "Fireplace",
-                                          "Forest",
-                                          "Gentle Rain",
-                                          "Heavy Rain",
-                                          "Night Ambience",
-                                          "Ocean Waves",
-                                          "Stream",
-                                          "Underwater Ambience",
-                                        ]
-                                        .map(
-                                          (val) => DropdownMenuItem(
-                                            value: val,
-                                            child: Text(val),
-                                          ),
-                                        )
-                                        .toList(),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    setState(() {
-                                      _focusSound = value;
-                                    });
-                                    _saveSetting('focus_sound', value);
-                                  }
-                                },
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
 
                     _buildSectionHeader("App Preferences"),
 
@@ -680,6 +526,58 @@ class _SettingProfileState extends State<SettingProfile> {
                               ),
                             ],
                           ),
+                          const SizedBox(height: 8),
+                          const Divider(
+                            height: 1,
+                            color: AppColors.containerline1,
+                          ),
+                          const SizedBox(height: 8),
+                          // App Language selector
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Row(
+                                children: const [
+                                  Icon(
+                                    Icons.language,
+                                    color: AppColors.button,
+                                    size: 20,
+                                  ),
+                                  SizedBox(width: 8),
+                                  Text(
+                                    "App Language",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.button,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              DropdownButton<String>(
+                                value: L10n.lang == "en" ? "English" : "Bahasa Indonesia",
+                                dropdownColor: Colors.white,
+                                iconEnabledColor: AppColors.button,
+                                style: const TextStyle(
+                                  color: AppColors.button,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                underline: const SizedBox(),
+                                items: const ["English", "Bahasa Indonesia"]
+                                    .map(
+                                      (val) => DropdownMenuItem(
+                                        value: val,
+                                        child: Text(val),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    L10n.setLanguage(value == "English" ? "en" : "id");
+                                  }
+                                },
+                              ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -781,12 +679,12 @@ class _SettingProfileState extends State<SettingProfile> {
                                 child: ElevatedButton.icon(
                                   onPressed: () {
                                     // ignore: avoid_print
-                                    print("berhasil di backup");
+                                    print("successfully backed up");
                                     _clickBackupText();
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text("Berhasil di backup!"),
-                                        duration: Duration(seconds: 1),
+                                      SnackBar(
+                                        content: Text(L10n.tr("Successfully backed up!", "Berhasil di backup!")),
+                                        duration: const Duration(seconds: 1),
                                       ),
                                     );
                                   },
@@ -816,11 +714,11 @@ class _SettingProfileState extends State<SettingProfile> {
                                 child: OutlinedButton.icon(
                                   onPressed: () {
                                     // ignore: avoid_print
-                                    print("berhasil di restore");
+                                    print("successfully restored");
                                     ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text("Berhasil di restore!"),
-                                        duration: Duration(seconds: 1),
+                                      SnackBar(
+                                        content: Text(L10n.tr("Successfully restored!", "Berhasil di restore!")),
+                                        duration: const Duration(seconds: 1),
                                       ),
                                     );
                                   },

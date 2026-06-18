@@ -4,9 +4,10 @@ import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
+import 'package:kinday/constant/l10n.dart';
+import 'package:kinday/constant/task_notifier.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/notification_helper.dart';
-import 'package:kinday/pages/createtask.dart';
 import 'package:kinday/widgets/speech_mic_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -28,6 +29,13 @@ class _TasklistpageState extends State<Tasklistpage> {
     super.initState();
     _tasks = [];
     _loadTasks();
+    TaskNotifier.taskUpdated.addListener(_loadTasks);
+  }
+
+  @override
+  void dispose() {
+    TaskNotifier.taskUpdated.removeListener(_loadTasks);
+    super.dispose();
   }
 
   Future<void> _loadTasks() async {
@@ -239,23 +247,23 @@ class _TasklistpageState extends State<Tasklistpage> {
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(20),
                                     ),
-                                    title: const Text(
-                                      "Hapus Tugas",
-                                      style: TextStyle(
+                                    title: Text(
+                                      L10n.tr("Delete Task", "Hapus Tugas"),
+                                      style: const TextStyle(
                                         fontFamily: "Quicksand",
                                         fontWeight: FontWeight.bold,
                                         color: Colors.redAccent,
                                       ),
                                     ),
-                                    content: const Text(
-                                        "Apakah Anda yakin ingin menghapus tugas ini?"),
+                                    content: Text(
+                                        L10n.tr("Are you sure you want to delete this task?", "Apakah Anda yakin ingin menghapus tugas ini?")),
                                     actions: [
                                       TextButton(
                                         onPressed: () =>
                                             Navigator.pop(context, false),
-                                        child: const Text(
-                                          "Batal",
-                                          style: TextStyle(color: Colors.grey),
+                                        child: Text(
+                                          L10n.tr("Cancel", "Batal"),
+                                          style: const TextStyle(color: Colors.grey),
                                         ),
                                       ),
                                       ElevatedButton(
@@ -268,9 +276,9 @@ class _TasklistpageState extends State<Tasklistpage> {
                                                 BorderRadius.circular(20),
                                           ),
                                         ),
-                                        child: const Text(
-                                          "Hapus",
-                                          style: TextStyle(color: Colors.white),
+                                        child: Text(
+                                          L10n.tr("Delete", "Hapus"),
+                                          style: const TextStyle(color: Colors.white),
                                         ),
                                       ),
                                     ],
@@ -284,6 +292,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                                   await DBHelper().deleteTask(task.id!);
                                 }
                                 await _loadTasks();
+                                TaskNotifier.notify();
                                 titleController.dispose();
                                 descController.dispose();
                                 newSubtaskController.dispose();
@@ -458,7 +467,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                             ),
                             label: Text(
                               tempDueDate == null
-                                  ? "Pilih Tanggal"
+                                  ? L10n.tr("Choose Date", "Pilih Tanggal")
                                   : "${tempDueDate!.day}/${tempDueDate!.month}/${tempDueDate!.year}",
                               style: const TextStyle(color: Colors.white),
                             ),
@@ -518,7 +527,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                                   ),
                                   label: Text(
                                     tempDueTime == null
-                                        ? "Pilih Jam"
+                                        ? L10n.tr("Choose Time", "Pilih Jam")
                                         : tempDueTime!.format(context),
                                     style: const TextStyle(color: Colors.white),
                                   ),
@@ -837,6 +846,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                                 });
                                 await DBHelper().updateTask(task);
                                 await _loadTasks();
+                                TaskNotifier.notify();
 
                                 // Manage Scheduled Notification
                                 if (task.reminderMinutes != null &&
@@ -973,17 +983,6 @@ class _TasklistpageState extends State<Tasklistpage> {
             ),
           ],
         ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.button,
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const CreateTaskPage()),
-          );
-          await _loadTasks();
-        },
-        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

@@ -1,12 +1,14 @@
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:kinday/constant/app_colors.dart';
+import 'package:kinday/constant/task_notifier.dart';
 import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/pages/botnavpage/energylog.dart';
 import 'package:kinday/pages/botnavpage/homepage.dart';
 import 'package:kinday/pages/botnavpage/pomodoropage.dart';
 import 'package:kinday/pages/botnavpage/setting_profile.dart';
 import 'package:kinday/pages/botnavpage/tasklistpage.dart';
+import 'package:kinday/pages/createtask.dart';
 
 class Mainpage extends StatefulWidget {
   const Mainpage({super.key});
@@ -63,6 +65,17 @@ class MainpageState extends State<Mainpage> {
             selectedIndex = index;
           });
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        backgroundColor: AppColors.button,
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const CreateTaskPage()),
+          );
+          TaskNotifier.notify();
+        },
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }
