@@ -4,8 +4,11 @@ import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/database/preference_handler.dart';
+import 'package:kinday/database/notification_helper.dart';
+import 'package:kinday/pages/additional/about.dart';
+import 'package:kinday/pages/additional/changepass.dart';
+import 'package:kinday/pages/additional/faq.dart';
 import 'package:kinday/pages/auth/login.dart';
-import 'package:kinday/pages/dummy/pleaceholderpage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingProfile extends StatefulWidget {
@@ -22,7 +25,7 @@ class _SettingProfileState extends State<SettingProfile> {
 
   // Setting states
   bool _notificationsEnabled = true;
-  bool _darkModeEnabled = false;
+  String _currentTheme = "Lavender Dreams";
   String _aiBreakdownLevel = "Balanced";
   final String _lastBackupTime = "Never";
 
@@ -48,7 +51,7 @@ class _SettingProfileState extends State<SettingProfile> {
         _email = prefs.getString('user_email') ?? "user@kinday.com";
 
         _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
-        _darkModeEnabled = prefs.getBool('dark_mode_enabled') ?? false;
+        _currentTheme = prefs.getString('app_theme') ?? "Lavender Dreams";
         _aiBreakdownLevel = prefs.getString('ai_breakdown_level') ?? "Balanced";
         _isLoading = false;
       });
@@ -86,7 +89,7 @@ class _SettingProfileState extends State<SettingProfile> {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Text(
+          title: Text(
             "Edit Profile",
             style: TextStyle(
               fontFamily: "Quicksand",
@@ -102,11 +105,11 @@ class _SettingProfileState extends State<SettingProfile> {
                   controller: nameController,
                   decoration: InputDecoration(
                     labelText: "Name",
-                    labelStyle: const TextStyle(color: AppColors.button),
+                    labelStyle: TextStyle(color: AppColors.button),
                     enabledBorder: UnderlineInputBorder(
                       borderSide: BorderSide(color: AppColors.background),
                     ),
-                    focusedBorder: const UnderlineInputBorder(
+                    focusedBorder: UnderlineInputBorder(
                       borderSide: BorderSide(color: AppColors.button),
                     ),
                   ),
@@ -117,11 +120,11 @@ class _SettingProfileState extends State<SettingProfile> {
                   keyboardType: TextInputType.emailAddress,
                   decoration: InputDecoration(
                     labelText: "Email",
-                    labelStyle: const TextStyle(color: AppColors.button),
+                    labelStyle: TextStyle(color: AppColors.button),
                     enabledBorder: UnderlineInputBorder(
                       borderSide: BorderSide(color: AppColors.background),
                     ),
-                    focusedBorder: const UnderlineInputBorder(
+                    focusedBorder: UnderlineInputBorder(
                       borderSide: BorderSide(color: AppColors.button),
                     ),
                   ),
@@ -224,7 +227,7 @@ class _SettingProfileState extends State<SettingProfile> {
         alignment: Alignment.centerLeft,
         child: Text(
           title,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: "Quicksand",
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -238,7 +241,7 @@ class _SettingProfileState extends State<SettingProfile> {
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
-      return const Scaffold(
+      return Scaffold(
         body: Center(child: CircularProgressIndicator(color: AppColors.button)),
       );
     }
@@ -256,21 +259,19 @@ class _SettingProfileState extends State<SettingProfile> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
+                      Text(
                         "Settings & Profile",
                         style: AppTextStyles.greeting,
                       ),
                       Transform.translate(
                         offset: const Offset(0, -5),
-                        child: const Text(
+                        child: Text(
                           "Customize your Kinday experience",
                           style: AppTextStyles.affirmation,
                         ),
                       ),
                     ],
                   ),
-                  const Spacer(),
-                  const Icon(Icons.settings, color: AppColors.button, size: 28),
                 ],
               ),
             ),
@@ -308,7 +309,7 @@ class _SettingProfileState extends State<SettingProfile> {
                                   ),
                                   GestureDetector(
                                     onTap: _showEditProfileDialog,
-                                    child: const CircleAvatar(
+                                    child: CircleAvatar(
                                       radius: 12,
                                       backgroundColor: Colors.white,
                                       child: Icon(
@@ -327,7 +328,7 @@ class _SettingProfileState extends State<SettingProfile> {
                                   children: [
                                     Text(
                                       _name,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontFamily: "Quicksand",
                                         fontSize: 20,
                                         fontWeight: FontWeight.bold,
@@ -352,7 +353,7 @@ class _SettingProfileState extends State<SettingProfile> {
                               ),
                               IconButton(
                                 onPressed: _showEditProfileDialog,
-                                icon: const Icon(
+                                icon: Icon(
                                   Icons.chevron_right,
                                   color: AppColors.button,
                                 ),
@@ -390,8 +391,6 @@ class _SettingProfileState extends State<SettingProfile> {
                       ),
                     ),
 
-
-
                     _buildSectionHeader("App Preferences"),
 
                     // Preferences Container (Container 3: Leaning pink/purple)
@@ -404,13 +403,13 @@ class _SettingProfileState extends State<SettingProfile> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(
-                                children: const [
+                                children: [
                                   Icon(
                                     Icons.notifications_active,
                                     color: AppColors.button,
                                     size: 20,
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Text(
                                     "Enable Notifications",
                                     style: TextStyle(
@@ -432,26 +431,59 @@ class _SettingProfileState extends State<SettingProfile> {
                               ),
                             ],
                           ),
+                          if (_notificationsEnabled) ...[
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () async {
+                                  await NotificationHelper().showInstantNotification(
+                                    id: 9999,
+                                    title: "Test Notification",
+                                    body: "If you see this, notifications are working perfectly!",
+                                  );
+                                },
+                                icon: Icon(
+                                  Icons.notifications_active_outlined,
+                                  size: 16,
+                                  color: AppColors.button,
+                                ),
+                                label: Text(
+                                  "Send Test Notification",
+                                  style: TextStyle(
+                                    color: AppColors.button,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(color: AppColors.button),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 8),
-                          const Divider(
+                          Divider(
                             height: 1,
                             color: AppColors.containerline1,
                           ),
                           const SizedBox(height: 8),
-                          // Dark Mode Toggle
+                          // Theme Selector Dropdown
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(
-                                children: const [
+                                children: [
                                   Icon(
-                                    Icons.dark_mode,
+                                    Icons.palette,
                                     color: AppColors.button,
                                     size: 20,
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Text(
-                                    "Dark Mode",
+                                    "App Theme",
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.button,
@@ -459,20 +491,54 @@ class _SettingProfileState extends State<SettingProfile> {
                                   ),
                                 ],
                               ),
-                              Switch.adaptive(
-                                value: _darkModeEnabled,
-                                activeTrackColor: AppColors.button,
-                                onChanged: (val) {
-                                  setState(() {
-                                    _darkModeEnabled = val;
-                                  });
-                                  _saveSetting('dark_mode_enabled', val);
+                              DropdownButton<String>(
+                                value: _currentTheme,
+                                dropdownColor: Colors.white,
+                                iconEnabledColor: AppColors.button,
+                                style: TextStyle(
+                                  color: AppColors.button,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                underline: const SizedBox(),
+                                items: const [
+                                  "Lavender Dreams",
+                                  "Sakura Bloom",
+                                  "Matcha Garden",
+                                  "Sky Blue",
+                                  "Peach Cream",
+                                  "Moonlight Lavender",
+                                  "Twilight Blue",
+                                  "Midnight Forest"
+                                ].map((String name) {
+                                  String emoji = "";
+                                  switch (name) {
+                                    case "Lavender Dreams": emoji = "💜"; break;
+                                    case "Sakura Bloom": emoji = "🌸"; break;
+                                    case "Matcha Garden": emoji = "🌿"; break;
+                                    case "Sky Blue": emoji = "☁️"; break;
+                                    case "Peach Cream": emoji = "🍑"; break;
+                                    case "Moonlight Lavender": emoji = "🌙"; break;
+                                    case "Twilight Blue": emoji = "🌌"; break;
+                                    case "Midnight Forest": emoji = "🌲"; break;
+                                  }
+                                  return DropdownMenuItem<String>(
+                                    value: name,
+                                    child: Text("$emoji $name"),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      _currentTheme = value;
+                                    });
+                                    AppColors.setTheme(value);
+                                  }
                                 },
                               ),
                             ],
                           ),
                           const SizedBox(height: 8),
-                          const Divider(
+                          Divider(
                             height: 1,
                             color: AppColors.containerline1,
                           ),
@@ -482,13 +548,13 @@ class _SettingProfileState extends State<SettingProfile> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(
-                                children: const [
+                                children: [
                                   Icon(
                                     Icons.psychology,
                                     color: AppColors.button,
                                     size: 20,
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Text(
                                     "AI Breakdown Level",
                                     style: TextStyle(
@@ -502,7 +568,7 @@ class _SettingProfileState extends State<SettingProfile> {
                                 value: _aiBreakdownLevel,
                                 dropdownColor: Colors.white,
                                 iconEnabledColor: AppColors.button,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: AppColors.button,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -527,7 +593,7 @@ class _SettingProfileState extends State<SettingProfile> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          const Divider(
+                          Divider(
                             height: 1,
                             color: AppColors.containerline1,
                           ),
@@ -537,13 +603,13 @@ class _SettingProfileState extends State<SettingProfile> {
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               Row(
-                                children: const [
+                                children: [
                                   Icon(
                                     Icons.language,
                                     color: AppColors.button,
                                     size: 20,
                                   ),
-                                  SizedBox(width: 8),
+                                  const SizedBox(width: 8),
                                   Text(
                                     "App Language",
                                     style: TextStyle(
@@ -554,10 +620,12 @@ class _SettingProfileState extends State<SettingProfile> {
                                 ],
                               ),
                               DropdownButton<String>(
-                                value: L10n.lang == "en" ? "English" : "Bahasa Indonesia",
+                                value: L10n.lang == "en"
+                                    ? "English"
+                                    : "Bahasa Indonesia",
                                 dropdownColor: Colors.white,
                                 iconEnabledColor: AppColors.button,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   color: AppColors.button,
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -572,7 +640,9 @@ class _SettingProfileState extends State<SettingProfile> {
                                     .toList(),
                                 onChanged: (value) {
                                   if (value != null) {
-                                    L10n.setLanguage(value == "English" ? "en" : "id");
+                                    L10n.setLanguage(
+                                      value == "English" ? "en" : "id",
+                                    );
                                   }
                                 },
                               ),
@@ -596,8 +666,7 @@ class _SettingProfileState extends State<SettingProfile> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      const Pleaceholderpage(),
+                                  builder: (context) => const ChangePassPage(),
                                 ),
                               );
                             },
@@ -610,8 +679,7 @@ class _SettingProfileState extends State<SettingProfile> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      const Pleaceholderpage(),
+                                  builder: (context) => const FaqPage(),
                                 ),
                               );
                             },
@@ -624,8 +692,7 @@ class _SettingProfileState extends State<SettingProfile> {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) =>
-                                      const Pleaceholderpage(),
+                                  builder: (context) => const AboutPage(),
                                 ),
                               );
                             },
@@ -644,13 +711,13 @@ class _SettingProfileState extends State<SettingProfile> {
                         children: [
                           Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.backup,
                                 color: AppColors.button,
                                 size: 20,
                               ),
                               const SizedBox(width: 8),
-                              const Text(
+                              Text(
                                 "Last Backup",
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
@@ -660,7 +727,7 @@ class _SettingProfileState extends State<SettingProfile> {
                               const Spacer(),
                               Text(
                                 _lastBackupTime,
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.button,
                                 ),
@@ -668,7 +735,7 @@ class _SettingProfileState extends State<SettingProfile> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          const Divider(
+                          Divider(
                             height: 1,
                             color: AppColors.containerline2,
                           ),
@@ -683,7 +750,12 @@ class _SettingProfileState extends State<SettingProfile> {
                                     _clickBackupText();
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text(L10n.tr("Successfully backed up!", "Berhasil di backup!")),
+                                        content: Text(
+                                          L10n.tr(
+                                            "Successfully backed up!",
+                                            "Berhasil di backup!",
+                                          ),
+                                        ),
                                         duration: const Duration(seconds: 1),
                                       ),
                                     );
@@ -717,17 +789,22 @@ class _SettingProfileState extends State<SettingProfile> {
                                     print("successfully restored");
                                     ScaffoldMessenger.of(context).showSnackBar(
                                       SnackBar(
-                                        content: Text(L10n.tr("Successfully restored!", "Berhasil di restore!")),
+                                        content: Text(
+                                          L10n.tr(
+                                            "Successfully restored!",
+                                            "Berhasil di restore!",
+                                          ),
+                                        ),
                                         duration: const Duration(seconds: 1),
                                       ),
                                     );
                                   },
-                                  icon: const Icon(
+                                  icon: Icon(
                                     Icons.cloud_download,
                                     color: AppColors.button,
                                     size: 16,
                                   ),
-                                  label: const Text(
+                                  label: Text(
                                     "Restore",
                                     style: TextStyle(
                                       color: AppColors.button,
@@ -735,7 +812,7 @@ class _SettingProfileState extends State<SettingProfile> {
                                     ),
                                   ),
                                   style: OutlinedButton.styleFrom(
-                                    side: const BorderSide(
+                                    side: BorderSide(
                                       color: AppColors.button,
                                     ),
                                     shape: RoundedRectangleBorder(
@@ -810,7 +887,7 @@ class _SettingProfileState extends State<SettingProfile> {
       children: [
         Text(
           value,
-          style: const TextStyle(
+          style: TextStyle(
             fontFamily: "Quicksand",
             fontSize: 18,
             fontWeight: FontWeight.bold,
@@ -839,13 +916,13 @@ class _SettingProfileState extends State<SettingProfile> {
       leading: Icon(icon, color: AppColors.button),
       title: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: "Quicksand",
           fontWeight: FontWeight.bold,
           color: AppColors.button,
         ),
       ),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.button),
+      trailing: Icon(Icons.chevron_right, color: AppColors.button),
       contentPadding: EdgeInsets.zero,
       onTap: onTap,
     );

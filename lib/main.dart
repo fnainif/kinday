@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/database/preference_handler.dart';
@@ -10,6 +11,7 @@ void main() async {
   try {
     await PreferenceHandler.init();
     L10n.init();
+    AppColors.init();
   } catch (e) {
     debugPrint("Error initializing PreferenceHandler in main: $e");
   }
@@ -36,13 +38,18 @@ class MyApp extends StatelessWidget {
     return ValueListenableBuilder<String>(
       valueListenable: L10n.languageNotifier,
       builder: (context, lang, child) {
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: 'Flutter Demo',
-          theme: ThemeData(
-            colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
-          ),
-          home: const SplashScreen(),
+        return ValueListenableBuilder<String>(
+          valueListenable: AppColors.themeNotifier,
+          builder: (context, theme, child) {
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              title: 'Flutter Demo',
+              theme: ThemeData(
+                colorScheme: ColorScheme.fromSeed(seedColor: AppColors.button),
+              ),
+              home: const SplashScreen(),
+            );
+          },
         );
       },
     );

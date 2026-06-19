@@ -169,7 +169,7 @@ class _HomepageState extends State<Homepage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text(
+                      Text(
                         "Good Morning,",
                         style: AppTextStyles.greeting,
                       ),
@@ -179,7 +179,7 @@ class _HomepageState extends State<Homepage> {
                       ),
                       Transform.translate(
                         offset: const Offset(0, -5),
-                        child: const Text(
+                        child: Text(
                           "You've done your best today!",
                           style: AppTextStyles.affirmation,
                         ),
@@ -209,7 +209,7 @@ class _HomepageState extends State<Homepage> {
                           Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              const Text(
+                              Text(
                                 "Current Energy",
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
@@ -218,7 +218,7 @@ class _HomepageState extends State<Homepage> {
                               ),
                               Text(
                                 _getEnergyLabel(_currentEnergyLvl),
-                                style: const TextStyle(
+                                style: TextStyle(
                                   fontSize: 25,
 
                                   color: AppColors.button,
@@ -241,7 +241,7 @@ class _HomepageState extends State<Homepage> {
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(20),
                                     ),
-                                    title: const Text(
+                                    title: Text(
                                       "What's your energy level?",
                                       style: TextStyle(
                                         fontFamily: "Quicksand",
@@ -529,7 +529,7 @@ class _HomepageState extends State<Homepage> {
                               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text(
+                                Text(
                                   "Today's progress",
                                   style: TextStyle(
                                     fontWeight: FontWeight.bold,
@@ -550,7 +550,7 @@ class _HomepageState extends State<Homepage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             "Turn big tasks into small, doable steps",
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
@@ -564,7 +564,7 @@ class _HomepageState extends State<Homepage> {
                             style: const TextStyle(color: Color(0xFF5852A0)),
                             decoration: InputDecoration(
                               hintText: "Let AI break down your task",
-                              hintStyle: const TextStyle(
+                              hintStyle: TextStyle(
                                 color: AppColors.background,
                               ),
 

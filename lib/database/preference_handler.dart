@@ -8,6 +8,7 @@ class PreferenceHandler {
 
   static const _keyIsLogin = "isLogin";
   static const _keyLanguage = "language";
+  static const _keyTheme = "app_theme";
 
   static Future<void> setLogin(bool isLogin) async {
     await _prefs.setBool(_keyIsLogin, isLogin);
@@ -27,5 +28,13 @@ class PreferenceHandler {
 
   static String get language {
     return _prefs.getString(_keyLanguage) ?? "en";
+  }
+
+  static Future<void> setTheme(String themeName) async {
+    await _prefs.setString(_keyTheme, themeName);
+  }
+
+  static String get theme {
+    return _prefs.getString(_keyTheme) ?? "Lavender Dreams";
   }
 }

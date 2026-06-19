@@ -226,7 +226,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             "Edit Task Details",
                             style: TextStyle(
                               fontSize: 22,
@@ -310,7 +310,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                         style: const TextStyle(color: Color(0xFF5852A0)),
                         decoration: InputDecoration(
                           labelText: "Task Title",
-                          labelStyle: const TextStyle(color: AppColors.button),
+                          labelStyle: TextStyle(color: AppColors.button),
                           filled: true,
                           fillColor: Colors.grey.shade100,
                           border: OutlineInputBorder(
@@ -319,7 +319,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
+                            borderSide: BorderSide(
                               color: AppColors.background,
                               width: 1.5,
                             ),
@@ -341,7 +341,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                         style: const TextStyle(color: Color(0xFF5852A0)),
                         decoration: InputDecoration(
                           labelText: "Description",
-                          labelStyle: const TextStyle(color: AppColors.button),
+                          labelStyle: TextStyle(color: AppColors.button),
                           filled: true,
                           fillColor: Colors.grey.shade100,
                           border: OutlineInputBorder(
@@ -350,7 +350,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide: const BorderSide(
+                            borderSide: BorderSide(
                               color: AppColors.background,
                               width: 1.5,
                             ),
@@ -556,11 +556,15 @@ class _TasklistpageState extends State<Tasklistpage> {
                             DropdownButton<int?>(
                               value: tempReminderMinutes,
                               dropdownColor: Colors.white,
-                              style: const TextStyle(color: AppColors.button),
+                              style: TextStyle(color: AppColors.button),
                               items: const [
                                 DropdownMenuItem(
                                   value: null,
                                   child: Text("No reminder"),
+                                ),
+                                DropdownMenuItem(
+                                  value: 0,
+                                  child: Text("At due time"),
                                 ),
                                 DropdownMenuItem(
                                   value: 5,
@@ -640,7 +644,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                             alignment: Alignment.centerRight,
                             child: Text(
                               "Level: ${_getEnergyLabel(tempEnergyLvl)}",
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.w600,
                                 color: AppColors.button,
@@ -754,13 +758,24 @@ class _TasklistpageState extends State<Tasklistpage> {
                       else
                         ConstrainedBox(
                           constraints: const BoxConstraints(maxHeight: 200),
-                          child: ListView.builder(
+                          child: ReorderableListView.builder(
                             shrinkWrap: true,
                             physics: const ClampingScrollPhysics(),
+                            buildDefaultDragHandles: false,
                             itemCount: tempSubtasks.length,
+                            onReorder: (oldIndex, newIndex) {
+                              setModalState(() {
+                                if (oldIndex < newIndex) {
+                                  newIndex -= 1;
+                                }
+                                final item = tempSubtasks.removeAt(oldIndex);
+                                tempSubtasks.insert(newIndex, item);
+                              });
+                            },
                             itemBuilder: (context, index) {
                               final sub = tempSubtasks[index];
                               return ListTile(
+                                key: ValueKey((sub["title"] ?? "") + index.toString()),
                                 contentPadding: EdgeInsets.zero,
                                 leading: Checkbox(
                                   activeColor: AppColors.button,
@@ -781,17 +796,68 @@ class _TasklistpageState extends State<Tasklistpage> {
                                         : TextDecoration.none,
                                   ),
                                 ),
-                                trailing: IconButton(
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.redAccent,
-                                    size: 20,
-                                  ),
-                                  onPressed: () {
-                                    setModalState(() {
-                                      tempSubtasks.removeAt(index);
-                                    });
-                                  },
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    IconButton(
+                                      icon: Icon(
+                                        Icons.edit_outlined,
+                                        color: AppColors.button,
+                                        size: 20,
+                                      ),
+                                      onPressed: () {
+                                        final editController = TextEditingController(text: sub["title"]);
+                                        showDialog(
+                                          context: context,
+                                          builder: (context) => AlertDialog(
+                                            title: const Text("Edit Subtask"),
+                                            content: TextField(
+                                              controller: editController,
+                                              decoration: const InputDecoration(hintText: "Edit subtask title"),
+                                              autofocus: true,
+                                            ),
+                                            actions: [
+                                              TextButton(
+                                                onPressed: () => Navigator.pop(context),
+                                                child: const Text("Cancel"),
+                                              ),
+                                              ElevatedButton(
+                                                onPressed: () {
+                                                  final text = editController.text.trim();
+                                                  if (text.isNotEmpty) {
+                                                    setModalState(() {
+                                                      sub["title"] = text;
+                                                    });
+                                                  }
+                                                  Navigator.pop(context);
+                                                },
+                                                child: const Text("Save"),
+                                              ),
+                                            ],
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.delete_outline,
+                                        color: Colors.redAccent,
+                                        size: 20,
+                                      ),
+                                      onPressed: () {
+                                        setModalState(() {
+                                          tempSubtasks.removeAt(index);
+                                        });
+                                      },
+                                    ),
+                                    ReorderableDragStartListener(
+                                      index: index,
+                                      child: const Padding(
+                                        padding: EdgeInsets.symmetric(horizontal: 8.0),
+                                        child: Icon(Icons.drag_handle, color: Colors.grey, size: 20),
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               );
                             },
@@ -810,7 +876,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                                 Navigator.pop(context);
                               },
                               style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: AppColors.button),
+                                side: BorderSide(color: AppColors.button),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -818,7 +884,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                                   vertical: 14,
                                 ),
                               ),
-                              child: const Text(
+                              child: Text(
                                 "Cancel",
                                 style: TextStyle(color: AppColors.button),
                               ),
@@ -926,10 +992,10 @@ class _TasklistpageState extends State<Tasklistpage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Text("Tasks", style: AppTextStyles.greeting),
+                      Text("Tasks", style: AppTextStyles.greeting),
                       Transform.translate(
                         offset: const Offset(0, -5),
-                        child: const Text(
+                        child: Text(
                           "Organized around your energy",
                           style: AppTextStyles.affirmation,
                         ),
@@ -1079,12 +1145,12 @@ class EnergyLevelView extends StatelessWidget {
         Container1(
           child: Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.only(bottom: 10.0),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
                     Icon(Icons.recommend, size: 20, color: AppColors.button),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Text(
                       "Recommended Task",
                       style: TextStyle(
@@ -1113,12 +1179,12 @@ class EnergyLevelView extends StatelessWidget {
         Container1(
           child: Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.only(bottom: 10.0),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
                     Icon(Icons.favorite, size: 20, color: AppColors.button),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Text(
                       "Low Energy Task",
                       style: TextStyle(
@@ -1147,8 +1213,8 @@ class EnergyLevelView extends StatelessWidget {
         Container1(
           child: Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.only(bottom: 10.0),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
                     Icon(
@@ -1156,7 +1222,7 @@ class EnergyLevelView extends StatelessWidget {
                       size: 20,
                       color: AppColors.button,
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Text(
                       "High Focus Task",
                       style: TextStyle(
@@ -1233,12 +1299,12 @@ class DueDateView extends StatelessWidget {
         Container1(
           child: Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.only(bottom: 10.0),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
                     Icon(Icons.today, size: 20, color: AppColors.button),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Text(
                       "Today",
                       style: TextStyle(
@@ -1264,12 +1330,12 @@ class DueDateView extends StatelessWidget {
         Container1(
           child: Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.only(bottom: 10.0),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
                     Icon(Icons.schedule, size: 20, color: AppColors.button),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Text(
                       "Tomorrow",
                       style: TextStyle(
@@ -1295,12 +1361,12 @@ class DueDateView extends StatelessWidget {
         Container1(
           child: Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.only(bottom: 10.0),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
                     Icon(Icons.upcoming, size: 20, color: AppColors.button),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Text(
                       "Upcoming",
                       style: TextStyle(
@@ -1326,8 +1392,8 @@ class DueDateView extends StatelessWidget {
         Container1(
           child: Column(
             children: [
-              const Padding(
-                padding: EdgeInsets.only(bottom: 10.0),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
                     Icon(
@@ -1335,7 +1401,7 @@ class DueDateView extends StatelessWidget {
                       size: 20,
                       color: AppColors.button,
                     ),
-                    SizedBox(width: 10),
+                    const SizedBox(width: 10),
                     Text(
                       "Completed",
                       style: TextStyle(

@@ -106,7 +106,7 @@ class _TableDataViewerState extends State<TableDataViewer> {
         future: _tableDataFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(
+            return Center(
               child: CircularProgressIndicator(color: AppColors.button),
             );
           } else if (snapshot.hasError) {
@@ -151,7 +151,7 @@ class _TableDataViewerState extends State<TableDataViewer> {
                         children: [
                           Text(
                             "Record #${recordId ?? index}",
-                            style: const TextStyle(
+                            style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 15,
                               color: AppColors.button,

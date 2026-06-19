@@ -3,6 +3,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:flutter_timezone/flutter_timezone.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kinday/constant/app_widget.dart';
 
 class NotificationHelper {
@@ -108,6 +109,18 @@ class NotificationHelper {
     // Cancel existing notification first
     await cancelTaskNotification(task.id!);
 
+    // Check if notifications are enabled in settings
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final enabled = prefs.getBool('notifications_enabled') ?? true;
+      if (!enabled) {
+        debugPrint("Notifications are disabled in settings. Skipping task notification scheduling.");
+        return;
+      }
+    } catch (e) {
+      debugPrint("Error reading notification preferences: $e");
+    }
+
     // If task has no due date, no reminder, or is completed, return
     if (task.dueDate == null || task.reminderMinutes == null || task.isCompleted) {
       return;
@@ -165,27 +178,83 @@ class NotificationHelper {
     );
 
     String reminderLabel = "${task.reminderMinutes} minutes";
-    if (task.reminderMinutes == 60) {
+    String titleText = 'Task Due Soon: ${task.title}';
+    String bodyText = 'This task is due in $reminderLabel (at ${task.dueTime ?? "9:00 AM"}).';
+
+    if (task.reminderMinutes == 0) {
+      reminderLabel = "now";
+      titleText = 'Task Due Now: ${task.title}';
+      bodyText = 'This task is due now!';
+    } else if (task.reminderMinutes == 60) {
       reminderLabel = "1 hour";
     } else if (task.reminderMinutes == 1440) {
       reminderLabel = "1 day";
     }
 
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      id: task.id!,
-      title: 'Task Due Soon: ${task.title}',
-      body: 'This task is due in $reminderLabel (at ${task.dueTime ?? "9:00 AM"}).',
-      scheduledDate: tzReminderTime,
-      notificationDetails: notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
-
-    debugPrint("Scheduled notification for task ${task.id} at $tzReminderTime");
+    try {
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        id: task.id!,
+        title: titleText,
+        body: bodyText,
+        scheduledDate: tzReminderTime,
+        notificationDetails: notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+      debugPrint("Scheduled exact notification for task ${task.id} at $tzReminderTime");
+    } catch (e) {
+      debugPrint("Failed to schedule exact notification for task ${task.id}: $e. Trying inexact fallback...");
+      try {
+        await flutterLocalNotificationsPlugin.zonedSchedule(
+          id: task.id!,
+          title: titleText,
+          body: bodyText,
+          scheduledDate: tzReminderTime,
+          notificationDetails: notificationDetails,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        );
+        debugPrint("Scheduled inexact notification for task ${task.id} at $tzReminderTime");
+      } catch (e2) {
+        debugPrint("Error scheduling fallback notification: $e2");
+      }
+    }
   }
 
   Future<void> cancelTaskNotification(int taskId) async {
     await flutterLocalNotificationsPlugin.cancel(id: taskId);
     debugPrint("Cancelled notification for task $taskId");
+  }
+
+  Future<void> showInstantNotification({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    final androidNotificationDetails = AndroidNotificationDetails(
+      'kinday_task_reminders',
+      'Task Reminders',
+      channelDescription: 'This channel is used for task due date/time reminders.',
+      importance: Importance.max,
+      priority: Priority.high,
+    );
+
+    const darwinNotificationDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    final notificationDetails = NotificationDetails(
+      android: androidNotificationDetails,
+      iOS: darwinNotificationDetails,
+    );
+
+    await flutterLocalNotificationsPlugin.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: notificationDetails,
+    );
+    debugPrint("Showed instant notification $id");
   }
 
   Future<void> schedulePomodoroNotification({
@@ -195,6 +264,18 @@ class NotificationHelper {
     required int seconds,
   }) async {
     if (seconds <= 0) return;
+
+    // Check if notifications are enabled in settings
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final enabled = prefs.getBool('notifications_enabled') ?? true;
+      if (!enabled) {
+        debugPrint("Notifications are disabled in settings. Skipping Pomodoro notification scheduling.");
+        return;
+      }
+    } catch (e) {
+      debugPrint("Error reading notification preferences: $e");
+    }
 
     final scheduledTime = tz.TZDateTime.now(tz.local).add(Duration(seconds: seconds));
 
@@ -217,16 +298,32 @@ class NotificationHelper {
       iOS: darwinNotificationDetails,
     );
 
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      id: id,
-      title: title,
-      body: body,
-      scheduledDate: scheduledTime,
-      notificationDetails: notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-    );
-
-    debugPrint("Scheduled Pomodoro notification $id at $scheduledTime");
+    try {
+      await flutterLocalNotificationsPlugin.zonedSchedule(
+        id: id,
+        title: title,
+        body: body,
+        scheduledDate: scheduledTime,
+        notificationDetails: notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      );
+      debugPrint("Scheduled exact Pomodoro notification $id at $scheduledTime");
+    } catch (e) {
+      debugPrint("Failed to schedule exact Pomodoro notification $id: $e. Trying inexact fallback...");
+      try {
+        await flutterLocalNotificationsPlugin.zonedSchedule(
+          id: id,
+          title: title,
+          body: body,
+          scheduledDate: scheduledTime,
+          notificationDetails: notificationDetails,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+        );
+        debugPrint("Scheduled inexact Pomodoro notification $id at $scheduledTime");
+      } catch (e2) {
+        debugPrint("Error scheduling fallback Pomodoro notification: $e2");
+      }
+    }
   }
 
   Future<void> cancelPomodoroNotifications() async {

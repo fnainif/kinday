@@ -32,9 +32,10 @@ class _PomodoropageState extends State<Pomodoropage> {
   late TaskCard? activeTask;
   final TextEditingController _pomodoroSubtaskController =
       TextEditingController();
-  String _selectedSound = "None";
+  String _selectedSound = "Fireplace";
 
-  String get taskName => activeTask?.title ?? L10n.tr("Learn Flutter", "Belajar Flutter");
+  String get taskName =>
+      activeTask?.title ?? L10n.tr("Learn Flutter", "Belajar Flutter");
 
   double get progress {
     return secondsRemaining / totalSeconds;
@@ -79,15 +80,22 @@ class _PomodoropageState extends State<Pomodoropage> {
   Future<void> _loadFocusSettings() async {
     final prefs = await SharedPreferences.getInstance();
     final savedDuration = prefs.getInt('focus_duration') ?? 25;
-    String savedSound = prefs.getString('focus_sound') ?? "None";
+    final savedBreakDuration = prefs.getInt('break_duration') ?? 5;
+    String savedSound = prefs.getString('focus_sound') ?? "Fireplace";
     if (savedSound == "Rain") savedSound = "Gentle Rain";
     if (savedSound == "White Noise") savedSound = "None";
 
     setState(() {
       focusDuration = savedDuration * 60;
-      if (!isRunning && isFocusTime) {
-        totalSeconds = focusDuration;
-        secondsRemaining = focusDuration;
+      breakDuration = savedBreakDuration * 60;
+      if (!isRunning) {
+        if (isFocusTime) {
+          totalSeconds = focusDuration;
+          secondsRemaining = focusDuration;
+        } else {
+          totalSeconds = breakDuration;
+          secondsRemaining = breakDuration;
+        }
       }
       _selectedSound = savedSound;
     });
@@ -156,6 +164,41 @@ class _PomodoropageState extends State<Pomodoropage> {
     super.dispose();
   }
 
+  void _sortSubtasks(String criteria, VoidCallback setSubtaskState) async {
+    if (activeTask == null) return;
+    setState(() {
+      if (criteria == 'A-Z') {
+        activeTask!.subtasks.sort(
+          (a, b) => (a['title'] as String).toLowerCase().compareTo(
+            (b['title'] as String).toLowerCase(),
+          ),
+        );
+      } else if (criteria == 'Z-A') {
+        activeTask!.subtasks.sort(
+          (a, b) => (b['title'] as String).toLowerCase().compareTo(
+            (a['title'] as String).toLowerCase(),
+          ),
+        );
+      } else if (criteria == 'Incomplete first') {
+        activeTask!.subtasks.sort((a, b) {
+          final aDone = a['isDone'] ?? false;
+          final bDone = b['isDone'] ?? false;
+          if (aDone == bDone) return 0;
+          return aDone ? 1 : -1;
+        });
+      } else if (criteria == 'Completed first') {
+        activeTask!.subtasks.sort((a, b) {
+          final aDone = a['isDone'] ?? false;
+          final bDone = b['isDone'] ?? false;
+          if (aDone == bDone) return 0;
+          return aDone ? -1 : 1;
+        });
+      }
+    });
+    await DBHelper().updateTask(activeTask!);
+    setSubtaskState();
+  }
+
   Widget _buildSubtasksSection() {
     final subtasks = activeTask?.subtasks ?? [];
     final total = subtasks.length;
@@ -173,7 +216,7 @@ class _PomodoropageState extends State<Pomodoropage> {
                 children: [
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.assignment_turned_in_outlined,
                         color: AppColors.button,
                       ),
@@ -188,13 +231,48 @@ class _PomodoropageState extends State<Pomodoropage> {
                       ),
                     ],
                   ),
-                  Text(
-                    "$completed/$total",
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.button,
-                    ),
+                  Row(
+                    children: [
+                      PopupMenuButton<String>(
+                        icon: Icon(
+                          Icons.sort,
+                          size: 20,
+                          color: AppColors.button,
+                        ),
+                        tooltip: "Sort subtasks",
+                        onSelected: (criteria) => _sortSubtasks(
+                          criteria,
+                          () => setSubtaskState(() {}),
+                        ),
+                        itemBuilder: (BuildContext context) =>
+                            <PopupMenuEntry<String>>[
+                              const PopupMenuItem<String>(
+                                value: 'A-Z',
+                                child: Text('Alphabetical (A-Z)'),
+                              ),
+                              const PopupMenuItem<String>(
+                                value: 'Z-A',
+                                child: Text('Alphabetical (Z-A)'),
+                              ),
+                              const PopupMenuItem<String>(
+                                value: 'Incomplete first',
+                                child: Text('Incomplete first'),
+                              ),
+                              const PopupMenuItem<String>(
+                                value: 'Completed first',
+                                child: Text('Completed first'),
+                              ),
+                            ],
+                      ),
+                      Text(
+                        "$completed/$total",
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.button,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -222,50 +300,127 @@ class _PomodoropageState extends State<Pomodoropage> {
                   ),
                 )
               else
-                ListView.builder(
+                ReorderableListView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
+                  buildDefaultDragHandles: false,
                   itemCount: subtasks.length,
+                  onReorder: (oldIndex, newIndex) async {
+                    setState(() {
+                      if (oldIndex < newIndex) {
+                        newIndex -= 1;
+                      }
+                      final item = subtasks.removeAt(oldIndex);
+                      subtasks.insert(newIndex, item);
+                    });
+                    if (activeTask != null) {
+                      await DBHelper().updateTask(activeTask!);
+                    }
+                    setSubtaskState(() {});
+                  },
                   itemBuilder: (context, index) {
                     final sub = subtasks[index];
                     final isDone = sub["isDone"] ?? false;
-                    return InkWell(
-                      onTap: () async {
-                        setState(() {
-                          sub["isDone"] = !isDone;
-                        });
-                        if (activeTask != null) {
-                          await DBHelper().updateTask(activeTask!);
-                        }
-                        // Also update state of StatefulBuilder
-                        setSubtaskState(() {});
-                      },
+                    return Container(
+                      key: ValueKey((sub["title"] ?? "") + index.toString()),
                       child: Padding(
                         padding: const EdgeInsets.symmetric(vertical: 8.0),
                         child: Row(
                           children: [
-                            Icon(
-                              isDone
-                                  ? Icons.check_circle
-                                  : Icons.radio_button_unchecked,
-                              color: isDone
-                                  ? AppColors.button
-                                  : Colors.grey.shade400,
-                              size: 22,
+                            GestureDetector(
+                              onTap: () async {
+                                setState(() {
+                                  sub["isDone"] = !isDone;
+                                });
+                                if (activeTask != null) {
+                                  await DBHelper().updateTask(activeTask!);
+                                }
+                                // Also update state of StatefulBuilder
+                                setSubtaskState(() {});
+                              },
+                              child: Icon(
+                                isDone
+                                    ? Icons.check_circle
+                                    : Icons.radio_button_unchecked,
+                                color: isDone
+                                    ? AppColors.button
+                                    : Colors.grey.shade400,
+                                size: 22,
+                              ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
-                              child: Text(
-                                sub["title"] ?? "",
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  decoration: isDone
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                                  color: isDone ? Colors.grey : Colors.black87,
+                              child: GestureDetector(
+                                onTap: () async {
+                                  setState(() {
+                                    sub["isDone"] = !isDone;
+                                  });
+                                  if (activeTask != null) {
+                                    await DBHelper().updateTask(activeTask!);
+                                  }
+                                  // Also update state of StatefulBuilder
+                                  setSubtaskState(() {});
+                                },
+                                child: Text(
+                                  sub["title"] ?? "",
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    decoration: isDone
+                                        ? TextDecoration.lineThrough
+                                        : null,
+                                    color: isDone
+                                        ? Colors.grey
+                                        : Colors.black87,
+                                  ),
                                 ),
                               ),
                             ),
+                            IconButton(
+                              icon: Icon(
+                                Icons.edit_outlined,
+                                color: AppColors.button,
+                                size: 18,
+                              ),
+                              onPressed: () {
+                                final editController = TextEditingController(text: sub["title"]);
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text("Edit Subtask"),
+                                    content: TextField(
+                                      controller: editController,
+                                      decoration: const InputDecoration(hintText: "Edit subtask title"),
+                                      autofocus: true,
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text("Cancel"),
+                                      ),
+                                      ElevatedButton(
+                                        onPressed: () async {
+                                          final text = editController.text.trim();
+                                          if (text.isNotEmpty) {
+                                            setState(() {
+                                              sub["title"] = text;
+                                            });
+                                            if (activeTask != null) {
+                                              await DBHelper().updateTask(activeTask!);
+                                            }
+                                            setSubtaskState(() {});
+                                          }
+                                          Navigator.pop(context);
+                                        },
+                                        child: const Text("Save"),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                            const SizedBox(width: 4),
                             IconButton(
                               icon: const Icon(
                                 Icons.delete_outline,
@@ -283,6 +438,17 @@ class _PomodoropageState extends State<Pomodoropage> {
                               },
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
+                            ),
+                            ReorderableDragStartListener(
+                              index: index,
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 8.0),
+                                child: Icon(
+                                  Icons.drag_handle,
+                                  color: Colors.grey,
+                                  size: 20,
+                                ),
+                              ),
                             ),
                           ],
                         ),
@@ -357,6 +523,164 @@ class _PomodoropageState extends State<Pomodoropage> {
     );
   }
 
+  Widget _buildSettingsSection() {
+    return Container2(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.settings_outlined, color: AppColors.button),
+              const SizedBox(width: 8),
+              Text(
+                L10n.tr("Focus Settings", "Pengaturan Fokus"),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.button,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 15),
+          Divider(height: 1),
+          const SizedBox(height: 15),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                L10n.tr("Focus Session Duration", "Durasi Sesi Fokus"),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.button,
+                ),
+              ),
+              Text(
+                "${focusDuration ~/ 60} mins",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.button,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: (focusDuration ~/ 60).toDouble(),
+            min: 10,
+            max: 60,
+            divisions: 10,
+            activeColor: AppColors.button,
+            inactiveColor: AppColors.button.withValues(alpha: 0.2),
+            onChanged: (val) async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setInt('focus_duration', val.round());
+              setState(() {
+                focusDuration = val.round() * 60;
+                if (!isRunning && isFocusTime) {
+                  totalSeconds = focusDuration;
+                  secondsRemaining = focusDuration;
+                }
+              });
+            },
+          ),
+          const SizedBox(height: 10),
+          Divider(height: 1),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                L10n.tr("Break Session Duration", "Durasi Sesi Istirahat"),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.button,
+                ),
+              ),
+              Text(
+                "${breakDuration ~/ 60} mins",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.button,
+                ),
+              ),
+            ],
+          ),
+          Slider(
+            value: (breakDuration ~/ 60).toDouble(),
+            min: 5,
+            max: 30,
+            divisions: 5,
+            activeColor: AppColors.button,
+            inactiveColor: AppColors.button.withValues(alpha: 0.2),
+            onChanged: (val) async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.setInt('break_duration', val.round());
+              setState(() {
+                breakDuration = val.round() * 60;
+                if (!isRunning && !isFocusTime) {
+                  totalSeconds = breakDuration;
+                  secondsRemaining = breakDuration;
+                }
+              });
+            },
+          ),
+          const SizedBox(height: 10),
+          Divider(height: 1),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                L10n.tr("Background Sound", "Suara Latar Belakang"),
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.button,
+                ),
+              ),
+              DropdownButton<String>(
+                value: _selectedSound,
+                dropdownColor: Colors.white,
+                iconEnabledColor: AppColors.button,
+                style: TextStyle(
+                  color: AppColors.button,
+                  fontWeight: FontWeight.bold,
+                ),
+                underline: const SizedBox(),
+                items:
+                    const [
+                          "None",
+                          "Fireplace",
+                          "Forest",
+                          "Gentle Rain",
+                          "Heavy Rain",
+                          "Night Ambience",
+                          "Ocean Waves",
+                          "Stream",
+                          "Underwater Ambience",
+                        ]
+                        .map(
+                          (val) =>
+                              DropdownMenuItem(value: val, child: Text(val)),
+                        )
+                        .toList(),
+                onChanged: (value) async {
+                  if (value != null) {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setString('focus_sound', value);
+                    setState(() {
+                      _selectedSound = value;
+                    });
+                    _playBackgroundSound();
+                  }
+                },
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -375,15 +699,15 @@ class _PomodoropageState extends State<Pomodoropage> {
                       child: Center(
                         child: Text(
                           taskName,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.settings, color: AppColors.button),
-                      onPressed: _showSettingsBottomSheet,
-                    ),
+                    const SizedBox(width: 40),
                   ],
                 ),
               ),
@@ -479,6 +803,9 @@ class _PomodoropageState extends State<Pomodoropage> {
                 const SizedBox(height: 10),
                 _buildSubtasksSection(),
               ],
+
+              const SizedBox(height: 10),
+              _buildSettingsSection(),
             ],
           ),
         ),
@@ -493,158 +820,51 @@ class _PomodoropageState extends State<Pomodoropage> {
       if (secondsRemaining > 300) {
         NotificationHelper().schedulePomodoroNotification(
           id: 9990,
-          title: L10n.tr("Focus Time Almost Over", "Waktu Fokus Hampir Selesai"),
-          body: L10n.tr("5 minutes left before break time starts.", "Tersisa 5 menit sebelum waktu istirahat dimulai."),
+          title: L10n.tr(
+            "Focus Time Almost Over",
+            "Waktu Fokus Hampir Selesai",
+          ),
+          body: L10n.tr(
+            "5 minutes left before break time starts.",
+            "Tersisa 5 menit sebelum waktu istirahat dimulai.",
+          ),
           seconds: secondsRemaining - 300,
         );
       }
       NotificationHelper().schedulePomodoroNotification(
         id: 9991,
         title: L10n.tr("Focus Time Ended", "Waktu Fokus Selesai"),
-        body: L10n.tr("Great job! Now take a break.", "Kerja bagus! Sekarang waktunya istirahat."),
+        body: L10n.tr(
+          "Great job! Now take a break.",
+          "Kerja bagus! Sekarang waktunya istirahat.",
+        ),
         seconds: secondsRemaining,
       );
     } else {
       if (secondsRemaining > 60) {
         NotificationHelper().schedulePomodoroNotification(
           id: 9992,
-          title: L10n.tr("Break Time Almost Over", "Waktu Istirahat Hampir Selesai"),
-          body: L10n.tr("1 minute left before focus time starts.", "Tersisa 1 menit sebelum waktu fokus dimulai."),
+          title: L10n.tr(
+            "Break Time Almost Over",
+            "Waktu Istirahat Hampir Selesai",
+          ),
+          body: L10n.tr(
+            "1 minute left before focus time starts.",
+            "Tersisa 1 menit sebelum waktu fokus dimulai.",
+          ),
           seconds: secondsRemaining - 60,
         );
       }
       NotificationHelper().schedulePomodoroNotification(
         id: 9993,
         title: L10n.tr("Break Time Ended", "Waktu Istirahat Selesai"),
-        body: L10n.tr("Time to focus again! Let's get back to work.", "Waktunya fokus kembali! Mari kembali bekerja."),
+        body: L10n.tr(
+          "Time to focus again! Let's get back to work.",
+          "Waktunya fokus kembali! Mari kembali bekerja.",
+        ),
         seconds: secondsRemaining,
       );
     }
-  }
-
-  void _showSettingsBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            return Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    L10n.tr("Focus Settings", "Pengaturan Fokus"),
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.button,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        L10n.tr("Focus Session Duration", "Durasi Sesi Fokus"),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.button,
-                        ),
-                      ),
-                      Text(
-                        "${focusDuration ~/ 60} mins",
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.button,
-                        ),
-                      ),
-                    ],
-                  ),
-                  Slider(
-                    value: (focusDuration ~/ 60).toDouble(),
-                    min: 10,
-                    max: 60,
-                    divisions: 10,
-                    activeColor: AppColors.button,
-                    inactiveColor: AppColors.button.withValues(alpha: 0.2),
-                    onChanged: (val) async {
-                      final prefs = await SharedPreferences.getInstance();
-                      await prefs.setInt('focus_duration', val.round());
-                      setModalState(() {
-                        focusDuration = val.round() * 60;
-                      });
-                      setState(() {
-                        focusDuration = val.round() * 60;
-                        if (!isRunning && isFocusTime) {
-                          totalSeconds = focusDuration;
-                          secondsRemaining = focusDuration;
-                        }
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        L10n.tr("Background Sound", "Suara Latar Belakang"),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.button,
-                        ),
-                      ),
-                      DropdownButton<String>(
-                        value: _selectedSound,
-                        dropdownColor: Colors.white,
-                        iconEnabledColor: AppColors.button,
-                        style: const TextStyle(
-                          color: AppColors.button,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        underline: const SizedBox(),
-                        items: const [
-                          "None",
-                          "Fireplace",
-                          "Forest",
-                          "Gentle Rain",
-                          "Heavy Rain",
-                          "Night Ambience",
-                          "Ocean Waves",
-                          "Stream",
-                          "Underwater Ambience",
-                        ].map((val) => DropdownMenuItem(
-                          value: val,
-                          child: Text(val),
-                        )).toList(),
-                        onChanged: (value) async {
-                          if (value != null) {
-                            final prefs = await SharedPreferences.getInstance();
-                            await prefs.setString('focus_sound', value);
-                            setModalState(() {
-                              _selectedSound = value;
-                            });
-                            setState(() {
-                              _selectedSound = value;
-                            });
-                            _playBackgroundSound();
-                          }
-                        },
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 
   void startTimer() {

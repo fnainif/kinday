@@ -1,4 +1,4 @@
-package com.example.kinday
+package com.harumone.kinday
 
 import io.flutter.embedding.android.FlutterActivity
 

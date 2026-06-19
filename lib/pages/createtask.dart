@@ -132,6 +132,30 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     }
   }
 
+  void _sortSubtasks(String criteria) {
+    setState(() {
+      if (criteria == 'A-Z') {
+        subtasks.sort((a, b) => (a['title'] as String).toLowerCase().compareTo((b['title'] as String).toLowerCase()));
+      } else if (criteria == 'Z-A') {
+        subtasks.sort((a, b) => (b['title'] as String).toLowerCase().compareTo((a['title'] as String).toLowerCase()));
+      } else if (criteria == 'Incomplete first') {
+        subtasks.sort((a, b) {
+          final aDone = a['isDone'] ?? false;
+          final bDone = b['isDone'] ?? false;
+          if (aDone == bDone) return 0;
+          return aDone ? 1 : -1;
+        });
+      } else if (criteria == 'Completed first') {
+        subtasks.sort((a, b) {
+          final aDone = a['isDone'] ?? false;
+          final bDone = b['isDone'] ?? false;
+          if (aDone == bDone) return 0;
+          return aDone ? -1 : 1;
+        });
+      }
+    });
+  }
+
   @override
   void dispose() {
     _speech.stop();
@@ -155,14 +179,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text(
+                        Text(
                           "Create New Task",
                           style: AppTextStyles.greeting,
                         ),
 
                         Transform.translate(
                           offset: const Offset(0, -5),
-                          child: const Text(
+                          child: Text(
                             "Tiny progress is still progress",
                             style: AppTextStyles.affirmation,
                           ),
@@ -192,7 +216,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       children: [
                         Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.star_border,
                               size: 20,
                               color: AppColors.containerline1,
@@ -208,7 +232,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           style: const TextStyle(color: Color(0xFF5852A0)),
                           decoration: InputDecoration(
                             hintText: "eg. Study for Exam",
-                            hintStyle: const TextStyle(
+                            hintStyle: TextStyle(
                               color: AppColors.background,
                             ),
 
@@ -242,7 +266,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         const SizedBox(height: 15),
                         Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.description_outlined,
                               size: 20,
                               color: AppColors.containerline1,
@@ -258,7 +282,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           style: const TextStyle(color: Color(0xFF5852A0)),
                           decoration: InputDecoration(
                             hintText: "Add details about this task...",
-                            hintStyle: const TextStyle(
+                            hintStyle: TextStyle(
                               color: AppColors.background,
                             ),
 
@@ -351,7 +375,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 selectedDate == null
                                     ? L10n.tr("Choose Date", "Pilih Tanggal")
                                     : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
-                                style: const TextStyle(color: AppColors.button),
+                                style: TextStyle(color: AppColors.button),
                               ),
                             ),
                           ],
@@ -406,7 +430,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                   selectedTime == null
                                       ? L10n.tr("Choose Time", "Pilih Jam")
                                       : selectedTime!.format(context),
-                                  style: const TextStyle(
+                                  style: TextStyle(
                                     color: AppColors.button,
                                   ),
                                 ),
@@ -422,7 +446,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           ),
                           Row(
                             children: [
-                              const Icon(
+                              Icon(
                                 Icons.notifications_active_outlined,
                                 size: 20,
                                 color: AppColors.button,
@@ -433,11 +457,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                               DropdownButton<int?>(
                                 value: selectedReminderMinutes,
                                 dropdownColor: Colors.white,
-                                style: const TextStyle(color: AppColors.button),
+                                style: TextStyle(color: AppColors.button),
                                 items: const [
                                   DropdownMenuItem(
                                     value: null,
                                     child: Text("No reminder"),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 0,
+                                    child: Text("At due time"),
                                   ),
                                   DropdownMenuItem(
                                     value: 5,
@@ -593,6 +621,30 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
                             Spacer(),
 
+                            PopupMenuButton<String>(
+                              icon: Icon(Icons.sort, size: 20, color: AppColors.button),
+                              tooltip: "Sort subtasks",
+                              onSelected: _sortSubtasks,
+                              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+                                const PopupMenuItem<String>(
+                                  value: 'A-Z',
+                                  child: Text('Alphabetical (A-Z)'),
+                                ),
+                                const PopupMenuItem<String>(
+                                  value: 'Z-A',
+                                  child: Text('Alphabetical (Z-A)'),
+                                ),
+                                const PopupMenuItem<String>(
+                                  value: 'Incomplete first',
+                                  child: Text('Incomplete first'),
+                                ),
+                                const PopupMenuItem<String>(
+                                  value: 'Completed first',
+                                  child: Text('Completed first'),
+                                ),
+                              ],
+                            ),
+
                             TextButton.icon(
                               onPressed: _showAddSubtaskDialog,
                               icon: Icon(Icons.add),
@@ -639,42 +691,106 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                     ),
                                   ],
                                 )
-                              : Column(
-                                  children: List.generate(subtasks.length, (
-                                    index,
-                                  ) {
-                                    return CheckboxListTile(
-                                      value: subtasks[index]["isDone"],
-
-                                      onChanged: (value) {
-                                        setState(() {
-                                          subtasks[index]["isDone"] = value;
-                                        });
-                                      },
-
+                              : ReorderableListView.builder(
+                                  shrinkWrap: true,
+                                  physics: const NeverScrollableScrollPhysics(),
+                                  buildDefaultDragHandles: false,
+                                  itemCount: subtasks.length,
+                                  onReorder: (oldIndex, newIndex) {
+                                    setState(() {
+                                      if (oldIndex < newIndex) {
+                                        newIndex -= 1;
+                                      }
+                                      final item = subtasks.removeAt(oldIndex);
+                                      subtasks.insert(newIndex, item);
+                                    });
+                                  },
+                                  itemBuilder: (context, index) {
+                                    final sub = subtasks[index];
+                                    return ListTile(
+                                      key: ValueKey((sub["title"] ?? "") + index.toString()),
+                                      contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                      leading: Checkbox(
+                                        activeColor: AppColors.button,
+                                        value: sub["isDone"] ?? false,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            sub["isDone"] = value;
+                                          });
+                                        },
+                                      ),
                                       title: Text(
-                                        subtasks[index]["title"],
+                                        sub["title"] ?? "",
                                         style: TextStyle(
-                                          decoration: subtasks[index]["isDone"]
+                                          color: const Color(0xFF5852A0),
+                                          decoration: (sub["isDone"] ?? false)
                                               ? TextDecoration.lineThrough
                                               : TextDecoration.none,
                                         ),
                                       ),
-
-                                      secondary: IconButton(
-                                        icon: const Icon(
-                                          Icons.delete_outline,
-                                          color: Colors.red,
-                                        ),
-
-                                        onPressed: () {
-                                          setState(() {
-                                            subtasks.removeAt(index);
-                                          });
-                                        },
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.edit_outlined,
+                                              color: AppColors.button,
+                                            ),
+                                            onPressed: () {
+                                              final editController = TextEditingController(text: sub["title"]);
+                                              showDialog(
+                                                context: context,
+                                                builder: (context) => AlertDialog(
+                                                  title: const Text("Edit Subtask"),
+                                                  content: TextField(
+                                                    controller: editController,
+                                                    decoration: const InputDecoration(hintText: "Edit subtask title"),
+                                                    autofocus: true,
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () => Navigator.pop(context),
+                                                      child: const Text("Cancel"),
+                                                    ),
+                                                    ElevatedButton(
+                                                      onPressed: () {
+                                                        final text = editController.text.trim();
+                                                        if (text.isNotEmpty) {
+                                                          setState(() {
+                                                            sub["title"] = text;
+                                                          });
+                                                        }
+                                                        Navigator.pop(context);
+                                                      },
+                                                      child: const Text("Save"),
+                                                    ),
+                                                  ],
+                                                ),
+                                              );
+                                            },
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.delete_outline,
+                                              color: Colors.red,
+                                            ),
+                                            onPressed: () {
+                                              setState(() {
+                                                subtasks.removeAt(index);
+                                              });
+                                            },
+                                          ),
+                                          ReorderableDragStartListener(
+                                            index: index,
+                                            child: const Padding(
+                                              padding: EdgeInsets.symmetric(horizontal: 8.0),
+                                              child: Icon(Icons.drag_handle, color: Colors.grey),
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     );
-                                  }),
+                                  },
                                 ),
                         ),
                       ],

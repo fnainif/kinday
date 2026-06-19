@@ -142,7 +142,7 @@ class SmallButton extends StatelessWidget {
 }
 
 //form field login. register
-class InputField extends StatelessWidget {
+class InputField extends StatefulWidget {
   const InputField({
     super.key,
     required this.hint,
@@ -159,16 +159,42 @@ class InputField extends StatelessWidget {
   final String? Function(String?)? validator;
 
   @override
+  State<InputField> createState() => _InputFieldState();
+}
+
+class _InputFieldState extends State<InputField> {
+  late bool _obscureText;
+
+  @override
+  void initState() {
+    super.initState();
+    _obscureText = widget.pwhide;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return TextFormField(
-      controller: controller,
+      controller: widget.controller,
       style: const TextStyle(color: Color(0xFF5852A0)),
       decoration: InputDecoration(
         prefixIcon: Padding(
           padding: const EdgeInsets.only(bottom: 10.0),
-          child: Icon(icon, color: AppColors.background),
+          child: Icon(widget.icon, color: AppColors.background),
         ),
-        hintText: hint,
+        suffixIcon: widget.pwhide
+            ? IconButton(
+                icon: Icon(
+                  _obscureText ? Icons.visibility_off : Icons.visibility,
+                  color: AppColors.background,
+                ),
+                onPressed: () {
+                  setState(() {
+                    _obscureText = !_obscureText;
+                  });
+                },
+              )
+            : null,
+        hintText: widget.hint,
         hintStyle: TextStyle(color: AppColors.background),
 
         border: OutlineInputBorder(
@@ -189,11 +215,12 @@ class InputField extends StatelessWidget {
         filled: true,
         fillColor: Colors.grey.shade100,
       ),
-      obscureText: pwhide,
-      validator: validator,
+      obscureText: _obscureText,
+      validator: widget.validator,
     );
   }
 }
+
 
 // Container white
 class Container1 extends StatelessWidget {

@@ -53,7 +53,7 @@ class MainpageState extends State<Mainpage> {
         key: _bottomNavigationKey,
         index: selectedIndex,
         backgroundColor: AppColors.button,
-        items: const <Widget>[
+        items: <Widget>[
           Icon(Icons.home, size: 30, color: AppColors.button),
           Icon(Icons.task_alt, size: 30, color: AppColors.button),
           Icon(Icons.timer, size: 30, color: AppColors.button),

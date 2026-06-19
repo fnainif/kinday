@@ -266,7 +266,7 @@ class _EnergyPageState extends State<EnergyPage> {
             children: [
               Text(
                 title,
-                style: const TextStyle(
+                style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                   color: AppColors.button,
@@ -305,11 +305,11 @@ class _EnergyPageState extends State<EnergyPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        const Text("Energy Log", style: AppTextStyles.greeting),
+                        Text("Energy Log", style: AppTextStyles.greeting),
 
                         Transform.translate(
                           offset: const Offset(0, -5),
-                          child: const Text(
+                          child: Text(
                             "Understand your rhythm",
                             style: AppTextStyles.affirmation,
                           ),
@@ -328,7 +328,7 @@ class _EnergyPageState extends State<EnergyPage> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       "Current Energy",
                       style: TextStyle(
                         color: AppColors.button,
@@ -337,7 +337,7 @@ class _EnergyPageState extends State<EnergyPage> {
                     ),
                     Text(
                       _getEnergyLabel(_currentEnergyLvl),
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 25,
                         color: AppColors.button,
                       ),
@@ -357,7 +357,7 @@ class _EnergyPageState extends State<EnergyPage> {
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(20),
                               ),
-                              title: const Text(
+                              title: Text(
                                 "What's your energy level?",
                                 style: TextStyle(
                                   fontFamily: "Quicksand",
@@ -508,9 +508,9 @@ class _EnergyPageState extends State<EnergyPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
-                      children: const [
+                      children: [
                         Icon(Icons.insights, color: AppColors.button, size: 22),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Text(
                           "Energy & Productivity Insights",
                           style: TextStyle(
