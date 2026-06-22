@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:cool_dropdown/cool_dropdown.dart';
 import 'package:cool_dropdown/models/cool_dropdown_item.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +37,176 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListeningTitle = false;
   bool _isListeningDesc = false;
+  bool _isRestoring = false;
+
+  @override
+  void initState() {
+    super.initState();
+    titleController.addListener(_autosaveDraft);
+    descController.addListener(_autosaveDraft);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkAndRestoreDraft();
+    });
+  }
+
+  Future<void> _autosaveDraft() async {
+    if (_isRestoring) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('draft_task_title', titleController.text);
+      await prefs.setString('draft_task_desc', descController.text);
+      await prefs.setString('draft_task_priority', selectedDropdown ?? "Mid priority");
+      await prefs.setString('draft_task_energy', selectedEnergy);
+      await prefs.setString('draft_task_subtasks', jsonEncode(subtasks));
+      
+      if (selectedDate != null) {
+        await prefs.setString('draft_task_due_date', selectedDate!.toIso8601String());
+      } else {
+        await prefs.remove('draft_task_due_date');
+      }
+
+      if (selectedTime != null) {
+        await prefs.setString('draft_task_due_time', '${selectedTime!.hour}:${selectedTime!.minute}');
+      } else {
+        await prefs.remove('draft_task_due_time');
+      }
+
+      if (selectedReminderMinutes != null) {
+        await prefs.setInt('draft_task_reminder', selectedReminderMinutes!);
+      } else {
+        await prefs.remove('draft_task_reminder');
+      }
+    } catch (e) {
+      debugPrint("Error autosaving draft: $e");
+    }
+  }
+
+  Future<void> _clearDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('draft_task_title');
+      await prefs.remove('draft_task_desc');
+      await prefs.remove('draft_task_priority');
+      await prefs.remove('draft_task_due_date');
+      await prefs.remove('draft_task_due_time');
+      await prefs.remove('draft_task_reminder');
+      await prefs.remove('draft_task_energy');
+      await prefs.remove('draft_task_subtasks');
+    } catch (e) {
+      debugPrint("Error clearing draft: $e");
+    }
+  }
+
+  Future<void> _checkAndRestoreDraft() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final draftTitle = prefs.getString('draft_task_title');
+      final draftDesc = prefs.getString('draft_task_desc');
+      
+      if ((draftTitle != null && draftTitle.isNotEmpty) || 
+          (draftDesc != null && draftDesc.isNotEmpty)) {
+        if (!mounted) return;
+        
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Text(
+                L10n.tr("Restore Draft?", "Pulihkan Draf?"),
+                style: TextStyle(
+                  fontFamily: "Quicksand",
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.button,
+                ),
+              ),
+              content: Text(
+                L10n.tr(
+                  "You have an unsaved task draft. Would you like to restore it?",
+                  "Anda memiliki draf tugas yang belum disimpan. Apakah Anda ingin memulihkannya?"
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    _clearDraft();
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    L10n.tr("Discard", "Buang"),
+                    style: const TextStyle(color: Colors.redAccent),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    _restoreDraftValues(prefs);
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.button,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: Text(
+                    L10n.tr("Restore", "Pulihkan"),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    } catch (e) {
+      debugPrint("Error checking draft: $e");
+    }
+  }
+
+  void _restoreDraftValues(SharedPreferences prefs) {
+    setState(() {
+      _isRestoring = true;
+      titleController.text = prefs.getString('draft_task_title') ?? "";
+      descController.text = prefs.getString('draft_task_desc') ?? "";
+      selectedDropdown = prefs.getString('draft_task_priority') ?? "Mid priority";
+      selectedEnergy = prefs.getString('draft_task_energy') ?? "low";
+      
+      final String? subtasksJson = prefs.getString('draft_task_subtasks');
+      if (subtasksJson != null && subtasksJson.isNotEmpty) {
+        try {
+          final List decoded = jsonDecode(subtasksJson);
+          subtasks = decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+        } catch (e) {
+          debugPrint("Error restoring subtasks: $e");
+        }
+      }
+      
+      final String? dueDateStr = prefs.getString('draft_task_due_date');
+      if (dueDateStr != null) {
+        selectedDate = DateTime.parse(dueDateStr);
+      } else {
+        selectedDate = null;
+      }
+      
+      final String? dueTimeStr = prefs.getString('draft_task_due_time');
+      if (dueTimeStr != null) {
+        final parts = dueTimeStr.split(':');
+        if (parts.length == 2) {
+          selectedTime = TimeOfDay(
+            hour: int.parse(parts[0]),
+            minute: int.parse(parts[1]),
+          );
+        }
+      } else {
+        selectedTime = null;
+      }
+      
+      selectedReminderMinutes = prefs.getInt('draft_task_reminder');
+      _isRestoring = false;
+    });
+  }
 
   void _listenForField(TextEditingController controller, bool isTitle) async {
     final messenger = ScaffoldMessenger.of(context);
@@ -154,11 +325,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         });
       }
     });
+    _autosaveDraft();
   }
 
   @override
   void dispose() {
     _speech.stop();
+    titleController.removeListener(_autosaveDraft);
+    descController.removeListener(_autosaveDraft);
     titleController.dispose();
     descController.dispose();
     super.dispose();
@@ -354,6 +528,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                     selectedTime = null;
                                     selectedReminderMinutes = null;
                                   });
+                                  _autosaveDraft();
                                 },
                               ),
 
@@ -369,6 +544,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                   setState(() {
                                     selectedDate = picked;
                                   });
+                                  _autosaveDraft();
                                 }
                               },
                               label: Text(
@@ -410,6 +586,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                     setState(() {
                                       selectedTime = null;
                                     });
+                                    _autosaveDraft();
                                   },
                                 ),
                               ElevatedButton.icon(
@@ -424,6 +601,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                     setState(() {
                                       selectedTime = picked;
                                     });
+                                    _autosaveDraft();
                                   }
                                 },
                                 label: Text(
@@ -496,6 +674,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                   setState(() {
                                     selectedReminderMinutes = value;
                                   });
+                                  _autosaveDraft();
                                 },
                               ),
                             ],
@@ -544,6 +723,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 setState(() {
                                   selectedDropdown = value;
                                 });
+                                _autosaveDraft();
                               },
                             ),
                           ],
@@ -587,6 +767,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                       setState(() {
                                         selectedEnergy = value;
                                       });
+                                      _autosaveDraft();
                                     },
                                     dropdownItemOptions:
                                         const DropdownItemOptions(
@@ -704,6 +885,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                       final item = subtasks.removeAt(oldIndex);
                                       subtasks.insert(newIndex, item);
                                     });
+                                    _autosaveDraft();
                                   },
                                   itemBuilder: (context, index) {
                                     final sub = subtasks[index];
@@ -717,6 +899,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                           setState(() {
                                             sub["isDone"] = value;
                                           });
+                                          _autosaveDraft();
                                         },
                                       ),
                                       title: Text(
@@ -753,12 +936,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                                       child: const Text("Cancel"),
                                                     ),
                                                     ElevatedButton(
-                                                      onPressed: () {
+                                                        onPressed: () {
                                                         final text = editController.text.trim();
                                                         if (text.isNotEmpty) {
                                                           setState(() {
                                                             sub["title"] = text;
                                                           });
+                                                          _autosaveDraft();
                                                         }
                                                         Navigator.pop(context);
                                                       },
@@ -778,6 +962,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                               setState(() {
                                                 subtasks.removeAt(index);
                                               });
+                                              _autosaveDraft();
                                             },
                                           ),
                                           ReorderableDragStartListener(
@@ -870,6 +1055,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         );
                       }
 
+                      await _clearDraft();
+
                       navigator.pop(); // Go back to the previous screen
                     },
                     style: ElevatedButton.styleFrom(
@@ -925,6 +1112,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                     "isDone": false,
                   });
                 });
+                _autosaveDraft();
               }
 
               Navigator.pop(context);

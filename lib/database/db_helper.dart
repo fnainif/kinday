@@ -158,6 +158,32 @@ class DBHelper {
     return null;
   }
 
+  // Get User by ID
+  Future<UserModelSql?> getUserById(int id) async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.query(
+      'users',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+    if (result.isNotEmpty) {
+      return UserModelSql.fromMap(result.first);
+    }
+    return null;
+  }
+
+  // Check if email is already registered by another user
+  Future<bool> isEmailRegistered(String email, {int? excludeUserId}) async {
+    final db = await database;
+    final List<Map<String, dynamic>> result = await db.query(
+      'users',
+      where: excludeUserId != null ? 'email = ? AND id != ?' : 'email = ?',
+      whereArgs: excludeUserId != null ? [email, excludeUserId] : [email],
+    );
+    return result.isNotEmpty;
+  }
+
+
   Future<List<UserModelSql>> getAllUsers() async {
     final db = await database;
     final List<Map<String, dynamic>> results = await db.query('users');

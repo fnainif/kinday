@@ -4,8 +4,8 @@ import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
-import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/database/notification_helper.dart';
+import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/pages/auth/forgotpass.dart';
 import 'package:kinday/pages/auth/register.dart';
 import 'package:kinday/pages/dummy/pleaceholderpage.dart';
@@ -230,17 +230,15 @@ class _LoginPageState extends State<LoginPage> {
                           ),
 
                           Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                             children: [
                               AccButton(
-                                sign: "Google",
                                 warnaBox: AppColors.background,
                                 destination: const Pleaceholderpage(),
                                 textbuttoncolor: AppColors.button,
                                 leadImage: AppImage.icongoogle,
                               ),
                               AccButton(
-                                sign: "Facebook",
                                 warnaBox: AppColors.background,
                                 destination: const Pleaceholderpage(),
                                 textbuttoncolor: AppColors.button,

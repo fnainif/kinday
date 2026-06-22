@@ -1,14 +1,21 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:kinday/constant/app_colors.dart';
+import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/constant/l10n.dart';
+import 'package:kinday/database/db_helper.dart';
+import 'package:kinday/models/user_model_sql.dart';
+import 'package:kinday/constant/task_notifier.dart';
 import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/pages/additional/about.dart';
 import 'package:kinday/pages/additional/changepass.dart';
 import 'package:kinday/pages/additional/faq.dart';
 import 'package:kinday/pages/auth/login.dart';
+import 'package:kinday/pages/db_viewer_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingProfile extends StatefulWidget {
@@ -22,6 +29,8 @@ class _SettingProfileState extends State<SettingProfile> {
   // User info state
   String _name = "User";
   String _email = "user@kinday.com";
+  String _avatarKey = "letter";
+  String? _avatarPath;
 
   // Setting states
   bool _notificationsEnabled = true;
@@ -43,12 +52,29 @@ class _SettingProfileState extends State<SettingProfile> {
     // DIUBAH
   }
 
+  String _getAvatarAssetPath(String key) {
+    switch (key) {
+      case 'login':
+        return AppImage.mascotlogin;
+      case 'task':
+        return AppImage.mascottask;
+      case 'focus':
+        return AppImage.mascotfocus;
+      case 'star':
+        return AppImage.mascotstar;
+      default:
+        return "";
+    }
+  }
+
   Future<void> _loadSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
       setState(() {
         _name = prefs.getString('user_name') ?? "User";
         _email = prefs.getString('user_email') ?? "user@kinday.com";
+        _avatarKey = prefs.getString('user_avatar') ?? "letter";
+        _avatarPath = prefs.getString('user_avatar_path');
 
         _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
         _currentTheme = prefs.getString('app_theme') ?? "Lavender Dreams";
@@ -81,86 +107,333 @@ class _SettingProfileState extends State<SettingProfile> {
   void _showEditProfileDialog() {
     final nameController = TextEditingController(text: _name);
     final emailController = TextEditingController(text: _email);
+    String dialogAvatarKey = _avatarKey;
+    String? dialogAvatarPath = _avatarPath;
 
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            "Edit Profile",
-            style: TextStyle(
-              fontFamily: "Quicksand",
-              fontWeight: FontWeight.bold,
-              color: AppColors.button,
-            ),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(
-                    labelText: "Name",
-                    labelStyle: TextStyle(color: AppColors.button),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: AppColors.background),
-                    ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: AppColors.button),
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            Widget buildAvatarOption(String key, Widget child) {
+              final isSelected = dialogAvatarKey == key;
+              return GestureDetector(
+                onTap: () {
+                  setDialogState(() {
+                    dialogAvatarKey = key;
+                  });
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? AppColors.button : Colors.transparent,
+                      width: 2.5,
                     ),
                   ),
+                  padding: const EdgeInsets.all(2),
+                  child: CircleAvatar(
+                    radius: 22,
+                    backgroundColor: AppColors.background.withValues(alpha: 0.2),
+                    child: child,
+                  ),
                 ),
-                const SizedBox(height: 15),
-                TextField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    labelText: "Email",
-                    labelStyle: TextStyle(color: AppColors.button),
-                    enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: AppColors.background),
+              );
+            }
+
+            Widget buildCustomAvatarOption() {
+              final isSelected = dialogAvatarKey == 'custom';
+              final hasImage = dialogAvatarPath != null && dialogAvatarPath!.isNotEmpty;
+
+              return GestureDetector(
+                onTap: () async {
+                  try {
+                    final picker = ImagePicker();
+                    final image = await picker.pickImage(
+                      source: ImageSource.gallery,
+                      maxWidth: 512,
+                      maxHeight: 512,
+                      imageQuality: 85,
+                    );
+                    if (image != null) {
+                      setDialogState(() {
+                        dialogAvatarPath = image.path;
+                        dialogAvatarKey = 'custom';
+                      });
+                    } else if (hasImage) {
+                      setDialogState(() {
+                        dialogAvatarKey = 'custom';
+                      });
+                    }
+                  } catch (e) {
+                    debugPrint("Error picking image: $e");
+                  }
+                },
+                child: Container(
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? AppColors.button : Colors.transparent,
+                      width: 2.5,
                     ),
-                    focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: AppColors.button),
+                  ),
+                  padding: const EdgeInsets.all(2),
+                  child: CircleAvatar(
+                    radius: 22,
+                    backgroundColor: AppColors.background.withValues(alpha: 0.2),
+                    backgroundImage: hasImage
+                        ? FileImage(File(dialogAvatarPath!))
+                        : null,
+                    child: !hasImage
+                        ? Icon(
+                            Icons.add_photo_alternate_outlined,
+                            color: AppColors.button,
+                            size: 20,
+                          )
+                        : null,
+                  ),
+                ),
+              );
+            }
+
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Text(
+                L10n.tr("Edit Profile", "Ubah Profil"),
+                style: TextStyle(
+                  fontFamily: "Quicksand",
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.button,
+                ),
+              ),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(
+                        labelText: L10n.tr("Name", "Nama"),
+                        labelStyle: TextStyle(color: AppColors.button),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppColors.background),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppColors.button),
+                        ),
+                      ),
                     ),
+                    const SizedBox(height: 15),
+                    TextField(
+                      controller: emailController,
+                      keyboardType: TextInputType.emailAddress,
+                      decoration: InputDecoration(
+                        labelText: "Email",
+                        labelStyle: TextStyle(color: AppColors.button),
+                        enabledBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppColors.background),
+                        ),
+                        focusedBorder: UnderlineInputBorder(
+                          borderSide: BorderSide(color: AppColors.button),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Text(
+                      L10n.tr("Choose Avatar", "Pilih Avatar"),
+                      style: TextStyle(
+                        fontFamily: "Quicksand",
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: AppColors.button,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      alignment: WrapAlignment.center,
+                      children: [
+                        buildAvatarOption(
+                          'letter',
+                          Text(
+                            nameController.text.isNotEmpty ? nameController.text[0].toUpperCase() : "U",
+                            style: TextStyle(
+                              color: AppColors.button,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                        ),
+                        buildAvatarOption(
+                          'login',
+                          ClipOval(
+                            child: Image.asset(AppImage.mascotlogin, fit: BoxFit.cover, width: 44, height: 44),
+                          ),
+                        ),
+                        buildAvatarOption(
+                          'task',
+                          ClipOval(
+                            child: Image.asset(AppImage.mascottask, fit: BoxFit.cover, width: 44, height: 44),
+                          ),
+                        ),
+                        buildAvatarOption(
+                          'focus',
+                          ClipOval(
+                            child: Image.asset(AppImage.mascotfocus, fit: BoxFit.cover, width: 44, height: 44),
+                          ),
+                        ),
+                        buildAvatarOption(
+                          'star',
+                          ClipOval(
+                            child: Image.asset(AppImage.mascotstar, fit: BoxFit.cover, width: 44, height: 44),
+                          ),
+                        ),
+                        buildCustomAvatarOption(),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    L10n.tr("Cancel", "Batal"),
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    final name = nameController.text.trim();
+                    final email = emailController.text.trim();
+
+                    if (name.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            L10n.tr("Name cannot be empty.", "Nama tidak boleh kosong.")
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                    if (email.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            L10n.tr("Email cannot be empty.", "Email tidak boleh kosong.")
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+                    final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+                    if (!emailRegex.hasMatch(email)) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            L10n.tr("Please enter a valid email.", "Silakan masukkan email yang valid.")
+                          ),
+                        ),
+                      );
+                      return;
+                    }
+
+                    final dbHelper = DBHelper();
+                    final prefs = await SharedPreferences.getInstance();
+                    final userId = prefs.getInt('user_id') ?? 1;
+
+                    // Unique email check
+                    final isTaken = await dbHelper.isEmailRegistered(email, excludeUserId: userId);
+                    if (isTaken) {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              L10n.tr("Email is already taken by another account.", "Email sudah digunakan oleh akun lain.")
+                            ),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                      return;
+                    }
+
+                    // Retrieve current password to update profile
+                    final user = await dbHelper.getUserById(userId);
+                    final password = user?.password ?? "";
+
+                    final updatedUser = UserModelSql(
+                      id: userId,
+                      username: name,
+                      email: email,
+                      password: password,
+                    );
+
+                    final success = await dbHelper.updateUser(updatedUser);
+
+                    if (success) {
+                      await prefs.setString('user_name', name);
+                      await prefs.setString('user_email', email);
+                      await prefs.setString('user_avatar', dialogAvatarKey);
+                      if (dialogAvatarPath != null) {
+                        await prefs.setString('user_avatar_path', dialogAvatarPath!);
+                      } else {
+                        await prefs.remove('user_avatar_path');
+                      }
+
+                      setState(() {
+                        _name = name;
+                        _email = email;
+                        _avatarKey = dialogAvatarKey;
+                        _avatarPath = dialogAvatarPath;
+                      });
+
+                      // Trigger updates across tabs
+                      TaskNotifier.notify();
+
+                      if (context.mounted) {
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              L10n.tr("Profile updated successfully!", "Profil berhasil diperbarui!")
+                            ),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
+                    } else {
+                      if (context.mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              L10n.tr("Failed to update profile.", "Gagal memperbarui profil.")
+                            ),
+                            backgroundColor: Colors.redAccent,
+                          ),
+                        );
+                      }
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.button,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: Text(
+                    L10n.tr("Save", "Simpan"),
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
               ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Cancel", style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                setState(() {
-                  _name = nameController.text.trim();
-                  _email = emailController.text.trim();
-                });
-                _saveSetting('user_name', _name);
-                _saveSetting('user_email', _email);
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text("Profile updated successfully!"),
-                  ),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.button,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-              ),
-              child: const Text("Save", style: TextStyle(color: Colors.white)),
-            ),
-          ],
+            );
+          },
         );
       },
     );
@@ -295,17 +568,24 @@ class _SettingProfileState extends State<SettingProfile> {
                                   CircleAvatar(
                                     radius: 36,
                                     backgroundColor: AppColors.button,
-                                    child: Text(
-                                      _name.isNotEmpty
-                                          ? _name[0].toUpperCase()
-                                          : "U",
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 32,
-                                        fontWeight: FontWeight.bold,
-                                        fontFamily: "Quicksand",
-                                      ),
-                                    ),
+                                    backgroundImage: _avatarKey == 'custom' && _avatarPath != null && _avatarPath!.isNotEmpty
+                                        ? FileImage(File(_avatarPath!))
+                                        : (_avatarKey != 'letter' && _avatarKey.isNotEmpty
+                                            ? AssetImage(_getAvatarAssetPath(_avatarKey))
+                                            : null),
+                                    child: (_avatarKey == 'letter' || _avatarKey.isEmpty)
+                                        ? Text(
+                                            _name.isNotEmpty
+                                                ? _name[0].toUpperCase()
+                                                : "U",
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 32,
+                                              fontWeight: FontWeight.bold,
+                                              fontFamily: "Quicksand",
+                                            ),
+                                          )
+                                        : null,
                                   ),
                                   GestureDetector(
                                     onTap: _showEditProfileDialog,
@@ -859,18 +1139,28 @@ class _SettingProfileState extends State<SettingProfile> {
                       ),
                     ),
 
-                    // SizedBox(height: 20),
-                    // ElevatedButton(
-                    //   onPressed: () {
-                    //     Navigator.push(
-                    //       context,
-                    //       MaterialPageRoute(
-                    //         builder: (context) => const DatabaseViewerPage(),
-                    //       ),
-                    //     );
-                    //   },
-                    //   child: const Text("Database"),
-                    // ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                      child: TextButton.icon(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const DatabaseViewerPage(),
+                            ),
+                          );
+                        },
+                        icon: Icon(Icons.storage, color: AppColors.button),
+                        label: Text(
+                          "View Database (Temp)",
+                          style: TextStyle(
+                            color: AppColors.button,
+                            fontWeight: FontWeight.bold,
+                            fontFamily: "Quicksand",
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 40),
                   ],
                 ),

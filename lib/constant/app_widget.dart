@@ -31,7 +31,7 @@ class BgContainer extends StatelessWidget {
 class AccButton extends StatelessWidget {
   const AccButton({
     super.key,
-    required this.sign,
+    this.sign = " ",
     required this.warnaBox,
     required this.destination,
     this.leadImage,
@@ -53,12 +53,14 @@ class AccButton extends StatelessWidget {
     return SizedBox(
       // width: double.infinity,
       child: ElevatedButton(
-        onPressed: onPressed ?? () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => destination),
-          );
-        },
+        onPressed:
+            onPressed ??
+            () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => destination),
+              );
+            },
         style: ElevatedButton.styleFrom(
           backgroundColor: warnaBox,
           elevation: 0,
@@ -71,8 +73,12 @@ class AccButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (leadImage != null) ...[
-              Image.asset(leadImage!, width: 24, height: 24),
-              const SizedBox(width: 10),
+              Image.asset(
+                leadImage!,
+                width: 24,
+                height: 24,
+                alignment: AlignmentGeometry.center,
+              ),
             ],
             Text(
               sign,
@@ -220,7 +226,6 @@ class _InputFieldState extends State<InputField> {
     );
   }
 }
-
 
 // Container white
 class Container1 extends StatelessWidget {
@@ -478,7 +483,8 @@ class TaskCard extends StatelessWidget {
                 ),
                 onPressed: () {
                   TaskCard.activePomodoroTask = this;
-                  final mainState = context.findAncestorStateOfType<MainpageState>();
+                  final mainState = context
+                      .findAncestorStateOfType<MainpageState>();
                   if (mainState != null) {
                     mainState.changeTab(2);
                   } else {
