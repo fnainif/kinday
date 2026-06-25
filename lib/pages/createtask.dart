@@ -33,6 +33,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   int? selectedReminderMinutes;
   int selectedIndex = 0;
   String selectedEnergy = "low";
+  RepeatType _repeatType = RepeatType.none;
+  List<int> _selectedWeekDays = [];
+  DateTime? _finishDate;
 
   final stt.SpeechToText _speech = stt.SpeechToText();
   bool _isListeningTitle = false;
@@ -58,11 +61,19 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       await prefs.setString('draft_task_priority', selectedDropdown ?? "Mid priority");
       await prefs.setString('draft_task_energy', selectedEnergy);
       await prefs.setString('draft_task_subtasks', jsonEncode(subtasks));
+      await prefs.setString('draft_task_repeat_type', _repeatType.name);
+      await prefs.setString('draft_task_selected_weekdays', jsonEncode(_selectedWeekDays));
       
       if (selectedDate != null) {
         await prefs.setString('draft_task_due_date', selectedDate!.toIso8601String());
       } else {
         await prefs.remove('draft_task_due_date');
+      }
+
+      if (_finishDate != null) {
+        await prefs.setString('draft_task_finish_date', _finishDate!.toIso8601String());
+      } else {
+        await prefs.remove('draft_task_finish_date');
       }
 
       if (selectedTime != null) {
@@ -88,10 +99,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       await prefs.remove('draft_task_desc');
       await prefs.remove('draft_task_priority');
       await prefs.remove('draft_task_due_date');
+      await prefs.remove('draft_task_finish_date');
       await prefs.remove('draft_task_due_time');
       await prefs.remove('draft_task_reminder');
       await prefs.remove('draft_task_energy');
       await prefs.remove('draft_task_subtasks');
+      await prefs.remove('draft_task_repeat_type');
+      await prefs.remove('draft_task_selected_weekdays');
     } catch (e) {
       debugPrint("Error clearing draft: $e");
     }
@@ -183,6 +197,35 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         }
       }
       
+      final String? repeatTypeName = prefs.getString('draft_task_repeat_type');
+      if (repeatTypeName != null) {
+        _repeatType = RepeatType.values.firstWhere(
+          (e) => e.name == repeatTypeName,
+          orElse: () => RepeatType.none,
+        );
+      } else {
+        _repeatType = RepeatType.none;
+      }
+
+      final String? weekDaysJson = prefs.getString('draft_task_selected_weekdays');
+      if (weekDaysJson != null && weekDaysJson.isNotEmpty) {
+        try {
+          final List decoded = jsonDecode(weekDaysJson);
+          _selectedWeekDays = decoded.cast<int>();
+        } catch (e) {
+          debugPrint("Error restoring weekdays: $e");
+        }
+      } else {
+        _selectedWeekDays = [];
+      }
+
+      final String? finishDateStr = prefs.getString('draft_task_finish_date');
+      if (finishDateStr != null) {
+        _finishDate = DateTime.parse(finishDateStr);
+      } else {
+        _finishDate = null;
+      }
+
       final String? dueDateStr = prefs.getString('draft_task_due_date');
       if (dueDateStr != null) {
         selectedDate = DateTime.parse(dueDateStr);
@@ -691,6 +734,143 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
                         Row(
                           children: [
+                            Icon(Icons.repeat, color: AppColors.button, size: 20),
+                            const SizedBox(width: 10),
+                            const Text("Repeat"),
+                            const Spacer(),
+                            DropdownButton<RepeatType>(
+                              value: _repeatType,
+                              dropdownColor: Colors.white,
+                              style: TextStyle(color: AppColors.button),
+                              items: const [
+                                DropdownMenuItem(value: RepeatType.none, child: Text("None")),
+                                DropdownMenuItem(value: RepeatType.daily, child: Text("Every Day")),
+                                DropdownMenuItem(value: RepeatType.selectedDays, child: Text("Every Few Days")),
+                                DropdownMenuItem(value: RepeatType.weekly, child: Text("Every Week")),
+                                DropdownMenuItem(value: RepeatType.monthly, child: Text("Every Month")),
+                                DropdownMenuItem(value: RepeatType.yearly, child: Text("Every Year")),
+                              ],
+                              onChanged: (RepeatType? value) {
+                                setState(() {
+                                  _repeatType = value ?? RepeatType.none;
+                                });
+                                _autosaveDraft();
+                              },
+                            ),
+                          ],
+                        ),
+
+                        if (_repeatType == RepeatType.selectedDays) ...[
+                          const SizedBox(height: 10),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              {"label": "Mon", "value": DateTime.monday},
+                              {"label": "Tue", "value": DateTime.tuesday},
+                              {"label": "Wed", "value": DateTime.wednesday},
+                              {"label": "Thu", "value": DateTime.thursday},
+                              {"label": "Fri", "value": DateTime.friday},
+                              {"label": "Sat", "value": DateTime.saturday},
+                              {"label": "Sun", "value": DateTime.sunday},
+                            ].map((day) {
+                              final isSelected = _selectedWeekDays.contains(day["value"]);
+                              return GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    if (isSelected) {
+                                      _selectedWeekDays.remove(day["value"]);
+                                    } else {
+                                      _selectedWeekDays.add(day["value"] as int);
+                                    }
+                                  });
+                                  _autosaveDraft();
+                                },
+                                child: Container(
+                                  width: 38,
+                                  height: 38,
+                                  decoration: BoxDecoration(
+                                    color: isSelected ? AppColors.button : Colors.grey.shade200,
+                                    shape: BoxShape.circle,
+                                  ),
+                                  alignment: Alignment.center,
+                                  child: Text(
+                                    day["label"] as String,
+                                    style: TextStyle(
+                                      color: isSelected ? Colors.white : Colors.black,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+
+                        if (_repeatType != RepeatType.none) ...[
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 10.0),
+                            child: Divider(
+                              thickness: 1,
+                              color: AppColors.background,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Icon(Icons.event_busy, color: AppColors.button, size: 20),
+                              const SizedBox(width: 10),
+                              const Text("Finish Date (optional)"),
+                              const Spacer(),
+                              if (_finishDate != null)
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.clear,
+                                    color: Colors.redAccent,
+                                    size: 18,
+                                  ),
+                                  onPressed: () {
+                                    setState(() {
+                                      _finishDate = null;
+                                    });
+                                    _autosaveDraft();
+                                  },
+                                ),
+                              ElevatedButton.icon(
+                                onPressed: () async {
+                                  final DateTime? picked = await showDatePicker(
+                                    context: context,
+                                    initialDate: _finishDate ?? DateTime.now(),
+                                    firstDate: DateTime.now(),
+                                    lastDate: DateTime(2100),
+                                  );
+                                  if (picked != null) {
+                                    setState(() {
+                                      _finishDate = picked;
+                                    });
+                                    _autosaveDraft();
+                                  }
+                                },
+                                label: Text(
+                                  _finishDate == null
+                                      ? L10n.tr("Choose Date", "Pilih Tanggal")
+                                      : "${_finishDate!.day}/${_finishDate!.month}/${_finishDate!.year}",
+                                  style: TextStyle(color: AppColors.button),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 10.0),
+                          child: Divider(
+                            thickness: 1,
+                            color: AppColors.background,
+                          ),
+                        ),
+
+                        Row(
+                          children: [
                             Image.asset(
                               AppImage.iconpriority,
                               height: 20,
@@ -1037,6 +1217,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         dueTime: selectedTime?.format(context),
                         subtasks: subtasks,
                         reminderMinutes: selectedReminderMinutes,
+                        repeatType: _repeatType,
+                        selectedWeekDays: _selectedWeekDays,
+                        finishDate: _finishDate,
+                        createdAt: DateTime.now(),
                       );
 
                       final navigator = Navigator.of(context);

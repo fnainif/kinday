@@ -904,6 +904,7 @@ class _PomodoropageState extends State<Pomodoropage> {
   }
 
   void switchMode() {
+    final bool completedFocus = isFocusTime;
     setState(() {
       isFocusTime = !isFocusTime;
 
@@ -916,6 +917,21 @@ class _PomodoropageState extends State<Pomodoropage> {
       }
     });
     _schedulePomodoroNotifications();
+
+    if (completedFocus) {
+      _saveFocusSession(focusDuration ~/ 60);
+    }
+  }
+
+  Future<void> _saveFocusSession(int minutes) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id') ?? 1;
+      await DBHelper().insertFocusSession(userId, minutes);
+      TaskNotifier.notify();
+    } catch (e) {
+      debugPrint("Error saving focus session: $e");
+    }
   }
 
   void resetTimer() {

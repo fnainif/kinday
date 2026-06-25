@@ -25,7 +25,7 @@ class DBHelper {
 
     return await openDatabase(
       path,
-      version: 4,
+      version: 5,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE users(
@@ -47,7 +47,12 @@ class DBHelper {
             dueTime TEXT,
             isCompleted INTEGER,
             subtasks TEXT,
-            reminderMinutes INTEGER
+            reminderMinutes INTEGER,
+            repeatType TEXT,
+            selectedWeekDays TEXT,
+            finishDate TEXT,
+            createdAt TEXT,
+            lastOccurrenceDate TEXT
           )
         ''');
         await db.execute('''
@@ -55,6 +60,14 @@ class DBHelper {
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             userId INTEGER,
             energy INTEGER,
+            timestamp TEXT
+          )
+        ''');
+        await db.execute('''
+          CREATE TABLE focus_sessions(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            userId INTEGER,
+            durationMinutes INTEGER,
             timestamp TEXT
           )
         ''');
@@ -109,6 +122,26 @@ class DBHelper {
             await db.execute('ALTER TABLE tasks ADD COLUMN reminderMinutes INTEGER');
           } catch (e) {
             debugPrint("Error migrating database to v4: $e");
+          }
+        }
+        if (oldVersion < 5) {
+          try {
+            await db.execute('ALTER TABLE tasks ADD COLUMN repeatType TEXT');
+            await db.execute('ALTER TABLE tasks ADD COLUMN selectedWeekDays TEXT');
+            await db.execute('ALTER TABLE tasks ADD COLUMN finishDate TEXT');
+            await db.execute('ALTER TABLE tasks ADD COLUMN createdAt TEXT');
+            await db.execute('ALTER TABLE tasks ADD COLUMN lastOccurrenceDate TEXT');
+            
+            await db.execute('''
+              CREATE TABLE IF NOT EXISTS focus_sessions(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                userId INTEGER,
+                durationMinutes INTEGER,
+                timestamp TEXT
+              )
+            ''');
+          } catch (e) {
+            debugPrint("Error migrating database to v5: $e");
           }
         }
       },
@@ -225,6 +258,11 @@ class DBHelper {
       'isCompleted': task.isCompleted ? 1 : 0,
       'subtasks': jsonEncode(task.subtasks),
       'reminderMinutes': task.reminderMinutes,
+      'repeatType': task.repeatType.name,
+      'selectedWeekDays': jsonEncode(task.selectedWeekDays),
+      'finishDate': task.finishDate?.toIso8601String(),
+      'createdAt': task.createdAt.toIso8601String(),
+      'lastOccurrenceDate': task.lastOccurrenceDate?.toIso8601String(),
     };
     final id = await db.insert('tasks', map);
     return id;
@@ -255,6 +293,34 @@ class DBHelper {
         }
       }
 
+      final repeatTypeStr = map['repeatType'] as String?;
+      final repeatType = RepeatType.values.firstWhere(
+        (e) => e.name == repeatTypeStr,
+        orElse: () => RepeatType.none,
+      );
+
+      final weekDaysStr = map['selectedWeekDays'] as String?;
+      List<int> parsedWeekDays = [];
+      if (weekDaysStr != null && weekDaysStr.isNotEmpty) {
+        try {
+          final decoded = jsonDecode(weekDaysStr);
+          if (decoded is List) {
+            parsedWeekDays = decoded.cast<int>();
+          }
+        } catch (e) {
+          debugPrint("Error parsing selectedWeekDays: $e");
+        }
+      }
+
+      final finishDateStr = map['finishDate'] as String?;
+      final finishDate = finishDateStr != null ? DateTime.parse(finishDateStr) : null;
+
+      final createdAtStr = map['createdAt'] as String?;
+      final createdAt = createdAtStr != null ? DateTime.parse(createdAtStr) : DateTime.now();
+
+      final lastOccurStr = map['lastOccurrenceDate'] as String?;
+      final lastOccur = lastOccurStr != null ? DateTime.parse(lastOccurStr) : null;
+
       return TaskCard(
         id: map['id'] as int?,
         title: map['title'] as String,
@@ -266,6 +332,11 @@ class DBHelper {
         isCompleted: (map['isCompleted'] as int) == 1,
         subtasks: parsedSubtasks,
         reminderMinutes: map['reminderMinutes'] as int?,
+        repeatType: repeatType,
+        selectedWeekDays: parsedWeekDays,
+        finishDate: finishDate,
+        createdAt: createdAt,
+        lastOccurrenceDate: lastOccur,
       );
     }).toList();
   }
@@ -283,6 +354,11 @@ class DBHelper {
       'isCompleted': task.isCompleted ? 1 : 0,
       'subtasks': jsonEncode(task.subtasks),
       'reminderMinutes': task.reminderMinutes,
+      'repeatType': task.repeatType.name,
+      'selectedWeekDays': jsonEncode(task.selectedWeekDays),
+      'finishDate': task.finishDate?.toIso8601String(),
+      'createdAt': task.createdAt.toIso8601String(),
+      'lastOccurrenceDate': task.lastOccurrenceDate?.toIso8601String(),
     };
 
     int count = await db.update(
@@ -298,6 +374,33 @@ class DBHelper {
     final db = await database;
     int count = await db.delete('tasks', where: 'id = ?', whereArgs: [id]);
     return count > 0;
+  }
+
+  // --- Focus Session Operations ---
+
+  Future<int> insertFocusSession(int userId, int durationMinutes) async {
+    final db = await database;
+    final map = {
+      'userId': userId,
+      'durationMinutes': durationMinutes,
+      'timestamp': DateTime.now().toIso8601String(),
+    };
+    return await db.insert('focus_sessions', map);
+  }
+
+  Future<int> getTotalFocusMinutesForUser(int userId) async {
+    final db = await database;
+    final List<Map<String, dynamic>> results = await db.query(
+      'focus_sessions',
+      columns: ['durationMinutes'],
+      where: 'userId = ?',
+      whereArgs: [userId],
+    );
+    int total = 0;
+    for (var row in results) {
+      total += (row['durationMinutes'] as int? ?? 0);
+    }
+    return total;
   }
 
   // --- Energy Log Operations ---

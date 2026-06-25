@@ -8,6 +8,7 @@ import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/constant/task_notifier.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/notification_helper.dart';
+import 'package:kinday/pages/service/repeat_task_service.dart';
 import 'package:kinday/widgets/speech_mic_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -41,7 +42,40 @@ class _TasklistpageState extends State<Tasklistpage> {
   Future<void> _loadTasks() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('user_id') ?? 1;
-    final dbTasks = await DBHelper().getTasksForUser(userId);
+    var dbTasks = await DBHelper().getTasksForUser(userId);
+    
+    // Check and reset repeatable tasks for new day
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    bool anyUpdated = false;
+    
+    for (var task in dbTasks) {
+      if (task.repeatType != RepeatType.none) {
+        final lastOccur = task.lastOccurrenceDate;
+        if (lastOccur == null) {
+          task.lastOccurrenceDate = now;
+          await DBHelper().updateTask(task);
+          anyUpdated = true;
+        } else {
+          final lastOccurDay = DateTime(lastOccur.year, lastOccur.month, lastOccur.day);
+          if (lastOccurDay.isBefore(todayStart)) {
+            task.isCompleted = false;
+            for (var sub in task.subtasks) {
+              sub['isDone'] = false;
+              sub['isCompleted'] = false;
+            }
+            task.lastOccurrenceDate = now;
+            await DBHelper().updateTask(task);
+            anyUpdated = true;
+          }
+        }
+      }
+    }
+    
+    if (anyUpdated) {
+      dbTasks = await DBHelper().getTasksForUser(userId);
+    }
+
     final latestEnergy = await DBHelper().getLatestEnergyForUser(userId);
     setState(() {
       _tasks = dbTasks;
@@ -63,6 +97,9 @@ class _TasklistpageState extends State<Tasklistpage> {
       task.subtasks.map((e) => Map<String, dynamic>.from(e)),
     );
     final newSubtaskController = TextEditingController();
+    RepeatType tempRepeatType = task.repeatType;
+    List<int> tempSelectedWeekDays = List.from(task.selectedWeekDays);
+    DateTime? tempFinishDate = task.finishDate;
 
     final stt.SpeechToText speech = stt.SpeechToText();
     bool isListeningTitle = false;
@@ -601,6 +638,147 @@ class _TasklistpageState extends State<Tasklistpage> {
                         ),
                       ],
                       const SizedBox(height: 16),
+                      // Repeat configuration
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            "Repeat",
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          DropdownButton<RepeatType>(
+                            value: tempRepeatType,
+                            dropdownColor: Colors.white,
+                            style: TextStyle(color: AppColors.button),
+                            items: const [
+                              DropdownMenuItem(value: RepeatType.none, child: Text("None")),
+                              DropdownMenuItem(value: RepeatType.daily, child: Text("Every Day")),
+                              DropdownMenuItem(value: RepeatType.selectedDays, child: Text("Every Few Days")),
+                              DropdownMenuItem(value: RepeatType.weekly, child: Text("Every Week")),
+                              DropdownMenuItem(value: RepeatType.monthly, child: Text("Every Month")),
+                              DropdownMenuItem(value: RepeatType.yearly, child: Text("Every Year")),
+                            ],
+                            onChanged: (RepeatType? value) {
+                              setModalState(() {
+                                tempRepeatType = value ?? RepeatType.none;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      if (tempRepeatType == RepeatType.selectedDays) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            {"label": "Mon", "value": DateTime.monday},
+                            {"label": "Tue", "value": DateTime.tuesday},
+                            {"label": "Wed", "value": DateTime.wednesday},
+                            {"label": "Thu", "value": DateTime.thursday},
+                            {"label": "Fri", "value": DateTime.friday},
+                            {"label": "Sat", "value": DateTime.saturday},
+                            {"label": "Sun", "value": DateTime.sunday},
+                          ].map((day) {
+                            final isSelected = tempSelectedWeekDays.contains(day["value"]);
+                            return GestureDetector(
+                              onTap: () {
+                                setModalState(() {
+                                  if (isSelected) {
+                                    tempSelectedWeekDays.remove(day["value"]);
+                                  } else {
+                                    tempSelectedWeekDays.add(day["value"] as int);
+                                  }
+                                });
+                              },
+                              child: Container(
+                                width: 38,
+                                height: 38,
+                                decoration: BoxDecoration(
+                                  color: isSelected ? AppColors.button : Colors.grey.shade200,
+                                  shape: BoxShape.circle,
+                                ),
+                                alignment: Alignment.center,
+                                child: Text(
+                                  day["label"] as String,
+                                  style: TextStyle(
+                                    color: isSelected ? Colors.white : Colors.black,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                      ],
+                      if (tempRepeatType != RepeatType.none) ...[
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              "Finish Date",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                if (tempFinishDate != null)
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      color: Colors.redAccent,
+                                      size: 20,
+                                    ),
+                                    onPressed: () {
+                                      setModalState(() {
+                                        tempFinishDate = null;
+                                      });
+                                    },
+                                  ),
+                                ElevatedButton.icon(
+                                  onPressed: () async {
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      initialDate: tempFinishDate ?? DateTime.now(),
+                                      firstDate: DateTime.now(),
+                                      lastDate: DateTime(2100),
+                                    );
+                                    if (picked != null) {
+                                      setModalState(() {
+                                        tempFinishDate = picked;
+                                      });
+                                    }
+                                  },
+                                  icon: const Icon(
+                                    Icons.event_busy,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                  label: Text(
+                                    tempFinishDate == null
+                                        ? L10n.tr("Choose Date", "Pilih Tanggal")
+                                        : "${tempFinishDate!.day}/${tempFinishDate!.month}/${tempFinishDate!.year}",
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.button,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                      const SizedBox(height: 16),
                       // Energy Level Selection
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -909,6 +1087,9 @@ class _TasklistpageState extends State<Tasklistpage> {
                                   task.reminderMinutes = tempDueDate != null
                                       ? tempReminderMinutes
                                       : null;
+                                  task.repeatType = tempRepeatType;
+                                  task.selectedWeekDays = tempSelectedWeekDays;
+                                  task.finishDate = tempFinishDate;
                                 });
                                 await DBHelper().updateTask(task);
                                 await _loadTasks();
@@ -1090,7 +1271,12 @@ class EnergyLevelView extends StatelessWidget {
       return null;
     }
 
-    final activeTasks = tasks.where((t) => !t.isCompleted).toList();
+    final activeTasks = tasks
+        .where((t) =>
+            !t.isCompleted &&
+            (t.repeatType == RepeatType.none ||
+                RepeatTaskService.shouldShowTaskOnDate(t, DateTime.now())))
+        .toList();
     final recommendedTasks = activeTasks
         .where((t) => t.energylvl <= userEnergy)
         .toList();
@@ -1269,18 +1455,21 @@ class DueDateView extends StatelessWidget {
     final activeTasks = tasks.where((t) => !t.isCompleted).toList();
 
     final todayTasks = activeTasks.where((t) {
-      if (t.dueDate == null) return false;
-      final d = DateTime(t.dueDate!.year, t.dueDate!.month, t.dueDate!.day);
-      return d.isAtSameMomentAs(todayDate);
+      return RepeatTaskService.shouldShowTaskOnDate(t, todayDate);
     }).toList();
 
     final tomorrowTasks = activeTasks.where((t) {
-      if (t.dueDate == null) return false;
-      final d = DateTime(t.dueDate!.year, t.dueDate!.month, t.dueDate!.day);
-      return d.isAtSameMomentAs(tomorrowDate);
+      return RepeatTaskService.shouldShowTaskOnDate(t, tomorrowDate);
     }).toList();
 
     final upcomingTasks = activeTasks.where((t) {
+      if (t.repeatType != RepeatType.none) {
+        if (t.finishDate != null) {
+          final finishDay = DateTime(t.finishDate!.year, t.finishDate!.month, t.finishDate!.day);
+          return finishDay.isAfter(tomorrowDate);
+        }
+        return true;
+      }
       if (t.dueDate == null) return true;
       final d = DateTime(t.dueDate!.year, t.dueDate!.month, t.dueDate!.day);
       return d.isAfter(tomorrowDate);
@@ -1437,7 +1626,12 @@ class PriorityView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final activeTasks = tasks.where((t) => !t.isCompleted).toList();
+    final activeTasks = tasks
+        .where((t) =>
+            !t.isCompleted &&
+            (t.repeatType == RepeatType.none ||
+                RepeatTaskService.shouldShowTaskOnDate(t, DateTime.now())))
+        .toList();
     final highPriority = activeTasks.where((t) => t.prioritytask == 3).toList();
     final midPriority = activeTasks.where((t) => t.prioritytask == 2).toList();
     final lowPriority = activeTasks

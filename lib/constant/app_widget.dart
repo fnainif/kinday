@@ -338,6 +338,15 @@ class EnergyIndicator extends StatelessWidget {
   }
 }
 
+enum RepeatType {
+  none,
+  daily,
+  selectedDays,
+  weekly,
+  monthly,
+  yearly,
+}
+
 // ignore: must_be_immutable
 class TaskCard extends StatelessWidget {
   TaskCard({
@@ -355,7 +364,14 @@ class TaskCard extends StatelessWidget {
     this.maxlinestitle = 2,
     this.reminderMinutes,
     List<Map<String, dynamic>>? subtasks,
-  }) : subtasks = subtasks ?? [];
+    this.repeatType = RepeatType.none,
+    List<int>? selectedWeekDays,
+    this.finishDate,
+    DateTime? createdAt,
+    this.lastOccurrenceDate,
+  }) : subtasks = subtasks ?? [],
+       selectedWeekDays = selectedWeekDays ?? [],
+       createdAt = createdAt ?? DateTime.now();
 
   static TaskCard? activePomodoroTask;
 
@@ -372,6 +388,11 @@ class TaskCard extends StatelessWidget {
   int maxlinestitle;
   int? reminderMinutes;
   List<Map<String, dynamic>> subtasks;
+  RepeatType repeatType;
+  List<int> selectedWeekDays;
+  DateTime? finishDate;
+  DateTime createdAt;
+  DateTime? lastOccurrenceDate;
 
   String get _energyLabel {
     switch (energylvl) {

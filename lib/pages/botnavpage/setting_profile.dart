@@ -38,6 +38,11 @@ class _SettingProfileState extends State<SettingProfile> {
   String _aiBreakdownLevel = "Balanced";
   final String _lastBackupTime = "Never";
 
+  // Statistics states
+  int _completedTasksCount = 0;
+  int _streakDays = 0;
+  int _totalFocusMinutes = 0;
+
   // Loading state
   bool _isLoading = true;
 
@@ -46,6 +51,13 @@ class _SettingProfileState extends State<SettingProfile> {
     super.initState();
     _clickBackupText();
     _loadSettings();
+    TaskNotifier.taskUpdated.addListener(_loadSettings);
+  }
+
+  @override
+  void dispose() {
+    TaskNotifier.taskUpdated.removeListener(_loadSettings);
+    super.dispose();
   }
 
   void _clickBackupText() {
@@ -70,6 +82,18 @@ class _SettingProfileState extends State<SettingProfile> {
   Future<void> _loadSettings() async {
     try {
       final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id') ?? 1;
+
+      final dbTasks = await DBHelper().getTasksForUser(userId);
+      final completedCount = dbTasks.where((t) => t.isCompleted).length;
+
+      // Calculate streak
+      final creationDays = dbTasks.map((t) => t.createdAt).toList();
+      final streak = _calculateStreak(creationDays);
+
+      // Get focus time
+      final totalFocus = await DBHelper().getTotalFocusMinutesForUser(userId);
+
       setState(() {
         _name = prefs.getString('user_name') ?? "User";
         _email = prefs.getString('user_email') ?? "user@kinday.com";
@@ -79,6 +103,11 @@ class _SettingProfileState extends State<SettingProfile> {
         _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
         _currentTheme = prefs.getString('app_theme') ?? "Lavender Dreams";
         _aiBreakdownLevel = prefs.getString('ai_breakdown_level') ?? "Balanced";
+
+        _completedTasksCount = completedCount;
+        _streakDays = streak;
+        _totalFocusMinutes = totalFocus;
+
         _isLoading = false;
       });
     } catch (e) {
@@ -86,6 +115,43 @@ class _SettingProfileState extends State<SettingProfile> {
       setState(() {
         _isLoading = false;
       });
+    }
+  }
+
+  int _calculateStreak(List<DateTime> creationDays) {
+    if (creationDays.isEmpty) return 0;
+    
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    
+    final uniqueDays = creationDays.map((d) => DateTime(d.year, d.month, d.day)).toSet();
+    
+    if (!uniqueDays.contains(today) && !uniqueDays.contains(yesterday)) {
+      return 0;
+    }
+    
+    DateTime checkDay = uniqueDays.contains(today) ? today : yesterday;
+    int streak = 0;
+    
+    while (uniqueDays.contains(checkDay)) {
+      streak++;
+      checkDay = checkDay.subtract(const Duration(days: 1));
+    }
+    
+    return streak;
+  }
+
+  String _formatFocusTime(int totalMinutes) {
+    if (totalMinutes < 60) {
+      return "$totalMinutes min";
+    } else {
+      final hours = totalMinutes ~/ 60;
+      final mins = totalMinutes % 60;
+      if (mins == 0) {
+        return "${hours}h";
+      }
+      return "${hours}h ${mins}m";
     }
   }
 
@@ -648,7 +714,7 @@ class _SettingProfileState extends State<SettingProfile> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _buildStatItem("12", "Completed"),
+                              _buildStatItem("$_completedTasksCount", "Completed"),
                               Container(
                                 width: 1,
                                 height: 30,
@@ -656,7 +722,7 @@ class _SettingProfileState extends State<SettingProfile> {
                                   alpha: 0.5,
                                 ),
                               ),
-                              _buildStatItem("5 Days", "Streak"),
+                              _buildStatItem("$_streakDays Days", "Streak"),
                               Container(
                                 width: 1,
                                 height: 30,
@@ -664,8 +730,40 @@ class _SettingProfileState extends State<SettingProfile> {
                                   alpha: 0.5,
                                 ),
                               ),
-                              _buildStatItem("120m", "Focus Time"),
+                              _buildStatItem(_formatFocusTime(_totalFocusMinutes), "Focus Time"),
                             ],
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    _buildSectionHeader("Statistics"),
+                    Container1(
+                      width: double.infinity,
+                      child: Column(
+                        children: [
+                          _buildStatRow(
+                            icon: Icons.check_circle_outline,
+                            label: "Completed Tasks",
+                            value: "$_completedTasksCount",
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Divider(height: 1, color: Colors.grey.shade200),
+                          ),
+                          _buildStatRow(
+                            icon: Icons.local_fire_department_outlined,
+                            label: "Current Streak",
+                            value: "$_streakDays days",
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: Divider(height: 1, color: Colors.grey.shade200),
+                          ),
+                          _buildStatRow(
+                            icon: Icons.timer_outlined,
+                            label: "Focus Time",
+                            value: _formatFocusTime(_totalFocusMinutes),
                           ),
                         ],
                       ),
@@ -1194,6 +1292,41 @@ class _SettingProfileState extends State<SettingProfile> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildStatRow({
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4.0),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.button, size: 22),
+          const SizedBox(width: 12),
+          Text(
+            label,
+            style: TextStyle(
+              fontFamily: "Quicksand",
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: AppColors.button,
+            ),
+          ),
+          const Spacer(),
+          Text(
+            value,
+            style: const TextStyle(
+              fontFamily: "Nunito",
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
