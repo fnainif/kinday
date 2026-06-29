@@ -382,14 +382,18 @@ class _PomodoropageState extends State<Pomodoropage> {
                                 size: 18,
                               ),
                               onPressed: () {
-                                final editController = TextEditingController(text: sub["title"]);
+                                final editController = TextEditingController(
+                                  text: sub["title"],
+                                );
                                 showDialog(
                                   context: context,
                                   builder: (context) => AlertDialog(
                                     title: const Text("Edit Subtask"),
                                     content: TextField(
                                       controller: editController,
-                                      decoration: const InputDecoration(hintText: "Edit subtask title"),
+                                      decoration: const InputDecoration(
+                                        hintText: "Edit subtask title",
+                                      ),
                                       autofocus: true,
                                     ),
                                     actions: [
@@ -399,13 +403,16 @@ class _PomodoropageState extends State<Pomodoropage> {
                                       ),
                                       ElevatedButton(
                                         onPressed: () async {
-                                          final text = editController.text.trim();
+                                          final text = editController.text
+                                              .trim();
                                           if (text.isNotEmpty) {
                                             setState(() {
                                               sub["title"] = text;
                                             });
                                             if (activeTask != null) {
-                                              await DBHelper().updateTask(activeTask!);
+                                              await DBHelper().updateTask(
+                                                activeTask!,
+                                              );
                                             }
                                             setSubtaskState(() {});
                                           }
@@ -699,9 +706,10 @@ class _PomodoropageState extends State<Pomodoropage> {
                       child: Center(
                         child: Text(
                           taskName,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
+                            color: AppColors.normaltext,
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -743,9 +751,10 @@ class _PomodoropageState extends State<Pomodoropage> {
                       top: 50,
                       child: Text(
                         isFocusTime ? "Focus Time" : "Break Time",
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w600,
+                          color: AppColors.normaltext,
                         ),
                       ),
                     ),
@@ -754,9 +763,10 @@ class _PomodoropageState extends State<Pomodoropage> {
                       top: 75,
                       child: Text(
                         formatTime(),
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 52,
                           fontWeight: FontWeight.bold,
+                          color: AppColors.normaltext,
                         ),
                       ),
                     ),

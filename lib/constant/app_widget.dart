@@ -17,7 +17,7 @@ class BgContainer extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [AppColors.background, Colors.white],
+          colors: [AppColors.background, AppColors.background2],
         ),
       ),
       // height: double.infinity,
@@ -338,14 +338,7 @@ class EnergyIndicator extends StatelessWidget {
   }
 }
 
-enum RepeatType {
-  none,
-  daily,
-  selectedDays,
-  weekly,
-  monthly,
-  yearly,
-}
+enum RepeatType { none, daily, selectedDays, weekly, monthly, yearly }
 
 // ignore: must_be_immutable
 class TaskCard extends StatelessWidget {

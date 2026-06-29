@@ -33,7 +33,8 @@ class MainpageState extends State<Mainpage> {
     setState(() {
       selectedIndex = index;
     });
-    final CurvedNavigationBarState? navBarState = _bottomNavigationKey.currentState;
+    final CurvedNavigationBarState? navBarState =
+        _bottomNavigationKey.currentState;
     navBarState?.setPage(index);
   }
 
@@ -50,6 +51,7 @@ class MainpageState extends State<Mainpage> {
     return Scaffold(
       body: pages[selectedIndex],
       bottomNavigationBar: CurvedNavigationBar(
+        color: AppColors.background2,
         key: _bottomNavigationKey,
         index: selectedIndex,
         backgroundColor: AppColors.button,

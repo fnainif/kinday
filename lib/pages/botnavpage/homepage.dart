@@ -66,7 +66,9 @@ class _HomepageState extends State<Homepage> {
     final activeTasks = userTasks.where((t) => !t.isCompleted).toList();
     TaskCard? suggested;
     final userEnergy = latestEnergy ?? 3;
-    final filteredTasks = activeTasks.where((t) => t.energylvl <= userEnergy).toList();
+    final filteredTasks = activeTasks
+        .where((t) => t.energylvl <= userEnergy)
+        .toList();
 
     if (filteredTasks.isNotEmpty) {
       filteredTasks.sort((a, b) {
@@ -169,10 +171,7 @@ class _HomepageState extends State<Homepage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        "Good Morning,",
-                        style: AppTextStyles.greeting,
-                      ),
+                      Text("Good Morning,", style: AppTextStyles.greeting),
                       Transform.translate(
                         offset: const Offset(0, -10),
                         child: Text(_name, style: AppTextStyles.username),
@@ -226,7 +225,10 @@ class _HomepageState extends State<Homepage> {
                               ),
                               Text(
                                 _lastUpdated,
-                                style: const TextStyle(fontSize: 10),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.button,
+                                ),
                               ),
                             ],
                           ),
@@ -354,15 +356,22 @@ class _HomepageState extends State<Homepage> {
                                 color: AppColors.containerline2,
                               ),
                             ),
-                            child: const Center(
+                            child: Center(
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(Icons.star_border, size: 15),
+                                  Icon(
+                                    Icons.star_border,
+                                    size: 15,
+                                    color: AppColors.normaltext,
+                                  ),
                                   SizedBox(width: 10),
                                   Text(
                                     "Suggested for now",
-                                    style: TextStyle(fontSize: 12),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.normaltext,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -392,6 +401,9 @@ class _HomepageState extends State<Homepage> {
                                       _suggestedTask?.description ??
                                           "No description",
                                       maxLines: 1,
+                                      style: TextStyle(
+                                        color: AppColors.normaltext,
+                                      ),
                                     ),
                                     if (_suggestedTask != null) ...[
                                       const SizedBox(height: 8),
@@ -479,9 +491,10 @@ class _HomepageState extends State<Homepage> {
                                 }
                               } else {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
+                                  SnackBar(
                                     content: Text(
                                       "No suggested task available.",
+                                      style: TextStyle(color: AppColors.button),
                                     ),
                                   ),
                                 );
@@ -538,6 +551,7 @@ class _HomepageState extends State<Homepage> {
                                 ),
                                 Text(
                                   "$_completedTasksCount out of $_totalTasks tasks completed",
+                                  style: TextStyle(color: AppColors.normaltext),
                                 ),
                               ],
                             ),
@@ -564,9 +578,7 @@ class _HomepageState extends State<Homepage> {
                             style: const TextStyle(color: Color(0xFF5852A0)),
                             decoration: InputDecoration(
                               hintText: "Let AI break down your task",
-                              hintStyle: TextStyle(
-                                color: AppColors.background,
-                              ),
+                              hintStyle: TextStyle(color: AppColors.background),
 
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),

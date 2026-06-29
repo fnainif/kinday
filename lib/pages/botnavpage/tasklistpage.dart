@@ -43,12 +43,12 @@ class _TasklistpageState extends State<Tasklistpage> {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('user_id') ?? 1;
     var dbTasks = await DBHelper().getTasksForUser(userId);
-    
+
     // Check and reset repeatable tasks for new day
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
     bool anyUpdated = false;
-    
+
     for (var task in dbTasks) {
       if (task.repeatType != RepeatType.none) {
         final lastOccur = task.lastOccurrenceDate;
@@ -57,7 +57,11 @@ class _TasklistpageState extends State<Tasklistpage> {
           await DBHelper().updateTask(task);
           anyUpdated = true;
         } else {
-          final lastOccurDay = DateTime(lastOccur.year, lastOccur.month, lastOccur.day);
+          final lastOccurDay = DateTime(
+            lastOccur.year,
+            lastOccur.month,
+            lastOccur.day,
+          );
           if (lastOccurDay.isBefore(todayStart)) {
             task.isCompleted = false;
             for (var sub in task.subtasks) {
@@ -71,7 +75,7 @@ class _TasklistpageState extends State<Tasklistpage> {
         }
       }
     }
-    
+
     if (anyUpdated) {
       dbTasks = await DBHelper().getTasksForUser(userId);
     }
@@ -293,14 +297,20 @@ class _TasklistpageState extends State<Tasklistpage> {
                                       ),
                                     ),
                                     content: Text(
-                                        L10n.tr("Are you sure you want to delete this task?", "Apakah Anda yakin ingin menghapus tugas ini?")),
+                                      L10n.tr(
+                                        "Are you sure you want to delete this task?",
+                                        "Apakah Anda yakin ingin menghapus tugas ini?",
+                                      ),
+                                    ),
                                     actions: [
                                       TextButton(
                                         onPressed: () =>
                                             Navigator.pop(context, false),
                                         child: Text(
                                           L10n.tr("Cancel", "Batal"),
-                                          style: const TextStyle(color: Colors.grey),
+                                          style: const TextStyle(
+                                            color: Colors.grey,
+                                          ),
                                         ),
                                       ),
                                       ElevatedButton(
@@ -309,13 +319,16 @@ class _TasklistpageState extends State<Tasklistpage> {
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: Colors.redAccent,
                                           shape: RoundedRectangleBorder(
-                                            borderRadius:
-                                                BorderRadius.circular(20),
+                                            borderRadius: BorderRadius.circular(
+                                              20,
+                                            ),
                                           ),
                                         ),
                                         child: Text(
                                           L10n.tr("Delete", "Hapus"),
-                                          style: const TextStyle(color: Colors.white),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -654,12 +667,30 @@ class _TasklistpageState extends State<Tasklistpage> {
                             dropdownColor: Colors.white,
                             style: TextStyle(color: AppColors.button),
                             items: const [
-                              DropdownMenuItem(value: RepeatType.none, child: Text("None")),
-                              DropdownMenuItem(value: RepeatType.daily, child: Text("Every Day")),
-                              DropdownMenuItem(value: RepeatType.selectedDays, child: Text("Every Few Days")),
-                              DropdownMenuItem(value: RepeatType.weekly, child: Text("Every Week")),
-                              DropdownMenuItem(value: RepeatType.monthly, child: Text("Every Month")),
-                              DropdownMenuItem(value: RepeatType.yearly, child: Text("Every Year")),
+                              DropdownMenuItem(
+                                value: RepeatType.none,
+                                child: Text("None"),
+                              ),
+                              DropdownMenuItem(
+                                value: RepeatType.daily,
+                                child: Text("Every Day"),
+                              ),
+                              DropdownMenuItem(
+                                value: RepeatType.selectedDays,
+                                child: Text("Every Few Days"),
+                              ),
+                              DropdownMenuItem(
+                                value: RepeatType.weekly,
+                                child: Text("Every Week"),
+                              ),
+                              DropdownMenuItem(
+                                value: RepeatType.monthly,
+                                child: Text("Every Month"),
+                              ),
+                              DropdownMenuItem(
+                                value: RepeatType.yearly,
+                                child: Text("Every Year"),
+                              ),
                             ],
                             onChanged: (RepeatType? value) {
                               setModalState(() {
@@ -673,45 +704,55 @@ class _TasklistpageState extends State<Tasklistpage> {
                         const SizedBox(height: 12),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            {"label": "Mon", "value": DateTime.monday},
-                            {"label": "Tue", "value": DateTime.tuesday},
-                            {"label": "Wed", "value": DateTime.wednesday},
-                            {"label": "Thu", "value": DateTime.thursday},
-                            {"label": "Fri", "value": DateTime.friday},
-                            {"label": "Sat", "value": DateTime.saturday},
-                            {"label": "Sun", "value": DateTime.sunday},
-                          ].map((day) {
-                            final isSelected = tempSelectedWeekDays.contains(day["value"]);
-                            return GestureDetector(
-                              onTap: () {
-                                setModalState(() {
-                                  if (isSelected) {
-                                    tempSelectedWeekDays.remove(day["value"]);
-                                  } else {
-                                    tempSelectedWeekDays.add(day["value"] as int);
-                                  }
-                                });
-                              },
-                              child: Container(
-                                width: 38,
-                                height: 38,
-                                decoration: BoxDecoration(
-                                  color: isSelected ? AppColors.button : Colors.grey.shade200,
-                                  shape: BoxShape.circle,
-                                ),
-                                alignment: Alignment.center,
-                                child: Text(
-                                  day["label"] as String,
-                                  style: TextStyle(
-                                    color: isSelected ? Colors.white : Colors.black,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
+                          children:
+                              [
+                                {"label": "Mon", "value": DateTime.monday},
+                                {"label": "Tue", "value": DateTime.tuesday},
+                                {"label": "Wed", "value": DateTime.wednesday},
+                                {"label": "Thu", "value": DateTime.thursday},
+                                {"label": "Fri", "value": DateTime.friday},
+                                {"label": "Sat", "value": DateTime.saturday},
+                                {"label": "Sun", "value": DateTime.sunday},
+                              ].map((day) {
+                                final isSelected = tempSelectedWeekDays
+                                    .contains(day["value"]);
+                                return GestureDetector(
+                                  onTap: () {
+                                    setModalState(() {
+                                      if (isSelected) {
+                                        tempSelectedWeekDays.remove(
+                                          day["value"],
+                                        );
+                                      } else {
+                                        tempSelectedWeekDays.add(
+                                          day["value"] as int,
+                                        );
+                                      }
+                                    });
+                                  },
+                                  child: Container(
+                                    width: 38,
+                                    height: 38,
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? AppColors.button
+                                          : Colors.grey.shade200,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      day["label"] as String,
+                                      style: TextStyle(
+                                        color: isSelected
+                                            ? Colors.white
+                                            : Colors.black,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ),
-                            );
-                          }).toList(),
+                                );
+                              }).toList(),
                         ),
                       ],
                       if (tempRepeatType != RepeatType.none) ...[
@@ -745,7 +786,8 @@ class _TasklistpageState extends State<Tasklistpage> {
                                   onPressed: () async {
                                     final picked = await showDatePicker(
                                       context: context,
-                                      initialDate: tempFinishDate ?? DateTime.now(),
+                                      initialDate:
+                                          tempFinishDate ?? DateTime.now(),
                                       firstDate: DateTime.now(),
                                       lastDate: DateTime(2100),
                                     );
@@ -762,7 +804,10 @@ class _TasklistpageState extends State<Tasklistpage> {
                                   ),
                                   label: Text(
                                     tempFinishDate == null
-                                        ? L10n.tr("Choose Date", "Pilih Tanggal")
+                                        ? L10n.tr(
+                                            "Choose Date",
+                                            "Pilih Tanggal",
+                                          )
                                         : "${tempFinishDate!.day}/${tempFinishDate!.month}/${tempFinishDate!.year}",
                                     style: const TextStyle(color: Colors.white),
                                   ),
@@ -786,7 +831,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text(
+                              Text(
                                 "Energy Level",
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
@@ -953,7 +998,9 @@ class _TasklistpageState extends State<Tasklistpage> {
                             itemBuilder: (context, index) {
                               final sub = tempSubtasks[index];
                               return ListTile(
-                                key: ValueKey((sub["title"] ?? "") + index.toString()),
+                                key: ValueKey(
+                                  (sub["title"] ?? "") + index.toString(),
+                                ),
                                 contentPadding: EdgeInsets.zero,
                                 leading: Checkbox(
                                   activeColor: AppColors.button,
@@ -984,24 +1031,32 @@ class _TasklistpageState extends State<Tasklistpage> {
                                         size: 20,
                                       ),
                                       onPressed: () {
-                                        final editController = TextEditingController(text: sub["title"]);
+                                        final editController =
+                                            TextEditingController(
+                                              text: sub["title"],
+                                            );
                                         showDialog(
                                           context: context,
                                           builder: (context) => AlertDialog(
                                             title: const Text("Edit Subtask"),
                                             content: TextField(
                                               controller: editController,
-                                              decoration: const InputDecoration(hintText: "Edit subtask title"),
+                                              decoration: const InputDecoration(
+                                                hintText: "Edit subtask title",
+                                              ),
                                               autofocus: true,
                                             ),
                                             actions: [
                                               TextButton(
-                                                onPressed: () => Navigator.pop(context),
+                                                onPressed: () =>
+                                                    Navigator.pop(context),
                                                 child: const Text("Cancel"),
                                               ),
                                               ElevatedButton(
                                                 onPressed: () {
-                                                  final text = editController.text.trim();
+                                                  final text = editController
+                                                      .text
+                                                      .trim();
                                                   if (text.isNotEmpty) {
                                                     setModalState(() {
                                                       sub["title"] = text;
@@ -1031,8 +1086,14 @@ class _TasklistpageState extends State<Tasklistpage> {
                                     ReorderableDragStartListener(
                                       index: index,
                                       child: const Padding(
-                                        padding: EdgeInsets.symmetric(horizontal: 8.0),
-                                        child: Icon(Icons.drag_handle, color: Colors.grey, size: 20),
+                                        padding: EdgeInsets.symmetric(
+                                          horizontal: 8.0,
+                                        ),
+                                        child: Icon(
+                                          Icons.drag_handle,
+                                          color: Colors.grey,
+                                          size: 20,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -1272,10 +1333,12 @@ class EnergyLevelView extends StatelessWidget {
     }
 
     final activeTasks = tasks
-        .where((t) =>
-            !t.isCompleted &&
-            (t.repeatType == RepeatType.none ||
-                RepeatTaskService.shouldShowTaskOnDate(t, DateTime.now())))
+        .where(
+          (t) =>
+              !t.isCompleted &&
+              (t.repeatType == RepeatType.none ||
+                  RepeatTaskService.shouldShowTaskOnDate(t, DateTime.now())),
+        )
         .toList();
     final recommendedTasks = activeTasks
         .where((t) => t.energylvl <= userEnergy)
@@ -1353,7 +1416,10 @@ class EnergyLevelView extends StatelessWidget {
                 child: Row(
                   children: [
                     if (recommendedTasks.isEmpty)
-                      const Text("Tidak ada tugas")
+                      Text(
+                        "Tidak ada tugas",
+                        style: TextStyle(color: AppColors.normaltext),
+                      )
                     else
                       ...recommendedTasks.map(buildTaskCard),
                   ],
@@ -1387,7 +1453,10 @@ class EnergyLevelView extends StatelessWidget {
                 child: Row(
                   children: [
                     if (lowEnergyTasks.isEmpty)
-                      const Text("Tidak ada tugas")
+                      Text(
+                        "Tidak ada tugas",
+                        style: TextStyle(color: AppColors.normaltext),
+                      )
                     else
                       ...lowEnergyTasks.map(buildTaskCard),
                   ],
@@ -1425,7 +1494,10 @@ class EnergyLevelView extends StatelessWidget {
                 child: Row(
                   children: [
                     if (highFocusTasks.isEmpty)
-                      const Text("Tidak ada tugas")
+                      Text(
+                        "Tidak ada tugas",
+                        style: TextStyle(color: AppColors.normaltext),
+                      )
                     else
                       ...highFocusTasks.map(buildTaskCard),
                   ],
@@ -1465,7 +1537,11 @@ class DueDateView extends StatelessWidget {
     final upcomingTasks = activeTasks.where((t) {
       if (t.repeatType != RepeatType.none) {
         if (t.finishDate != null) {
-          final finishDay = DateTime(t.finishDate!.year, t.finishDate!.month, t.finishDate!.day);
+          final finishDay = DateTime(
+            t.finishDate!.year,
+            t.finishDate!.month,
+            t.finishDate!.day,
+          );
           return finishDay.isAfter(tomorrowDate);
         }
         return true;
@@ -1509,7 +1585,12 @@ class DueDateView extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: todayTasks.isEmpty
-                      ? [const Text("Tidak ada tugas")]
+                      ? [
+                          Text(
+                            "Tidak ada tugas",
+                            style: TextStyle(color: AppColors.normaltext),
+                          ),
+                        ]
                       : todayTasks.map(buildTaskCard).toList(),
                 ),
               ),
@@ -1540,7 +1621,12 @@ class DueDateView extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: tomorrowTasks.isEmpty
-                      ? [const Text("Tidak ada tugas")]
+                      ? [
+                          Text(
+                            "Tidak ada tugas",
+                            style: TextStyle(color: AppColors.normaltext),
+                          ),
+                        ]
                       : tomorrowTasks.map(buildTaskCard).toList(),
                 ),
               ),
@@ -1571,7 +1657,12 @@ class DueDateView extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: upcomingTasks.isEmpty
-                      ? [const Text("Tidak ada tugas")]
+                      ? [
+                          Text(
+                            "Tidak ada tugas",
+                            style: TextStyle(color: AppColors.normaltext),
+                          ),
+                        ]
                       : upcomingTasks.map(buildTaskCard).toList(),
                 ),
               ),
@@ -1606,7 +1697,12 @@ class DueDateView extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: completedTasks.isEmpty
-                      ? [const Text("Tidak ada tugas")]
+                      ? [
+                          Text(
+                            "Tidak ada tugas",
+                            style: TextStyle(color: AppColors.normaltext),
+                          ),
+                        ]
                       : completedTasks.map(buildTaskCard).toList(),
                 ),
               ),
@@ -1627,10 +1723,12 @@ class PriorityView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final activeTasks = tasks
-        .where((t) =>
-            !t.isCompleted &&
-            (t.repeatType == RepeatType.none ||
-                RepeatTaskService.shouldShowTaskOnDate(t, DateTime.now())))
+        .where(
+          (t) =>
+              !t.isCompleted &&
+              (t.repeatType == RepeatType.none ||
+                  RepeatTaskService.shouldShowTaskOnDate(t, DateTime.now())),
+        )
         .toList();
     final highPriority = activeTasks.where((t) => t.prioritytask == 3).toList();
     final midPriority = activeTasks.where((t) => t.prioritytask == 2).toList();
@@ -1649,13 +1747,20 @@ class PriorityView extends StatelessWidget {
         Container1(
           child: Column(
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
                     Icon(Icons.flag, color: Colors.red, size: 20),
                     SizedBox(width: 10),
-                    Text("High Priority Tasks", style: TextStyle(fontSize: 15)),
+                    Text(
+                      "High Priority Tasks",
+                      style: TextStyle(
+                        fontFamily: "Quicksand",
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.button,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1664,7 +1769,10 @@ class PriorityView extends StatelessWidget {
                 child: Row(
                   children: [
                     if (highPriority.isEmpty)
-                      const Text("Tidak ada tugas")
+                      Text(
+                        "Tidak ada tugas",
+                        style: TextStyle(color: AppColors.normaltext),
+                      )
                     else
                       ...highPriority.map(buildTaskCard),
                   ],
@@ -1676,7 +1784,7 @@ class PriorityView extends StatelessWidget {
         Container1(
           child: Column(
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
@@ -1684,7 +1792,11 @@ class PriorityView extends StatelessWidget {
                     SizedBox(width: 10),
                     Text(
                       "Medium Priority Tasks",
-                      style: TextStyle(fontSize: 15),
+                      style: TextStyle(
+                        fontFamily: "Quicksand",
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.button,
+                      ),
                     ),
                   ],
                 ),
@@ -1694,7 +1806,10 @@ class PriorityView extends StatelessWidget {
                 child: Row(
                   children: [
                     if (midPriority.isEmpty)
-                      const Text("Tidak ada tugas")
+                      Text(
+                        "Tidak ada tugas",
+                        style: TextStyle(color: AppColors.normaltext),
+                      )
                     else
                       ...midPriority.map(buildTaskCard),
                   ],
@@ -1706,13 +1821,20 @@ class PriorityView extends StatelessWidget {
         Container1(
           child: Column(
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
                     Icon(Icons.flag, color: Colors.green, size: 20),
                     SizedBox(width: 10),
-                    Text("Low Priority Task", style: TextStyle(fontSize: 15)),
+                    Text(
+                      "Low Priority Tasks",
+                      style: TextStyle(
+                        fontFamily: "Quicksand",
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.button,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -1721,7 +1843,10 @@ class PriorityView extends StatelessWidget {
                 child: Row(
                   children: [
                     if (lowPriority.isEmpty)
-                      const Text("Tidak ada tugas")
+                      Text(
+                        "Tidak ada tugas",
+                        style: TextStyle(color: AppColors.normaltext),
+                      )
                     else
                       ...lowPriority.map(buildTaskCard),
                   ],

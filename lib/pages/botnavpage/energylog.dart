@@ -144,7 +144,8 @@ class _EnergyPageState extends State<EnergyPage> {
             6: L10n.tr("Saturday", "Sabtu"),
             7: L10n.tr("Sunday", "Minggu"),
           };
-          worstProductivityDay = dayNames[worstDay] ?? L10n.tr("Friday", "Jumat");
+          worstProductivityDay =
+              dayNames[worstDay] ?? L10n.tr("Friday", "Jumat");
         }
       }
     }
@@ -276,9 +277,9 @@ class _EnergyPageState extends State<EnergyPage> {
               const SizedBox(height: 4),
               Text(
                 description,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 13,
-                  color: Colors.black87,
+                  color: AppColors.normaltext,
                   fontFamily: "Nunito",
                   height: 1.3,
                 ),
@@ -337,10 +338,7 @@ class _EnergyPageState extends State<EnergyPage> {
                     ),
                     Text(
                       _getEnergyLabel(_currentEnergyLvl),
-                      style: TextStyle(
-                        fontSize: 25,
-                        color: AppColors.button,
-                      ),
+                      style: TextStyle(fontSize: 25, color: AppColors.button),
                     ),
                     Padding(
                       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -526,7 +524,10 @@ class _EnergyPageState extends State<EnergyPage> {
                     _buildInsightRow(
                       icon: Icons.access_time_filled,
                       iconColor: Colors.orangeAccent,
-                      title: L10n.tr("Highest & Lowest Energy Hours", "Jam Energi Tertinggi & Terendah"),
+                      title: L10n.tr(
+                        "Highest & Lowest Energy Hours",
+                        "Jam Energi Tertinggi & Terendah",
+                      ),
                       description: L10n.tr(
                         "Your energy tends to peak at $_highestEnergyHourStr and reach its lowest point at $_lowestEnergyHourStr.",
                         "Energi Anda cenderung berada di puncak pada pukul $_highestEnergyHourStr dan di titik terendah pada pukul $_lowestEnergyHourStr.",
@@ -541,7 +542,10 @@ class _EnergyPageState extends State<EnergyPage> {
                     _buildInsightRow(
                       icon: Icons.trending_down,
                       iconColor: Colors.redAccent,
-                      title: L10n.tr("Productivity Drop", "Penurunan Produktivitas"),
+                      title: L10n.tr(
+                        "Productivity Drop",
+                        "Penurunan Produktivitas",
+                      ),
                       description: L10n.tr(
                         "Based on your daily task completion rate, your productivity tends to drop on $_productivityDropDay.",
                         "Berdasarkan tingkat penyelesaian tugas harian, produktivitas Anda cenderung menurun pada hari $_productivityDropDay.",
@@ -556,7 +560,10 @@ class _EnergyPageState extends State<EnergyPage> {
                     _buildInsightRow(
                       icon: Icons.compare_arrows_rounded,
                       iconColor: Colors.blueAccent,
-                      title: L10n.tr("Weekly Energy Trend", "Tren Energi Mingguan"),
+                      title: L10n.tr(
+                        "Weekly Energy Trend",
+                        "Tren Energi Mingguan",
+                      ),
                       description: L10n.tr(
                         "Your average energy level this week (${_avgEnergyThisWeek.toStringAsFixed(1)}) is $_energyComparisonStr compared to last week (${_avgEnergyLastWeek.toStringAsFixed(1)}).",
                         "Rata-rata level energi Anda minggu ini (${_avgEnergyThisWeek.toStringAsFixed(1)}) $_energyComparisonStr dibanding minggu lalu (${_avgEnergyLastWeek.toStringAsFixed(1)}).",

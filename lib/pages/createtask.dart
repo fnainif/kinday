@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:cool_dropdown/cool_dropdown.dart';
 import 'package:cool_dropdown/models/cool_dropdown_item.dart';
 import 'package:flutter/material.dart';
@@ -58,26 +59,41 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('draft_task_title', titleController.text);
       await prefs.setString('draft_task_desc', descController.text);
-      await prefs.setString('draft_task_priority', selectedDropdown ?? "Mid priority");
+      await prefs.setString(
+        'draft_task_priority',
+        selectedDropdown ?? "Mid priority",
+      );
       await prefs.setString('draft_task_energy', selectedEnergy);
       await prefs.setString('draft_task_subtasks', jsonEncode(subtasks));
       await prefs.setString('draft_task_repeat_type', _repeatType.name);
-      await prefs.setString('draft_task_selected_weekdays', jsonEncode(_selectedWeekDays));
-      
+      await prefs.setString(
+        'draft_task_selected_weekdays',
+        jsonEncode(_selectedWeekDays),
+      );
+
       if (selectedDate != null) {
-        await prefs.setString('draft_task_due_date', selectedDate!.toIso8601String());
+        await prefs.setString(
+          'draft_task_due_date',
+          selectedDate!.toIso8601String(),
+        );
       } else {
         await prefs.remove('draft_task_due_date');
       }
 
       if (_finishDate != null) {
-        await prefs.setString('draft_task_finish_date', _finishDate!.toIso8601String());
+        await prefs.setString(
+          'draft_task_finish_date',
+          _finishDate!.toIso8601String(),
+        );
       } else {
         await prefs.remove('draft_task_finish_date');
       }
 
       if (selectedTime != null) {
-        await prefs.setString('draft_task_due_time', '${selectedTime!.hour}:${selectedTime!.minute}');
+        await prefs.setString(
+          'draft_task_due_time',
+          '${selectedTime!.hour}:${selectedTime!.minute}',
+        );
       } else {
         await prefs.remove('draft_task_due_time');
       }
@@ -116,11 +132,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       final prefs = await SharedPreferences.getInstance();
       final draftTitle = prefs.getString('draft_task_title');
       final draftDesc = prefs.getString('draft_task_desc');
-      
-      if ((draftTitle != null && draftTitle.isNotEmpty) || 
+
+      if ((draftTitle != null && draftTitle.isNotEmpty) ||
           (draftDesc != null && draftDesc.isNotEmpty)) {
         if (!mounted) return;
-        
+
         showDialog(
           context: context,
           builder: (context) {
@@ -139,7 +155,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               content: Text(
                 L10n.tr(
                   "You have an unsaved task draft. Would you like to restore it?",
-                  "Anda memiliki draf tugas yang belum disimpan. Apakah Anda ingin memulihkannya?"
+                  "Anda memiliki draf tugas yang belum disimpan. Apakah Anda ingin memulihkannya?",
                 ),
               ),
               actions: [
@@ -184,9 +200,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       _isRestoring = true;
       titleController.text = prefs.getString('draft_task_title') ?? "";
       descController.text = prefs.getString('draft_task_desc') ?? "";
-      selectedDropdown = prefs.getString('draft_task_priority') ?? "Mid priority";
+      selectedDropdown =
+          prefs.getString('draft_task_priority') ?? "Mid priority";
       selectedEnergy = prefs.getString('draft_task_energy') ?? "low";
-      
+
       final String? subtasksJson = prefs.getString('draft_task_subtasks');
       if (subtasksJson != null && subtasksJson.isNotEmpty) {
         try {
@@ -196,7 +213,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           debugPrint("Error restoring subtasks: $e");
         }
       }
-      
+
       final String? repeatTypeName = prefs.getString('draft_task_repeat_type');
       if (repeatTypeName != null) {
         _repeatType = RepeatType.values.firstWhere(
@@ -207,7 +224,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         _repeatType = RepeatType.none;
       }
 
-      final String? weekDaysJson = prefs.getString('draft_task_selected_weekdays');
+      final String? weekDaysJson = prefs.getString(
+        'draft_task_selected_weekdays',
+      );
       if (weekDaysJson != null && weekDaysJson.isNotEmpty) {
         try {
           final List decoded = jsonDecode(weekDaysJson);
@@ -232,7 +251,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       } else {
         selectedDate = null;
       }
-      
+
       final String? dueTimeStr = prefs.getString('draft_task_due_time');
       if (dueTimeStr != null) {
         final parts = dueTimeStr.split(':');
@@ -245,7 +264,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       } else {
         selectedTime = null;
       }
-      
+
       selectedReminderMinutes = prefs.getInt('draft_task_reminder');
       _isRestoring = false;
     });
@@ -349,9 +368,17 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   void _sortSubtasks(String criteria) {
     setState(() {
       if (criteria == 'A-Z') {
-        subtasks.sort((a, b) => (a['title'] as String).toLowerCase().compareTo((b['title'] as String).toLowerCase()));
+        subtasks.sort(
+          (a, b) => (a['title'] as String).toLowerCase().compareTo(
+            (b['title'] as String).toLowerCase(),
+          ),
+        );
       } else if (criteria == 'Z-A') {
-        subtasks.sort((a, b) => (b['title'] as String).toLowerCase().compareTo((a['title'] as String).toLowerCase()));
+        subtasks.sort(
+          (a, b) => (b['title'] as String).toLowerCase().compareTo(
+            (a['title'] as String).toLowerCase(),
+          ),
+        );
       } else if (criteria == 'Incomplete first') {
         subtasks.sort((a, b) {
           final aDone = a['isDone'] ?? false;
@@ -396,10 +423,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text(
-                          "Create New Task",
-                          style: AppTextStyles.greeting,
-                        ),
+                        Text("Create New Task", style: AppTextStyles.greeting),
 
                         Transform.translate(
                           offset: const Offset(0, -5),
@@ -446,12 +470,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         TextFormField(
                           controller: titleController,
                           maxLines: 2,
-                          style: const TextStyle(color: Color(0xFF5852A0)),
+                          style: TextStyle(color: AppColors.button),
                           decoration: InputDecoration(
                             hintText: "eg. Study for Exam",
-                            hintStyle: TextStyle(
-                              color: AppColors.background,
-                            ),
+                            hintStyle: TextStyle(color: AppColors.background),
 
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -466,7 +488,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(
-                                color: Colors.indigo.shade200,
+                                color: AppColors.background,
                                 width: 1.5,
                               ),
                             ),
@@ -496,12 +518,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         TextFormField(
                           controller: descController,
                           maxLines: 3,
-                          style: const TextStyle(color: Color(0xFF5852A0)),
+                          style: TextStyle(color: AppColors.button),
                           decoration: InputDecoration(
                             hintText: "Add details about this task...",
-                            hintStyle: TextStyle(
-                              color: AppColors.background,
-                            ),
+                            hintStyle: TextStyle(color: AppColors.background),
 
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
@@ -516,7 +536,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             focusedBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                               borderSide: BorderSide(
-                                color: Colors.indigo.shade200,
+                                color: AppColors.background,
                                 width: 1.5,
                               ),
                             ),
@@ -651,9 +671,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                   selectedTime == null
                                       ? L10n.tr("Choose Time", "Pilih Jam")
                                       : selectedTime!.format(context),
-                                  style: TextStyle(
-                                    color: AppColors.button,
-                                  ),
+                                  style: TextStyle(color: AppColors.button),
                                 ),
                               ),
                             ],
@@ -734,7 +752,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
                         Row(
                           children: [
-                            Icon(Icons.repeat, color: AppColors.button, size: 20),
+                            Icon(
+                              Icons.repeat,
+                              color: AppColors.button,
+                              size: 20,
+                            ),
                             const SizedBox(width: 10),
                             const Text("Repeat"),
                             const Spacer(),
@@ -743,12 +765,30 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                               dropdownColor: Colors.white,
                               style: TextStyle(color: AppColors.button),
                               items: const [
-                                DropdownMenuItem(value: RepeatType.none, child: Text("None")),
-                                DropdownMenuItem(value: RepeatType.daily, child: Text("Every Day")),
-                                DropdownMenuItem(value: RepeatType.selectedDays, child: Text("Every Few Days")),
-                                DropdownMenuItem(value: RepeatType.weekly, child: Text("Every Week")),
-                                DropdownMenuItem(value: RepeatType.monthly, child: Text("Every Month")),
-                                DropdownMenuItem(value: RepeatType.yearly, child: Text("Every Year")),
+                                DropdownMenuItem(
+                                  value: RepeatType.none,
+                                  child: Text("None"),
+                                ),
+                                DropdownMenuItem(
+                                  value: RepeatType.daily,
+                                  child: Text("Every Day"),
+                                ),
+                                DropdownMenuItem(
+                                  value: RepeatType.selectedDays,
+                                  child: Text("Every Few Days"),
+                                ),
+                                DropdownMenuItem(
+                                  value: RepeatType.weekly,
+                                  child: Text("Every Week"),
+                                ),
+                                DropdownMenuItem(
+                                  value: RepeatType.monthly,
+                                  child: Text("Every Month"),
+                                ),
+                                DropdownMenuItem(
+                                  value: RepeatType.yearly,
+                                  child: Text("Every Year"),
+                                ),
                               ],
                               onChanged: (RepeatType? value) {
                                 setState(() {
@@ -764,46 +804,57 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           const SizedBox(height: 10),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              {"label": "Mon", "value": DateTime.monday},
-                              {"label": "Tue", "value": DateTime.tuesday},
-                              {"label": "Wed", "value": DateTime.wednesday},
-                              {"label": "Thu", "value": DateTime.thursday},
-                              {"label": "Fri", "value": DateTime.friday},
-                              {"label": "Sat", "value": DateTime.saturday},
-                              {"label": "Sun", "value": DateTime.sunday},
-                            ].map((day) {
-                              final isSelected = _selectedWeekDays.contains(day["value"]);
-                              return GestureDetector(
-                                onTap: () {
-                                  setState(() {
-                                    if (isSelected) {
-                                      _selectedWeekDays.remove(day["value"]);
-                                    } else {
-                                      _selectedWeekDays.add(day["value"] as int);
-                                    }
-                                  });
-                                  _autosaveDraft();
-                                },
-                                child: Container(
-                                  width: 38,
-                                  height: 38,
-                                  decoration: BoxDecoration(
-                                    color: isSelected ? AppColors.button : Colors.grey.shade200,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  alignment: Alignment.center,
-                                  child: Text(
-                                    day["label"] as String,
-                                    style: TextStyle(
-                                      color: isSelected ? Colors.white : Colors.black,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
+                            children:
+                                [
+                                  {"label": "Mon", "value": DateTime.monday},
+                                  {"label": "Tue", "value": DateTime.tuesday},
+                                  {"label": "Wed", "value": DateTime.wednesday},
+                                  {"label": "Thu", "value": DateTime.thursday},
+                                  {"label": "Fri", "value": DateTime.friday},
+                                  {"label": "Sat", "value": DateTime.saturday},
+                                  {"label": "Sun", "value": DateTime.sunday},
+                                ].map((day) {
+                                  final isSelected = _selectedWeekDays.contains(
+                                    day["value"],
+                                  );
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        if (isSelected) {
+                                          _selectedWeekDays.remove(
+                                            day["value"],
+                                          );
+                                        } else {
+                                          _selectedWeekDays.add(
+                                            day["value"] as int,
+                                          );
+                                        }
+                                      });
+                                      _autosaveDraft();
+                                    },
+                                    child: Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? AppColors.button
+                                            : Colors.grey.shade200,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        day["label"] as String,
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? Colors.white
+                                              : Colors.black,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
                                     ),
-                                  ),
-                                ),
-                              );
-                            }).toList(),
+                                  );
+                                }).toList(),
                           ),
                         ],
 
@@ -817,7 +868,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           ),
                           Row(
                             children: [
-                              Icon(Icons.event_busy, color: AppColors.button, size: 20),
+                              Icon(
+                                Icons.event_busy,
+                                color: AppColors.button,
+                                size: 20,
+                              ),
                               const SizedBox(width: 10),
                               const Text("Finish Date (optional)"),
                               const Spacer(),
@@ -983,27 +1038,32 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             Spacer(),
 
                             PopupMenuButton<String>(
-                              icon: Icon(Icons.sort, size: 20, color: AppColors.button),
+                              icon: Icon(
+                                Icons.sort,
+                                size: 20,
+                                color: AppColors.button,
+                              ),
                               tooltip: "Sort subtasks",
                               onSelected: _sortSubtasks,
-                              itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-                                const PopupMenuItem<String>(
-                                  value: 'A-Z',
-                                  child: Text('Alphabetical (A-Z)'),
-                                ),
-                                const PopupMenuItem<String>(
-                                  value: 'Z-A',
-                                  child: Text('Alphabetical (Z-A)'),
-                                ),
-                                const PopupMenuItem<String>(
-                                  value: 'Incomplete first',
-                                  child: Text('Incomplete first'),
-                                ),
-                                const PopupMenuItem<String>(
-                                  value: 'Completed first',
-                                  child: Text('Completed first'),
-                                ),
-                              ],
+                              itemBuilder: (BuildContext context) =>
+                                  <PopupMenuEntry<String>>[
+                                    const PopupMenuItem<String>(
+                                      value: 'A-Z',
+                                      child: Text('Alphabetical (A-Z)'),
+                                    ),
+                                    const PopupMenuItem<String>(
+                                      value: 'Z-A',
+                                      child: Text('Alphabetical (Z-A)'),
+                                    ),
+                                    const PopupMenuItem<String>(
+                                      value: 'Incomplete first',
+                                      child: Text('Incomplete first'),
+                                    ),
+                                    const PopupMenuItem<String>(
+                                      value: 'Completed first',
+                                      child: Text('Completed first'),
+                                    ),
+                                  ],
                             ),
 
                             TextButton.icon(
@@ -1019,7 +1079,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           padding: const EdgeInsets.symmetric(vertical: 20),
                           decoration: BoxDecoration(
                             border: Border.all(
-                              color: Colors.deepPurple.shade100,
+                              color: AppColors.background,
                               style: BorderStyle.solid,
                             ),
                             borderRadius: BorderRadius.circular(16),
@@ -1030,7 +1090,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                     Icon(
                                       Icons.assignment_outlined,
                                       size: 60,
-                                      color: Colors.deepPurple.shade100,
+                                      color: AppColors.normaltext,
                                     ),
 
                                     SizedBox(height: 12),
@@ -1039,7 +1099,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                       "No subtasks yet",
                                       style: TextStyle(
                                         fontWeight: FontWeight.bold,
-                                        color: Colors.deepPurple,
+                                        color: AppColors.normaltext,
                                       ),
                                     ),
 
@@ -1070,8 +1130,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                   itemBuilder: (context, index) {
                                     final sub = subtasks[index];
                                     return ListTile(
-                                      key: ValueKey((sub["title"] ?? "") + index.toString()),
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 8.0),
+                                      key: ValueKey(
+                                        (sub["title"] ?? "") + index.toString(),
+                                      ),
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 8.0,
+                                          ),
                                       leading: Checkbox(
                                         activeColor: AppColors.button,
                                         value: sub["isDone"] ?? false,
@@ -1100,24 +1165,40 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                               color: AppColors.button,
                                             ),
                                             onPressed: () {
-                                              final editController = TextEditingController(text: sub["title"]);
+                                              final editController =
+                                                  TextEditingController(
+                                                    text: sub["title"],
+                                                  );
                                               showDialog(
                                                 context: context,
                                                 builder: (context) => AlertDialog(
-                                                  title: const Text("Edit Subtask"),
+                                                  title: const Text(
+                                                    "Edit Subtask",
+                                                  ),
                                                   content: TextField(
                                                     controller: editController,
-                                                    decoration: const InputDecoration(hintText: "Edit subtask title"),
+                                                    decoration:
+                                                        const InputDecoration(
+                                                          hintText:
+                                                              "Edit subtask title",
+                                                        ),
                                                     autofocus: true,
                                                   ),
                                                   actions: [
                                                     TextButton(
-                                                      onPressed: () => Navigator.pop(context),
-                                                      child: const Text("Cancel"),
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                            context,
+                                                          ),
+                                                      child: const Text(
+                                                        "Cancel",
+                                                      ),
                                                     ),
                                                     ElevatedButton(
-                                                        onPressed: () {
-                                                        final text = editController.text.trim();
+                                                      onPressed: () {
+                                                        final text =
+                                                            editController.text
+                                                                .trim();
                                                         if (text.isNotEmpty) {
                                                           setState(() {
                                                             sub["title"] = text;
@@ -1148,8 +1229,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                           ReorderableDragStartListener(
                                             index: index,
                                             child: const Padding(
-                                              padding: EdgeInsets.symmetric(horizontal: 8.0),
-                                              child: Icon(Icons.drag_handle, color: Colors.grey),
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: 8.0,
+                                              ),
+                                              child: Icon(
+                                                Icons.drag_handle,
+                                                color: Colors.grey,
+                                              ),
                                             ),
                                           ),
                                         ],
