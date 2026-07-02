@@ -420,11 +420,12 @@ class _TasklistpageState extends State<Tasklistpage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             "Priority",
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
+                              color: AppColors.button,
                             ),
                           ),
                           Row(
@@ -489,11 +490,12 @@ class _TasklistpageState extends State<Tasklistpage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             "Due Date",
                             style: TextStyle(
                               fontWeight: FontWeight.bold,
                               fontSize: 16,
+                              color: AppColors.button,
                             ),
                           ),
                           ElevatedButton.icon(
@@ -836,6 +838,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   fontSize: 16,
+                                  color: AppColors.button,
                                 ),
                               ),
                               Row(
@@ -1264,10 +1267,34 @@ class _TasklistpageState extends State<Tasklistpage> {
                 borderRadius: BorderRadius.circular(10),
               ),
               initialValue: selectedTab,
-              children: const {
-                1: Text("Energy Level"),
-                2: Text("Due Date"),
-                3: Text("Priority"),
+              children: {
+                1: Text(
+                  "Energy Level",
+                  style: TextStyle(
+                    fontFamily: "Quicksand",
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: selectedTab == 1 ? Colors.white : AppColors.button,
+                  ),
+                ),
+                2: Text(
+                  "Due Date",
+                  style: TextStyle(
+                    fontFamily: "Quicksand",
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: selectedTab == 2 ? Colors.white : AppColors.button,
+                  ),
+                ),
+                3: Text(
+                  "Priority",
+                  style: TextStyle(
+                    fontFamily: "Quicksand",
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: selectedTab == 3 ? Colors.white : AppColors.button,
+                  ),
+                ),
               },
               onValueChanged: (value) {
                 setState(() {
@@ -1388,8 +1415,35 @@ class EnergyLevelView extends StatelessWidget {
       return task;
     }
 
+    Widget buildEmptyState(String message) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                "assets/images/Tidakadatugas.gif",
+                height: 100,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                message,
+                style: TextStyle(
+                  fontFamily: "Nunito",
+                  fontSize: 12,
+                  color: AppColors.normaltext.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return ListView(
       shrinkWrap: true,
+      physics: const BouncingScrollPhysics(),
       children: [
         Container1(
           child: Column(
@@ -1401,7 +1455,7 @@ class EnergyLevelView extends StatelessWidget {
                     Icon(Icons.recommend, size: 20, color: AppColors.button),
                     const SizedBox(width: 10),
                     Text(
-                      "Recommended Task",
+                      L10n.tr("Recommended Task", "Tugas Disarankan"),
                       style: TextStyle(
                         fontFamily: "Quicksand",
                         fontWeight: FontWeight.bold,
@@ -1412,15 +1466,11 @@ class EnergyLevelView extends StatelessWidget {
                 ),
               ),
               if (recommendedTasks.isEmpty)
-                Center(
-                  child: Image.asset(
-                    "assets/images/Tidakadatugas.gif",
-                    height: 120,
-                  ),
-                )
+                buildEmptyState(L10n.tr("No recommended tasks", "Tidak ada tugas disarankan"))
               else
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: recommendedTasks.map(buildTaskCard).toList(),
                   ),
@@ -1438,7 +1488,7 @@ class EnergyLevelView extends StatelessWidget {
                     Icon(Icons.favorite, size: 20, color: AppColors.button),
                     const SizedBox(width: 10),
                     Text(
-                      "Low Energy Task",
+                      L10n.tr("Low Energy Task", "Tugas Energi Rendah"),
                       style: TextStyle(
                         fontFamily: "Quicksand",
                         fontWeight: FontWeight.bold,
@@ -1449,15 +1499,11 @@ class EnergyLevelView extends StatelessWidget {
                 ),
               ),
               if (lowEnergyTasks.isEmpty)
-                Center(
-                  child: Image.asset(
-                    "assets/images/Tidakadatugas.gif",
-                    height: 120,
-                  ),
-                )
+                buildEmptyState(L10n.tr("No low energy tasks", "Tidak ada tugas energi rendah"))
               else
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: lowEnergyTasks.map(buildTaskCard).toList(),
                   ),
@@ -1479,7 +1525,7 @@ class EnergyLevelView extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      "High Focus Task",
+                      L10n.tr("High Focus Task", "Tugas Fokus Tinggi"),
                       style: TextStyle(
                         fontFamily: "Quicksand",
                         fontWeight: FontWeight.bold,
@@ -1490,15 +1536,11 @@ class EnergyLevelView extends StatelessWidget {
                 ),
               ),
               if (highFocusTasks.isEmpty)
-                Center(
-                  child: Image.asset(
-                    "assets/images/Tidakadatugas.gif",
-                    height: 120,
-                  ),
-                )
+                buildEmptyState(L10n.tr("No high focus tasks", "Tidak ada tugas fokus tinggi"))
               else
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: highFocusTasks.map(buildTaskCard).toList(),
                   ),
@@ -1558,8 +1600,35 @@ class DueDateView extends StatelessWidget {
       return task;
     }
 
+    Widget buildEmptyState(String message) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                "assets/images/Tidakadatugas.gif",
+                height: 100,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                message,
+                style: TextStyle(
+                  fontFamily: "Nunito",
+                  fontSize: 12,
+                  color: AppColors.normaltext.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return ListView(
       shrinkWrap: true,
+      physics: const BouncingScrollPhysics(),
       children: [
         Container1(
           child: Column(
@@ -1571,7 +1640,7 @@ class DueDateView extends StatelessWidget {
                     Icon(Icons.today, size: 20, color: AppColors.button),
                     const SizedBox(width: 10),
                     Text(
-                      "Today",
+                      L10n.tr("Today", "Hari Ini"),
                       style: TextStyle(
                         fontFamily: "Quicksand",
                         fontWeight: FontWeight.bold,
@@ -1582,15 +1651,11 @@ class DueDateView extends StatelessWidget {
                 ),
               ),
               if (todayTasks.isEmpty)
-                Center(
-                  child: Image.asset(
-                    "assets/images/Tidakadatugas.gif",
-                    height: 120,
-                  ),
-                )
+                buildEmptyState(L10n.tr("No tasks today", "Tidak ada tugas hari ini"))
               else
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: todayTasks.map(buildTaskCard).toList(),
                   ),
@@ -1608,7 +1673,7 @@ class DueDateView extends StatelessWidget {
                     Icon(Icons.schedule, size: 20, color: AppColors.button),
                     const SizedBox(width: 10),
                     Text(
-                      "Tomorrow",
+                      L10n.tr("Tomorrow", "Besok"),
                       style: TextStyle(
                         fontFamily: "Quicksand",
                         fontWeight: FontWeight.bold,
@@ -1619,15 +1684,11 @@ class DueDateView extends StatelessWidget {
                 ),
               ),
               if (tomorrowTasks.isEmpty)
-                Center(
-                  child: Image.asset(
-                    "assets/images/Tidakadatugas.gif",
-                    height: 120,
-                  ),
-                )
+                buildEmptyState(L10n.tr("No tasks tomorrow", "Tidak ada tugas besok"))
               else
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: tomorrowTasks.map(buildTaskCard).toList(),
                   ),
@@ -1645,7 +1706,7 @@ class DueDateView extends StatelessWidget {
                     Icon(Icons.upcoming, size: 20, color: AppColors.button),
                     const SizedBox(width: 10),
                     Text(
-                      "Upcoming",
+                      L10n.tr("Upcoming", "Mendatang"),
                       style: TextStyle(
                         fontFamily: "Quicksand",
                         fontWeight: FontWeight.bold,
@@ -1656,15 +1717,11 @@ class DueDateView extends StatelessWidget {
                 ),
               ),
               if (upcomingTasks.isEmpty)
-                Center(
-                  child: Image.asset(
-                    "assets/images/Tidakadatugas.gif",
-                    height: 120,
-                  ),
-                )
+                buildEmptyState(L10n.tr("No upcoming tasks", "Tidak ada tugas mendatang"))
               else
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: upcomingTasks.map(buildTaskCard).toList(),
                   ),
@@ -1686,7 +1743,7 @@ class DueDateView extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     Text(
-                      "Completed",
+                      L10n.tr("Completed", "Selesai"),
                       style: TextStyle(
                         fontFamily: "Quicksand",
                         fontWeight: FontWeight.bold,
@@ -1697,12 +1754,7 @@ class DueDateView extends StatelessWidget {
                 ),
               ),
               if (completedTasks.isEmpty)
-                Center(
-                  child: Image.asset(
-                    "assets/images/Tidakadatugas.gif",
-                    height: 120,
-                  ),
-                )
+                buildEmptyState(L10n.tr("No completed tasks", "Tidak ada tugas diselesaikan"))
               else
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
@@ -1745,20 +1797,47 @@ class PriorityView extends StatelessWidget {
       return task;
     }
 
+    Widget buildEmptyState(String message) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16.0),
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Image.asset(
+                "assets/images/Tidakadatugas.gif",
+                height: 100,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                message,
+                style: TextStyle(
+                  fontFamily: "Nunito",
+                  fontSize: 12,
+                  color: AppColors.normaltext.withValues(alpha: 0.6),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return ListView(
       shrinkWrap: true,
+      physics: const BouncingScrollPhysics(),
       children: [
         Container1(
           child: Column(
             children: [
               Padding(
-                padding: EdgeInsets.only(bottom: 10.0),
+                padding: const EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
-                    Icon(Icons.flag, color: Colors.red, size: 20),
-                    SizedBox(width: 10),
+                    const Icon(Icons.flag, color: Colors.red, size: 20),
+                    const SizedBox(width: 10),
                     Text(
-                      "High Priority Tasks",
+                      L10n.tr("High Priority Tasks", "Tugas Prioritas Tinggi"),
                       style: TextStyle(
                         fontFamily: "Quicksand",
                         fontWeight: FontWeight.bold,
@@ -1769,15 +1848,11 @@ class PriorityView extends StatelessWidget {
                 ),
               ),
               if (highPriority.isEmpty)
-                Center(
-                  child: Image.asset(
-                    "assets/images/Tidakadatugas.gif",
-                    height: 120,
-                  ),
-                )
+                buildEmptyState(L10n.tr("No high priority tasks", "Tidak ada tugas prioritas tinggi"))
               else
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: highPriority.map(buildTaskCard).toList(),
                   ),
@@ -1789,13 +1864,13 @@ class PriorityView extends StatelessWidget {
           child: Column(
             children: [
               Padding(
-                padding: EdgeInsets.only(bottom: 10.0),
+                padding: const EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
-                    Icon(Icons.flag, color: Colors.orange, size: 20),
-                    SizedBox(width: 10),
+                    const Icon(Icons.flag, color: Colors.orange, size: 20),
+                    const SizedBox(width: 10),
                     Text(
-                      "Medium Priority Tasks",
+                      L10n.tr("Medium Priority Tasks", "Tugas Prioritas Sedang"),
                       style: TextStyle(
                         fontFamily: "Quicksand",
                         fontWeight: FontWeight.bold,
@@ -1806,15 +1881,11 @@ class PriorityView extends StatelessWidget {
                 ),
               ),
               if (midPriority.isEmpty)
-                Center(
-                  child: Image.asset(
-                    "assets/images/Tidakadatugas.gif",
-                    height: 120,
-                  ),
-                )
+                buildEmptyState(L10n.tr("No medium priority tasks", "Tidak ada tugas prioritas sedang"))
               else
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: midPriority.map(buildTaskCard).toList(),
                   ),
@@ -1826,13 +1897,13 @@ class PriorityView extends StatelessWidget {
           child: Column(
             children: [
               Padding(
-                padding: EdgeInsets.only(bottom: 10.0),
+                padding: const EdgeInsets.only(bottom: 10.0),
                 child: Row(
                   children: [
-                    Icon(Icons.flag, color: Colors.green, size: 20),
-                    SizedBox(width: 10),
+                    const Icon(Icons.flag, color: Colors.green, size: 20),
+                    const SizedBox(width: 10),
                     Text(
-                      "Low Priority Tasks",
+                      L10n.tr("Low Priority Tasks", "Tugas Prioritas Rendah"),
                       style: TextStyle(
                         fontFamily: "Quicksand",
                         fontWeight: FontWeight.bold,
@@ -1843,15 +1914,11 @@ class PriorityView extends StatelessWidget {
                 ),
               ),
               if (lowPriority.isEmpty)
-                Center(
-                  child: Image.asset(
-                    "assets/images/Tidakadatugas.gif",
-                    height: 120,
-                  ),
-                )
+                buildEmptyState(L10n.tr("No low priority tasks", "Tidak ada tugas prioritas rendah"))
               else
                 SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
+                  physics: const BouncingScrollPhysics(),
                   child: Row(
                     children: lowPriority.map(buildTaskCard).toList(),
                   ),

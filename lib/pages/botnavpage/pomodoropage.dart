@@ -470,26 +470,37 @@ class _PomodoropageState extends State<Pomodoropage> {
                   Expanded(
                     child: TextField(
                       controller: _pomodoroSubtaskController,
-                      style: const TextStyle(fontSize: 14),
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.button,
+                        fontFamily: "Nunito",
+                      ),
                       decoration: InputDecoration(
-                        hintText: "Add quick subtask...",
+                        hintText: L10n.tr("Add quick subtask...", "Tambah tugas cepat..."),
+                        hintStyle: TextStyle(
+                          color: AppColors.button.withValues(alpha: 0.4),
+                        ),
                         isDense: true,
                         contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
+                          horizontal: 16,
+                          vertical: 12,
                         ),
                         border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: Colors.grey.shade300),
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: AppColors.containerline1),
                         ),
                         enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
-                          borderSide: BorderSide(color: Colors.grey.shade200),
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(
+                            color: AppColors.containerline1.withValues(alpha: 0.5),
+                          ),
                         ),
                         focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(color: AppColors.button),
                         ),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
                       ),
                     ),
                   ),
@@ -511,15 +522,16 @@ class _PomodoropageState extends State<Pomodoropage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.button,
                       foregroundColor: Colors.white,
+                      elevation: 0,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(12),
                       ),
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 10,
+                        horizontal: 16,
+                        vertical: 12,
                       ),
                     ),
-                    child: const Icon(Icons.add, size: 18),
+                    child: const Icon(Icons.add, size: 20),
                   ),
                 ],
               ),
@@ -545,12 +557,13 @@ class _PomodoropageState extends State<Pomodoropage> {
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: AppColors.button,
+                  fontFamily: "Quicksand",
                 ),
               ),
             ],
           ),
           const SizedBox(height: 15),
-          Divider(height: 1),
+          Divider(height: 1, color: AppColors.containerline2.withValues(alpha: 0.3)),
           const SizedBox(height: 15),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -560,38 +573,47 @@ class _PomodoropageState extends State<Pomodoropage> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.button,
+                  fontFamily: "Quicksand",
                 ),
               ),
               Text(
-                "${focusDuration ~/ 60} mins",
+                L10n.tr("${focusDuration ~/ 60} mins", "${focusDuration ~/ 60} menit"),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.button,
+                  fontFamily: "Nunito",
                 ),
               ),
             ],
           ),
-          Slider(
-            value: (focusDuration ~/ 60).toDouble(),
-            min: 10,
-            max: 60,
-            divisions: 10,
-            activeColor: AppColors.button,
-            inactiveColor: AppColors.button.withValues(alpha: 0.2),
-            onChanged: (val) async {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setInt('focus_duration', val.round());
-              setState(() {
-                focusDuration = val.round() * 60;
-                if (!isRunning && isFocusTime) {
-                  totalSeconds = focusDuration;
-                  secondsRemaining = focusDuration;
-                }
-              });
-            },
+          SliderTheme(
+            data: SliderThemeData(
+              activeTrackColor: AppColors.button,
+              inactiveTrackColor: AppColors.button.withValues(alpha: 0.15),
+              thumbColor: AppColors.button,
+              overlayColor: AppColors.button.withValues(alpha: 0.1),
+              trackHeight: 4,
+            ),
+            child: Slider(
+              value: (focusDuration ~/ 60).toDouble(),
+              min: 10,
+              max: 60,
+              divisions: 10,
+              onChanged: (val) async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setInt('focus_duration', val.round());
+                setState(() {
+                  focusDuration = val.round() * 60;
+                  if (!isRunning && isFocusTime) {
+                    totalSeconds = focusDuration;
+                    secondsRemaining = focusDuration;
+                  }
+                });
+              },
+            ),
           ),
           const SizedBox(height: 10),
-          Divider(height: 1),
+          Divider(height: 1, color: AppColors.containerline2.withValues(alpha: 0.3)),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -601,38 +623,47 @@ class _PomodoropageState extends State<Pomodoropage> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.button,
+                  fontFamily: "Quicksand",
                 ),
               ),
               Text(
-                "${breakDuration ~/ 60} mins",
+                L10n.tr("${breakDuration ~/ 60} mins", "${breakDuration ~/ 60} menit"),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.button,
+                  fontFamily: "Nunito",
                 ),
               ),
             ],
           ),
-          Slider(
-            value: (breakDuration ~/ 60).toDouble(),
-            min: 5,
-            max: 30,
-            divisions: 5,
-            activeColor: AppColors.button,
-            inactiveColor: AppColors.button.withValues(alpha: 0.2),
-            onChanged: (val) async {
-              final prefs = await SharedPreferences.getInstance();
-              await prefs.setInt('break_duration', val.round());
-              setState(() {
-                breakDuration = val.round() * 60;
-                if (!isRunning && !isFocusTime) {
-                  totalSeconds = breakDuration;
-                  secondsRemaining = breakDuration;
-                }
-              });
-            },
+          SliderTheme(
+            data: SliderThemeData(
+              activeTrackColor: AppColors.button,
+              inactiveTrackColor: AppColors.button.withValues(alpha: 0.15),
+              thumbColor: AppColors.button,
+              overlayColor: AppColors.button.withValues(alpha: 0.1),
+              trackHeight: 4,
+            ),
+            child: Slider(
+              value: (breakDuration ~/ 60).toDouble(),
+              min: 5,
+              max: 30,
+              divisions: 5,
+              onChanged: (val) async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setInt('break_duration', val.round());
+                setState(() {
+                  breakDuration = val.round() * 60;
+                  if (!isRunning && !isFocusTime) {
+                    totalSeconds = breakDuration;
+                    secondsRemaining = breakDuration;
+                  }
+                });
+              },
+            ),
           ),
           const SizedBox(height: 10),
-          Divider(height: 1),
+          Divider(height: 1, color: AppColors.containerline2.withValues(alpha: 0.3)),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -642,6 +673,7 @@ class _PomodoropageState extends State<Pomodoropage> {
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.button,
+                  fontFamily: "Quicksand",
                 ),
               ),
               DropdownButton<String>(
@@ -651,20 +683,21 @@ class _PomodoropageState extends State<Pomodoropage> {
                 style: TextStyle(
                   color: AppColors.button,
                   fontWeight: FontWeight.bold,
+                  fontFamily: "Quicksand",
                 ),
                 underline: const SizedBox(),
                 items:
                     const [
-                          "None",
-                          "Fireplace",
-                          "Forest",
-                          "Gentle Rain",
-                          "Heavy Rain",
-                          "Night Ambience",
-                          "Ocean Waves",
-                          "Stream",
-                          "Underwater Ambience",
-                        ]
+                           "None",
+                           "Fireplace",
+                           "Forest",
+                           "Gentle Rain",
+                           "Heavy Rain",
+                           "Night Ambience",
+                           "Ocean Waves",
+                           "Stream",
+                           "Underwater Ambience",
+                         ]
                         .map(
                           (val) =>
                               DropdownMenuItem(value: val, child: Text(val)),
@@ -693,11 +726,12 @@ class _PomodoropageState extends State<Pomodoropage> {
     return Scaffold(
       body: BgContainer(
         child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           padding: const EdgeInsets.only(bottom: 40),
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.only(top: 40, left: 20, right: 20),
+                padding: const EdgeInsets.only(top: 60, left: 20, right: 20),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -710,6 +744,7 @@ class _PomodoropageState extends State<Pomodoropage> {
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
                             color: AppColors.normaltext,
+                            fontFamily: "Quicksand",
                           ),
                           textAlign: TextAlign.center,
                         ),
@@ -720,7 +755,7 @@ class _PomodoropageState extends State<Pomodoropage> {
                 ),
               ),
 
-              const SizedBox(height: 10),
+              const SizedBox(height: 16),
 
               Center(
                 child: Stack(
@@ -730,11 +765,8 @@ class _PomodoropageState extends State<Pomodoropage> {
                       radius: 130,
                       lineWidth: 12,
                       percent: progress,
-
                       circularStrokeCap: CircularStrokeCap.round,
-
                       backgroundColor: Colors.white38,
-
                       progressColor: isFocusTime
                           ? AppColors.button
                           : Colors.white,
@@ -750,50 +782,53 @@ class _PomodoropageState extends State<Pomodoropage> {
                     Positioned(
                       top: 50,
                       child: Text(
-                        isFocusTime ? "Focus Time" : "Break Time",
+                        isFocusTime
+                            ? L10n.tr("Focus Time", "Waktu Fokus")
+                            : L10n.tr("Break Time", "Waktu Istirahat"),
                         style: TextStyle(
                           fontSize: 18,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
                           color: AppColors.normaltext,
+                          fontFamily: "Quicksand",
                         ),
                       ),
                     ),
 
                     Positioned(
-                      top: 75,
+                      top: 80,
                       child: Text(
                         formatTime(),
                         style: TextStyle(
                           fontSize: 52,
                           fontWeight: FontWeight.bold,
                           color: AppColors.normaltext,
+                          fontFamily: "Nunito",
                         ),
                       ),
                     ),
 
                     Positioned(
                       bottom: 45,
-
                       child: GestureDetector(
                         onTap: toggleTimer,
-
                         child: Container(
-                          width: 60,
-                          height: 60,
-
+                          width: 64,
+                          height: 64,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppColors.button,
                             shape: BoxShape.circle,
-
                             boxShadow: [
-                              BoxShadow(blurRadius: 10, color: Colors.black12),
+                              BoxShadow(
+                                color: AppColors.button.withValues(alpha: 0.3),
+                                blurRadius: 12,
+                                offset: const Offset(0, 4),
+                              ),
                             ],
                           ),
-
                           child: Icon(
-                            isRunning ? Icons.pause : Icons.play_arrow,
-
-                            size: 35,
+                            isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                            color: Colors.white,
+                            size: 36,
                           ),
                         ),
                       ),
@@ -803,9 +838,20 @@ class _PomodoropageState extends State<Pomodoropage> {
               ),
 
               Center(
-                child: IconButton(
+                child: TextButton.icon(
                   onPressed: resetTimer,
-                  icon: const Icon(Icons.refresh),
+                  icon: Icon(Icons.refresh_rounded, color: AppColors.button, size: 18),
+                  label: Text(
+                    L10n.tr("Reset Timer", "Reset Timer"),
+                    style: TextStyle(
+                      color: AppColors.button,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: "Quicksand",
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  ),
                 ),
               ),
 

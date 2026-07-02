@@ -615,15 +615,16 @@ class _SettingProfileState extends State<SettingProfile> {
 
   Widget _buildSectionHeader(String title) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
           title,
           style: TextStyle(
             fontFamily: "Quicksand",
-            fontSize: 18,
+            fontSize: 16,
             fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
             color: AppColors.button,
           ),
         ),
@@ -652,11 +653,14 @@ class _SettingProfileState extends State<SettingProfile> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text("Settings & Profile", style: AppTextStyles.greeting),
+                      Text(
+                        L10n.tr("Settings & Profile", "Pengaturan & Profil"),
+                        style: AppTextStyles.greeting,
+                      ),
                       Transform.translate(
                         offset: const Offset(0, -5),
                         child: Text(
-                          "Customize your Kinday experience",
+                          L10n.tr("Customize your Kinday experience", "Sesuaikan pengalaman Kinday-mu"),
                           style: AppTextStyles.affirmation,
                         ),
                       ),
@@ -683,7 +687,7 @@ class _SettingProfileState extends State<SettingProfile> {
                                 alignment: Alignment.bottomRight,
                                 children: [
                                   CircleAvatar(
-                                    radius: 36,
+                                    radius: 40,
                                     backgroundColor: AppColors.button,
                                     backgroundImage:
                                         _avatarKey == 'custom' &&
@@ -707,7 +711,7 @@ class _SettingProfileState extends State<SettingProfile> {
                                                 : "U",
                                             style: const TextStyle(
                                               color: Colors.white,
-                                              fontSize: 32,
+                                              fontSize: 36,
                                               fontWeight: FontWeight.bold,
                                               fontFamily: "Quicksand",
                                             ),
@@ -717,10 +721,10 @@ class _SettingProfileState extends State<SettingProfile> {
                                   GestureDetector(
                                     onTap: _showEditProfileDialog,
                                     child: CircleAvatar(
-                                      radius: 12,
+                                      radius: 13,
                                       backgroundColor: Colors.white,
                                       child: Icon(
-                                        Icons.edit,
+                                        Icons.edit_rounded,
                                         size: 14,
                                         color: AppColors.button,
                                       ),
@@ -747,10 +751,10 @@ class _SettingProfileState extends State<SettingProfile> {
                                     const SizedBox(height: 4),
                                     Text(
                                       _email,
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontFamily: "Nunito",
                                         fontSize: 14,
-                                        color: Colors.black54,
+                                        color: AppColors.button.withValues(alpha: 0.6),
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -761,14 +765,14 @@ class _SettingProfileState extends State<SettingProfile> {
                               IconButton(
                                 onPressed: _showEditProfileDialog,
                                 icon: Icon(
-                                  Icons.chevron_right,
+                                  Icons.chevron_right_rounded,
                                   color: AppColors.button,
                                 ),
                               ),
                             ],
                           ),
                           const Padding(
-                            padding: EdgeInsets.symmetric(vertical: 12.0),
+                            padding: EdgeInsets.symmetric(vertical: 16.0),
                             child: Divider(height: 1),
                           ),
                           // Stats row
@@ -777,26 +781,29 @@ class _SettingProfileState extends State<SettingProfile> {
                             children: [
                               _buildStatItem(
                                 "$_completedTasksCount",
-                                "Completed",
+                                L10n.tr("Completed", "Selesai"),
                               ),
                               Container(
                                 width: 1,
                                 height: 30,
                                 color: AppColors.background.withValues(
-                                  alpha: 0.5,
+                                  alpha: 0.3,
                                 ),
                               ),
-                              _buildStatItem("$_streakDays Days", "Streak"),
+                              _buildStatItem(
+                                L10n.tr("$_streakDays Days", "$_streakDays Hari"),
+                                L10n.tr("Streak", "Beruntun"),
+                              ),
                               Container(
                                 width: 1,
                                 height: 30,
                                 color: AppColors.background.withValues(
-                                  alpha: 0.5,
+                                  alpha: 0.3,
                                 ),
                               ),
                               _buildStatItem(
                                 _formatFocusTime(_totalFocusMinutes),
-                                "Focus Time",
+                                L10n.tr("Focus Time", "Waktu Fokus"),
                               ),
                             ],
                           ),
@@ -804,7 +811,7 @@ class _SettingProfileState extends State<SettingProfile> {
                       ),
                     ),
 
-                    _buildSectionHeader("App Preferences"),
+                    _buildSectionHeader(L10n.tr("App Preferences", "Preferensi Aplikasi")),
 
                     // Preferences Container (Container 3: Leaning pink/purple)
                     Container3(
@@ -818,23 +825,25 @@ class _SettingProfileState extends State<SettingProfile> {
                               Row(
                                 children: [
                                   Icon(
-                                    Icons.notifications_active,
+                                    Icons.notifications_active_rounded,
                                     color: AppColors.button,
                                     size: 20,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    "Enable Notifications",
+                                    L10n.tr("Enable Notifications", "Aktifkan Notifikasi"),
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.button,
+                                      fontFamily: "Quicksand",
                                     ),
                                   ),
                                 ],
                               ),
                               Switch.adaptive(
                                 value: _notificationsEnabled,
-                                activeTrackColor: AppColors.button,
+                                activeColor: AppColors.button,
+                                activeTrackColor: AppColors.button.withValues(alpha: 0.5),
                                 onChanged: (val) {
                                   setState(() {
                                     _notificationsEnabled = val;
@@ -864,24 +873,26 @@ class _SettingProfileState extends State<SettingProfile> {
                                   color: AppColors.button,
                                 ),
                                 label: Text(
-                                  "Send Test Notification",
+                                  L10n.tr("Send Test Notification", "Kirim Notifikasi Uji"),
                                   style: TextStyle(
                                     color: AppColors.button,
                                     fontWeight: FontWeight.bold,
+                                    fontFamily: "Quicksand",
                                   ),
                                 ),
                                 style: OutlinedButton.styleFrom(
                                   side: BorderSide(color: AppColors.button),
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
                                 ),
                               ),
                             ),
                           ],
-                          const SizedBox(height: 8),
-                          Divider(height: 1, color: AppColors.containerline1),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 12),
+                          Divider(height: 1, color: AppColors.containerline1.withValues(alpha: 0.3)),
+                          const SizedBox(height: 12),
                           // Theme Selector Dropdown
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -889,86 +900,100 @@ class _SettingProfileState extends State<SettingProfile> {
                               Row(
                                 children: [
                                   Icon(
-                                    Icons.palette,
+                                    Icons.palette_rounded,
                                     color: AppColors.button,
                                     size: 20,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    "App Theme",
+                                    L10n.tr("App Theme", "Tema Aplikasi"),
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.button,
+                                      fontFamily: "Quicksand",
                                     ),
                                   ),
                                 ],
                               ),
-                              DropdownButton<String>(
-                                value: _currentTheme,
-                                dropdownColor: Colors.white,
-                                iconEnabledColor: AppColors.button,
-                                style: TextStyle(
-                                  color: AppColors.button,
-                                  fontWeight: FontWeight.bold,
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.containerline1.withValues(alpha: 0.3),
+                                  ),
                                 ),
-                                underline: const SizedBox(),
-                                items:
-                                    const [
-                                      "Lavender Dreams",
-                                      "Sakura Bloom",
-                                      "Matcha Garden",
-                                      "Sky Blue",
-                                      "Peach Cream",
-                                      "Moonlight Lavender",
-                                      "Twilight Blue",
-                                      "Midnight Forest",
-                                    ].map((String name) {
-                                      String emoji = "";
-                                      switch (name) {
-                                        case "Lavender Dreams":
-                                          emoji = "💜";
-                                          break;
-                                        case "Sakura Bloom":
-                                          emoji = "🌸";
-                                          break;
-                                        case "Matcha Garden":
-                                          emoji = "🌿";
-                                          break;
-                                        case "Sky Blue":
-                                          emoji = "☁️";
-                                          break;
-                                        case "Peach Cream":
-                                          emoji = "🍑";
-                                          break;
-                                        case "Moonlight Lavender":
-                                          emoji = "🌙";
-                                          break;
-                                        case "Twilight Blue":
-                                          emoji = "🌌";
-                                          break;
-                                        case "Midnight Forest":
-                                          emoji = "🌲";
-                                          break;
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: _currentTheme,
+                                    dropdownColor: Colors.white,
+                                    iconEnabledColor: AppColors.button,
+                                    style: TextStyle(
+                                      color: AppColors.button,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: "Quicksand",
+                                      fontSize: 13,
+                                    ),
+                                    items:
+                                        const [
+                                          "Lavender Dreams",
+                                          "Sakura Bloom",
+                                          "Matcha Garden",
+                                          "Sky Blue",
+                                          "Peach Cream",
+                                          "Moonlight Lavender",
+                                          "Twilight Blue",
+                                          "Midnight Forest",
+                                        ].map((String name) {
+                                          String emoji = "";
+                                          switch (name) {
+                                            case "Lavender Dreams":
+                                              emoji = "💜";
+                                              break;
+                                            case "Sakura Bloom":
+                                              emoji = "🌸";
+                                              break;
+                                            case "Matcha Garden":
+                                              emoji = "🌿";
+                                              break;
+                                            case "Sky Blue":
+                                              emoji = "☁️";
+                                              break;
+                                            case "Peach Cream":
+                                              emoji = "🍑";
+                                              break;
+                                            case "Moonlight Lavender":
+                                              emoji = "🌙";
+                                              break;
+                                            case "Twilight Blue":
+                                              emoji = "🌌";
+                                              break;
+                                            case "Midnight Forest":
+                                              emoji = "🌲";
+                                              break;
+                                          }
+                                          return DropdownMenuItem<String>(
+                                            value: name,
+                                            child: Text("$emoji $name"),
+                                          );
+                                        }).toList(),
+                                    onChanged: (value) {
+                                      if (value != null) {
+                                        setState(() {
+                                          _currentTheme = value;
+                                        });
+                                        AppColors.setTheme(value);
                                       }
-                                      return DropdownMenuItem<String>(
-                                        value: name,
-                                        child: Text("$emoji $name"),
-                                      );
-                                    }).toList(),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    setState(() {
-                                      _currentTheme = value;
-                                    });
-                                    AppColors.setTheme(value);
-                                  }
-                                },
+                                    },
+                                  ),
+                                ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          Divider(height: 1, color: AppColors.containerline1),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 12),
+                          Divider(height: 1, color: AppColors.containerline1.withValues(alpha: 0.3)),
+                          const SizedBox(height: 12),
                           // AI Breakdown Detail
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -976,51 +1001,65 @@ class _SettingProfileState extends State<SettingProfile> {
                               Row(
                                 children: [
                                   Icon(
-                                    Icons.psychology,
+                                    Icons.psychology_rounded,
                                     color: AppColors.button,
                                     size: 20,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    "AI Breakdown Level",
+                                    L10n.tr("AI Breakdown Level", "Tingkat Detail AI"),
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.button,
+                                      fontFamily: "Quicksand",
                                     ),
                                   ),
                                 ],
                               ),
-                              DropdownButton<String>(
-                                value: _aiBreakdownLevel,
-                                dropdownColor: Colors.white,
-                                iconEnabledColor: AppColors.button,
-                                style: TextStyle(
-                                  color: AppColors.button,
-                                  fontWeight: FontWeight.bold,
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.containerline1.withValues(alpha: 0.3),
+                                  ),
                                 ),
-                                underline: const SizedBox(),
-                                items: const ["Simple", "Balanced", "Detailed"]
-                                    .map(
-                                      (val) => DropdownMenuItem(
-                                        value: val,
-                                        child: Text(val),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    setState(() {
-                                      _aiBreakdownLevel = value;
-                                    });
-                                    _saveSetting('ai_breakdown_level', value);
-                                  }
-                                },
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: _aiBreakdownLevel,
+                                    dropdownColor: Colors.white,
+                                    iconEnabledColor: AppColors.button,
+                                    style: TextStyle(
+                                      color: AppColors.button,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: "Quicksand",
+                                      fontSize: 13,
+                                    ),
+                                    items: const ["Simple", "Balanced", "Detailed"]
+                                        .map(
+                                          (val) => DropdownMenuItem(
+                                            value: val,
+                                            child: Text(val),
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (value) {
+                                      if (value != null) {
+                                        setState(() {
+                                          _aiBreakdownLevel = value;
+                                        });
+                                        _saveSetting('ai_breakdown_level', value);
+                                      }
+                                    },
+                                  ),
+                                ),
                               ),
                             ],
                           ),
-                          const SizedBox(height: 8),
-                          Divider(height: 1, color: AppColors.containerline1),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 12),
+                          Divider(height: 1, color: AppColors.containerline1.withValues(alpha: 0.3)),
+                          const SizedBox(height: 12),
                           // App Language selector
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1028,46 +1067,60 @@ class _SettingProfileState extends State<SettingProfile> {
                               Row(
                                 children: [
                                   Icon(
-                                    Icons.language,
+                                    Icons.language_rounded,
                                     color: AppColors.button,
                                     size: 20,
                                   ),
                                   const SizedBox(width: 8),
                                   Text(
-                                    "App Language",
+                                    L10n.tr("App Language", "Bahasa Aplikasi"),
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: AppColors.button,
+                                      fontFamily: "Quicksand",
                                     ),
                                   ),
                                 ],
                               ),
-                              DropdownButton<String>(
-                                value: L10n.lang == "en"
-                                    ? "English"
-                                    : "Bahasa Indonesia",
-                                dropdownColor: Colors.white,
-                                iconEnabledColor: AppColors.button,
-                                style: TextStyle(
-                                  color: AppColors.button,
-                                  fontWeight: FontWeight.bold,
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.containerline1.withValues(alpha: 0.3),
+                                  ),
                                 ),
-                                underline: const SizedBox(),
-                                items: const ["English", "Bahasa Indonesia"]
-                                    .map(
-                                      (val) => DropdownMenuItem(
-                                        value: val,
-                                        child: Text(val),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    L10n.setLanguage(
-                                      value == "English" ? "en" : "id",
-                                    );
-                                  }
-                                },
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<String>(
+                                    value: L10n.lang == "en"
+                                        ? "English"
+                                        : "Bahasa Indonesia",
+                                    dropdownColor: Colors.white,
+                                    iconEnabledColor: AppColors.button,
+                                    style: TextStyle(
+                                      color: AppColors.button,
+                                      fontWeight: FontWeight.bold,
+                                      fontFamily: "Quicksand",
+                                      fontSize: 13,
+                                    ),
+                                    items: const ["English", "Bahasa Indonesia"]
+                                        .map(
+                                          (val) => DropdownMenuItem(
+                                            value: val,
+                                            child: Text(val),
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (value) {
+                                      if (value != null) {
+                                        L10n.setLanguage(
+                                          value == "English" ? "en" : "id",
+                                        );
+                                      }
+                                    },
+                                  ),
+                                ),
                               ),
                             ],
                           ),
@@ -1075,7 +1128,7 @@ class _SettingProfileState extends State<SettingProfile> {
                       ),
                     ),
 
-                    _buildSectionHeader("Account & Info"),
+                    _buildSectionHeader(L10n.tr("Account & Info", "Akun & Info")),
 
                     // Info Container (Container 1: White/Grey card style)
                     Container1(
@@ -1083,8 +1136,8 @@ class _SettingProfileState extends State<SettingProfile> {
                       child: Column(
                         children: [
                           _buildListTile(
-                            icon: Icons.lock_outline,
-                            title: "Change Password",
+                            icon: Icons.lock_outline_rounded,
+                            title: L10n.tr("Change Password", "Ubah Kata Sandi"),
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -1096,8 +1149,8 @@ class _SettingProfileState extends State<SettingProfile> {
                           ),
                           const Divider(height: 1),
                           _buildListTile(
-                            icon: Icons.help_outline,
-                            title: "Help & FAQ",
+                            icon: Icons.help_outline_rounded,
+                            title: L10n.tr("Help & FAQ", "Bantuan & FAQ"),
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -1109,8 +1162,8 @@ class _SettingProfileState extends State<SettingProfile> {
                           ),
                           const Divider(height: 1),
                           _buildListTile(
-                            icon: Icons.info_outline,
-                            title: "About Kinday",
+                            icon: Icons.info_outline_rounded,
+                            title: L10n.tr("About Kinday", "Tentang Kinday"),
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -1124,7 +1177,7 @@ class _SettingProfileState extends State<SettingProfile> {
                       ),
                     ),
 
-                    _buildSectionHeader("Data Backup & Restore"),
+                    _buildSectionHeader(L10n.tr("Data Backup & Restore", "Cadangkan & Pulihkan Data")),
 
                     // Data Backup & Restore Container
                     Container2(
@@ -1135,16 +1188,17 @@ class _SettingProfileState extends State<SettingProfile> {
                           Row(
                             children: [
                               Icon(
-                                Icons.backup,
+                                Icons.backup_rounded,
                                 color: AppColors.button,
                                 size: 20,
                               ),
                               const SizedBox(width: 8),
                               Text(
-                                "Last Backup",
+                                L10n.tr("Last Backup", "Pencadangan Terakhir"),
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.button,
+                                  fontFamily: "Quicksand",
                                 ),
                               ),
                               const Spacer(),
@@ -1153,12 +1207,13 @@ class _SettingProfileState extends State<SettingProfile> {
                                 style: TextStyle(
                                   fontWeight: FontWeight.bold,
                                   color: AppColors.button,
+                                  fontFamily: "Nunito",
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 16),
-                          Divider(height: 1, color: AppColors.containerline2),
+                          Divider(height: 1, color: AppColors.containerline2.withValues(alpha: 0.3)),
                           const SizedBox(height: 16),
                           Row(
                             children: [
@@ -1181,13 +1236,13 @@ class _SettingProfileState extends State<SettingProfile> {
                                     );
                                   },
                                   icon: const Icon(
-                                    Icons.cloud_upload,
+                                    Icons.cloud_upload_rounded,
                                     color: Colors.white,
                                     size: 16,
                                   ),
-                                  label: const Text(
-                                    "Backup",
-                                    style: TextStyle(
+                                  label: Text(
+                                    L10n.tr("Backup", "Cadangkan"),
+                                    style: const TextStyle(
                                       color: Colors.white,
                                       fontWeight: FontWeight.bold,
                                     ),
@@ -1198,6 +1253,7 @@ class _SettingProfileState extends State<SettingProfile> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     elevation: 0,
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
                                   ),
                                 ),
                               ),
@@ -1220,12 +1276,12 @@ class _SettingProfileState extends State<SettingProfile> {
                                     );
                                   },
                                   icon: Icon(
-                                    Icons.cloud_download,
+                                    Icons.cloud_download_rounded,
                                     color: AppColors.button,
                                     size: 16,
                                   ),
                                   label: Text(
-                                    "Restore",
+                                    L10n.tr("Restore", "Pulihkan"),
                                     style: TextStyle(
                                       color: AppColors.button,
                                       fontWeight: FontWeight.bold,
@@ -1236,6 +1292,7 @@ class _SettingProfileState extends State<SettingProfile> {
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
+                                    padding: const EdgeInsets.symmetric(vertical: 12),
                                   ),
                                 ),
                               ),
@@ -1255,10 +1312,10 @@ class _SettingProfileState extends State<SettingProfile> {
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: _showLogoutDialog,
-                          icon: const Icon(Icons.logout, color: Colors.white),
-                          label: const Text(
-                            "Log Out",
-                            style: TextStyle(
+                          icon: const Icon(Icons.logout_rounded, color: Colors.white),
+                          label: Text(
+                            L10n.tr("Log Out", "Keluar"),
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
@@ -1269,7 +1326,7 @@ class _SettingProfileState extends State<SettingProfile> {
                             backgroundColor: Colors.redAccent,
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(40),
+                              borderRadius: BorderRadius.circular(24),
                             ),
                             elevation: 0,
                           ),

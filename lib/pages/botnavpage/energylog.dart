@@ -261,45 +261,57 @@ class _EnergyPageState extends State<EnergyPage> {
     required String title,
     required String description,
   }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: iconColor, size: 20),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.65),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: AppColors.containerline2.withValues(alpha: 0.2),
+          width: 1,
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: AppColors.button,
-                  fontFamily: "Quicksand",
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                description,
-                style: TextStyle(
-                  fontSize: 13,
-                  color: AppColors.normaltext,
-                  fontFamily: "Nunito",
-                  height: 1.3,
-                ),
-              ),
-            ],
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.12),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: iconColor, size: 22),
           ),
-        ),
-      ],
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: AppColors.button,
+                    fontFamily: "Quicksand",
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  description,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: AppColors.normaltext.withValues(alpha: 0.9),
+                    fontFamily: "Nunito",
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -308,6 +320,7 @@ class _EnergyPageState extends State<EnergyPage> {
     return Scaffold(
       body: BgContainer(
         child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
           child: Column(
             children: [
               Padding(
@@ -318,12 +331,14 @@ class _EnergyPageState extends State<EnergyPage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text("Energy Log", style: AppTextStyles.greeting),
-
+                        Text(
+                          L10n.tr("Energy Log", "Log Energi"),
+                          style: AppTextStyles.greeting,
+                        ),
                         Transform.translate(
                           offset: const Offset(0, -5),
                           child: Text(
-                            "Understand your rhythm",
+                            L10n.tr("Understand your rhythm", "Pahami ritme harianmu"),
                             style: AppTextStyles.affirmation,
                           ),
                         ),
@@ -338,25 +353,47 @@ class _EnergyPageState extends State<EnergyPage> {
               Container3(
                 width: double.infinity,
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      "Current Energy",
-                      style: TextStyle(
-                        color: AppColors.button,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                L10n.tr("Current Energy", "Energi Saat Ini"),
+                                style: TextStyle(
+                                  color: AppColors.button,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: "Quicksand",
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _getEnergyLabel(_currentEnergyLvl),
+                                style: TextStyle(
+                                  fontSize: 26,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.button,
+                                  fontFamily: "Quicksand",
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Image.asset(
+                          AppImage.iconenergy,
+                          height: 48,
+                          width: 48,
+                        ),
+                      ],
                     ),
-                    Text(
-                      _getEnergyLabel(_currentEnergyLvl),
-                      style: TextStyle(fontSize: 25, color: AppColors.button),
-                    ),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
-                      child: EnergyIndicator(level: _currentEnergyLvl),
-                    ),
-                    ElevatedButton(
+                    const SizedBox(height: 12),
+                    EnergyIndicator(level: _currentEnergyLvl),
+                    const SizedBox(height: 16),
+                    ElevatedButton.icon(
                       onPressed: () {
                         int tempEnergyLvl =
                             _currentEnergyLvl; // Set to current selection
@@ -365,12 +402,13 @@ class _EnergyPageState extends State<EnergyPage> {
                           builder: (context) {
                             return AlertDialog(
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
+                                borderRadius: BorderRadius.circular(24),
                               ),
                               title: Text(
-                                "What's your energy level?",
+                                L10n.tr("What's your energy level?", "Berapa tingkat energimu?"),
                                 style: TextStyle(
                                   fontFamily: "Quicksand",
+                                  fontWeight: FontWeight.bold,
                                   color: AppColors.button,
                                 ),
                               ),
@@ -388,8 +426,9 @@ class _EnergyPageState extends State<EnergyPage> {
                                             final isActive =
                                                 tempEnergyLvl >= lvl;
                                             return IconButton(
+                                              iconSize: 32,
                                               icon: Icon(
-                                                Icons.energy_savings_leaf,
+                                                Icons.energy_savings_leaf_rounded,
                                                 color: isActive
                                                     ? AppColors.button
                                                     : Colors.grey.shade300,
@@ -410,9 +449,9 @@ class _EnergyPageState extends State<EnergyPage> {
                               actions: [
                                 TextButton(
                                   onPressed: () => Navigator.pop(context),
-                                  child: const Text(
-                                    "Cancel",
-                                    style: TextStyle(color: Colors.grey),
+                                  child: Text(
+                                    L10n.tr("Cancel", "Batal"),
+                                    style: const TextStyle(color: Colors.grey),
                                   ),
                                 ),
                                 ElevatedButton(
@@ -431,13 +470,14 @@ class _EnergyPageState extends State<EnergyPage> {
                                   },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: AppColors.button,
+                                    elevation: 0,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(20),
                                     ),
                                   ),
-                                  child: const Text(
-                                    "Save",
-                                    style: TextStyle(color: Colors.white),
+                                  child: Text(
+                                    L10n.tr("Save", "Simpan"),
+                                    style: const TextStyle(color: Colors.white),
                                   ),
                                 ),
                               ],
@@ -445,13 +485,19 @@ class _EnergyPageState extends State<EnergyPage> {
                           },
                         );
                       },
-                      child: const Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.edit),
-                          SizedBox(width: 5),
-                          Text("Update Energy Log"),
-                        ],
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.button,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        minimumSize: const Size(double.infinity, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(22),
+                        ),
+                      ),
+                      icon: const Icon(Icons.edit_rounded, size: 18),
+                      label: Text(
+                        L10n.tr("Update Energy Log", "Perbarui Log Energi"),
+                        style: const TextStyle(fontWeight: FontWeight.bold),
                       ),
                     ),
                   ],
@@ -639,7 +685,7 @@ class _EnergyPageState extends State<EnergyPage> {
                         Icon(Icons.insights, color: AppColors.button, size: 22),
                         const SizedBox(width: 8),
                         Text(
-                          "Energy & Productivity Insights",
+                          L10n.tr("Energy & Productivity Insights", "Wawasan Energi & Produktivitas"),
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -651,7 +697,7 @@ class _EnergyPageState extends State<EnergyPage> {
                     ),
                     const SizedBox(height: 16),
                     _buildInsightRow(
-                      icon: Icons.access_time_filled,
+                      icon: Icons.access_time_filled_rounded,
                       iconColor: Colors.orangeAccent,
                       title: L10n.tr(
                         "Highest & Lowest Energy Hours",
@@ -662,14 +708,8 @@ class _EnergyPageState extends State<EnergyPage> {
                         "Energi Anda cenderung berada di puncak pada pukul $_highestEnergyHourStr dan di titik terendah pada pukul $_lowestEnergyHourStr.",
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Divider(
-                      height: 1,
-                      color: AppColors.containerline2.withValues(alpha: 0.3),
-                    ),
-                    const SizedBox(height: 12),
                     _buildInsightRow(
-                      icon: Icons.trending_down,
+                      icon: Icons.trending_down_rounded,
                       iconColor: Colors.redAccent,
                       title: L10n.tr(
                         "Productivity Drop",
@@ -680,12 +720,6 @@ class _EnergyPageState extends State<EnergyPage> {
                         "Berdasarkan tingkat penyelesaian tugas harian, produktivitas Anda cenderung menurun pada hari $_productivityDropDay.",
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Divider(
-                      height: 1,
-                      color: AppColors.containerline2.withValues(alpha: 0.3),
-                    ),
-                    const SizedBox(height: 12),
                     _buildInsightRow(
                       icon: Icons.compare_arrows_rounded,
                       iconColor: Colors.blueAccent,

@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:kinday/constant/app_colors.dart';
@@ -181,7 +182,9 @@ class _HomepageState extends State<Homepage> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text(
             L10n.tr("AI Unavailable", "AI Tidak Tersedia"),
             style: TextStyle(
@@ -212,12 +215,10 @@ class _HomepageState extends State<Homepage> {
     });
 
     try {
-      final model = GenerativeModel(
-        model: 'gemini-1.5-flash',
-        apiKey: apiKey,
-      );
+      final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
 
-      final prompt = 'Break down the task: "$taskTitle" into 3 to 5 brief, actionable subtasks. '
+      final prompt =
+          'Break down the task: "$taskTitle" into 3 to 5 brief, actionable subtasks. '
           'Output a JSON list of strings only. Example: ["Subtask 1", "Subtask 2"]. Do not include markdown code block formatting.';
 
       final content = [Content.text(prompt)];
@@ -226,7 +227,10 @@ class _HomepageState extends State<Homepage> {
       if (response.text != null) {
         String cleanJson = response.text!.trim();
         if (cleanJson.startsWith("```")) {
-          final match = RegExp(r'^```(?:json)?\s*(.*?)\s*```$', dotAll: true).firstMatch(cleanJson);
+          final match = RegExp(
+            r'^```(?:json)?\s*(.*?)\s*```$',
+            dotAll: true,
+          ).firstMatch(cleanJson);
           if (match != null && match.groupCount >= 1) {
             cleanJson = match.group(1)!.trim();
           } else {
@@ -246,10 +250,7 @@ class _HomepageState extends State<Homepage> {
         final List<Map<String, dynamic>> subtaskMaps = [];
         for (var subtaskTitle in decodedList) {
           if (subtaskTitle is String && subtaskTitle.trim().isNotEmpty) {
-            subtaskMaps.add({
-              "title": subtaskTitle.trim(),
-              "isDone": false,
-            });
+            subtaskMaps.add({"title": subtaskTitle.trim(), "isDone": false});
           }
         }
 
@@ -320,15 +321,28 @@ class _HomepageState extends State<Homepage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text("Good Morning,", style: AppTextStyles.greeting),
-                      Transform.translate(
-                        offset: const Offset(0, -10),
-                        child: Text(_name, style: AppTextStyles.username),
+                      Text(
+                        L10n.tr("Good Morning,", "Selamat Pagi,"),
+                        style: AppTextStyles.greeting,
                       ),
                       Transform.translate(
                         offset: const Offset(0, -5),
                         child: Text(
-                          "You've done your best today!",
+                          _name,
+                          style: AppTextStyles.username.copyWith(
+                            fontWeight: FontWeight.bold,
+                            fontFamily: "Quicksand",
+                            color: AppColors.button,
+                          ),
+                        ),
+                      ),
+                      Transform.translate(
+                        offset: const Offset(0, -2),
+                        child: Text(
+                          L10n.tr(
+                            "You've done your best today!",
+                            "Kamu telah melakukan yang terbaik hari ini!",
+                          ),
                           style: AppTextStyles.affirmation,
                         ),
                       ),
@@ -342,6 +356,7 @@ class _HomepageState extends State<Homepage> {
             // 2. Wrap the content Column in Expanded to take up remaining height
             Expanded(
               child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
                 child: Column(
                   children: [
                     Container3(
@@ -353,35 +368,44 @@ class _HomepageState extends State<Homepage> {
                             height: 50,
                             width: 50,
                           ),
-                          SizedBox(width: 10),
-                          Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                "Current Energy",
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.button,
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  L10n.tr("Current Energy", "Energi Saat Ini"),
+                                  style: TextStyle(
+                                    fontFamily: "Quicksand",
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: AppColors.button,
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                _getEnergyLabel(_currentEnergyLvl),
-                                style: TextStyle(
-                                  fontSize: 25,
-
-                                  color: AppColors.button,
+                                const SizedBox(height: 2),
+                                Text(
+                                  _getEnergyLabel(_currentEnergyLvl),
+                                  style: TextStyle(
+                                    fontSize: 24,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.button,
+                                    fontFamily: "Quicksand",
+                                  ),
                                 ),
-                              ),
-                              Text(
-                                _lastUpdated,
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  color: AppColors.button,
+                                const SizedBox(height: 2),
+                                Text(
+                                  _lastUpdated,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.button.withValues(
+                                      alpha: 0.7,
+                                    ),
+                                    fontFamily: "Nunito",
+                                  ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
                           ),
-                          Spacer(),
                           ElevatedButton(
                             onPressed: () {
                               int tempEnergyLvl = _currentEnergyLvl;
@@ -390,12 +414,16 @@ class _HomepageState extends State<Homepage> {
                                 builder: (context) {
                                   return AlertDialog(
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(20),
+                                      borderRadius: BorderRadius.circular(24),
                                     ),
                                     title: Text(
-                                      "What's your energy level?",
+                                      L10n.tr(
+                                        "What's your energy level?",
+                                        "Berapa tingkat energimu?",
+                                      ),
                                       style: TextStyle(
                                         fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
                                         color: AppColors.button,
                                       ),
                                     ),
@@ -415,8 +443,10 @@ class _HomepageState extends State<Homepage> {
                                                   final isActive =
                                                       tempEnergyLvl >= lvl;
                                                   return IconButton(
+                                                    iconSize: 32,
                                                     icon: Icon(
-                                                      Icons.energy_savings_leaf,
+                                                      Icons
+                                                          .energy_savings_leaf_rounded,
                                                       color: isActive
                                                           ? AppColors.button
                                                           : Colors
@@ -439,9 +469,11 @@ class _HomepageState extends State<Homepage> {
                                     actions: [
                                       TextButton(
                                         onPressed: () => Navigator.pop(context),
-                                        child: const Text(
-                                          "Cancel",
-                                          style: TextStyle(color: Colors.grey),
+                                        child: Text(
+                                          L10n.tr("Cancel", "Batal"),
+                                          style: const TextStyle(
+                                            color: Colors.grey,
+                                          ),
                                         ),
                                       ),
                                       ElevatedButton(
@@ -460,15 +492,18 @@ class _HomepageState extends State<Homepage> {
                                         },
                                         style: ElevatedButton.styleFrom(
                                           backgroundColor: AppColors.button,
+                                          elevation: 0,
                                           shape: RoundedRectangleBorder(
                                             borderRadius: BorderRadius.circular(
                                               20,
                                             ),
                                           ),
                                         ),
-                                        child: const Text(
-                                          "Save",
-                                          style: TextStyle(color: Colors.white),
+                                        child: Text(
+                                          L10n.tr("Save", "Simpan"),
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -476,11 +511,32 @@ class _HomepageState extends State<Homepage> {
                                 },
                               );
                             },
-                            child: const Row(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.button,
+                              foregroundColor: Colors.white,
+                              elevation: 0,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text("Log Energy"),
-                                SizedBox(width: 5),
-                                Icon(Icons.arrow_forward),
+                                Text(
+                                  L10n.tr("Log Energy", "Catat"),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 16,
+                                ),
                               ],
                             ),
                           ),
@@ -490,68 +546,111 @@ class _HomepageState extends State<Homepage> {
                     Container1(
                       width: double.infinity,
                       child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Container(
-                            margin: EdgeInsets.only(right: 10, left: 10),
-                            padding: EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.container2,
-                              borderRadius: BorderRadius.circular(20),
-                              border: Border.all(
-                                width: 1,
-                                style: BorderStyle.solid,
-                                color: AppColors.containerline2,
+                          Align(
+                            alignment: Alignment.centerLeft,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
                               ),
-                            ),
-                            child: Center(
+                              decoration: BoxDecoration(
+                                color: AppColors.container2.withValues(
+                                  alpha: 0.8,
+                                ),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  width: 1,
+                                  color: AppColors.containerline2,
+                                ),
+                              ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    Icons.star_border,
-                                    size: 15,
+                                    Icons.star_rounded,
+                                    size: 16,
                                     color: AppColors.normaltext,
                                   ),
-                                  SizedBox(width: 10),
+                                  const SizedBox(width: 6),
                                   Text(
-                                    "Suggested for now",
+                                    L10n.tr(
+                                      "Suggested for now",
+                                      "Disarankan saat ini",
+                                    ),
                                     style: TextStyle(
-                                      fontSize: 12,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
                                       color: AppColors.normaltext,
+                                      fontFamily: "Quicksand",
                                     ),
                                   ),
                                 ],
                               ),
                             ),
                           ),
-                          SizedBox(height: 15),
+                          const SizedBox(height: 16),
 
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Image.asset(
-                                AppImage.icontask,
-                                height: 80,
-                                width: 80,
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(16),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withValues(
+                                        alpha: 0.04,
+                                      ),
+                                      blurRadius: 8,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: Image.asset(
+                                  AppImage.icontask,
+                                  height: 64,
+                                  width: 64,
+                                ),
                               ),
-                              SizedBox(width: 10),
+                              const SizedBox(width: 16),
                               Expanded(
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
                                       _suggestedTask?.title ??
-                                          "No Suggested Task",
-                                      style: AppTextStyles.greeting,
+                                          L10n.tr(
+                                            "No Suggested Task",
+                                            "Tidak Ada Tugas Disarankan",
+                                          ),
+                                      style: TextStyle(
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 18,
+                                        color: AppColors.button,
+                                      ),
                                       maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
+                                    const SizedBox(height: 4),
                                     Text(
                                       _suggestedTask?.description ??
-                                          "No description",
-                                      maxLines: 1,
+                                          L10n.tr(
+                                            "No description",
+                                            "Tidak ada deskripsi",
+                                          ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
-                                        color: AppColors.normaltext,
+                                        fontSize: 13,
+                                        color: AppColors.normaltext.withValues(
+                                          alpha: 0.8,
+                                        ),
+                                        fontFamily: "Nunito",
                                       ),
                                     ),
                                     if (_suggestedTask != null) ...[
@@ -560,11 +659,11 @@ class _HomepageState extends State<Homepage> {
                                         Row(
                                           children: [
                                             Icon(
-                                              Icons.calendar_today,
-                                              size: 12,
+                                              Icons.calendar_today_rounded,
+                                              size: 13,
                                               color: AppColors.button,
                                             ),
-                                            const SizedBox(width: 4),
+                                            const SizedBox(width: 6),
                                             Expanded(
                                               child: Text(
                                                 _suggestedTask!.dueTime !=
@@ -575,9 +674,10 @@ class _HomepageState extends State<Homepage> {
                                                     ? "${_suggestedTask!.dueDate!.day}/${_suggestedTask!.dueDate!.month}/${_suggestedTask!.dueDate!.year}  ${_suggestedTask!.dueTime}"
                                                     : "${_suggestedTask!.dueDate!.day}/${_suggestedTask!.dueDate!.month}/${_suggestedTask!.dueDate!.year}",
                                                 style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w600,
+                                                  fontSize: 12,
+                                                  fontWeight: FontWeight.bold,
                                                   color: AppColors.button,
+                                                  fontFamily: "Nunito",
                                                 ),
                                               ),
                                             ),
@@ -588,22 +688,23 @@ class _HomepageState extends State<Homepage> {
                                       Row(
                                         children: [
                                           Icon(
-                                            Icons.energy_savings_leaf,
-                                            size: 14,
+                                            Icons.energy_savings_leaf_rounded,
+                                            size: 15,
                                             color: AppColors.button,
                                           ),
-                                          const SizedBox(width: 4),
+                                          const SizedBox(width: 6),
                                           Text(
                                             _getEnergyLabel(
                                               _suggestedTask!.energylvl,
                                             ),
-                                            style: const TextStyle(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w600,
-                                              color: Colors.black87,
+                                            style: TextStyle(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                              color: AppColors.normaltext,
+                                              fontFamily: "Nunito",
                                             ),
                                           ),
-                                          const SizedBox(width: 12),
+                                          const SizedBox(width: 16),
                                           PriorityIndicator(
                                             priority:
                                                 _suggestedTask!.prioritytask,
@@ -617,7 +718,7 @@ class _HomepageState extends State<Homepage> {
                             ],
                           ),
 
-                          SizedBox(height: 15),
+                          const SizedBox(height: 16),
 
                           ElevatedButton(
                             onPressed: () {
@@ -642,7 +743,10 @@ class _HomepageState extends State<Homepage> {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
-                                      "No suggested task available.",
+                                      L10n.tr(
+                                        "No suggested task available.",
+                                        "Tidak ada tugas yang disarankan.",
+                                      ),
                                       style: TextStyle(color: AppColors.button),
                                     ),
                                   ),
@@ -653,20 +757,25 @@ class _HomepageState extends State<Homepage> {
                               backgroundColor: AppColors.button,
                               foregroundColor: Colors.white,
                               elevation: 0,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 16,
-                                horizontal: 20,
-                              ),
+                              minimumSize: const Size(double.infinity, 50),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(40),
+                                borderRadius: BorderRadius.circular(25),
                               ),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
+                                const Icon(Icons.timer_outlined, size: 20),
+                                const SizedBox(width: 8),
                                 Text(
-                                  "Start Focus Session",
-                                  style: TextStyle(color: Colors.white),
+                                  L10n.tr(
+                                    "Start Focus Session",
+                                    "Mulai Sesi Fokus",
+                                  ),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                  ),
                                 ),
                               ],
                             ),
@@ -676,35 +785,66 @@ class _HomepageState extends State<Homepage> {
                     ),
                     Container2(
                       width: double.infinity,
-                      child: Row(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Image.asset(
-                            AppImage.iconprogress,
-                            height: 50,
-                            width: 50,
+                          Row(
+                            children: [
+                              Image.asset(
+                                AppImage.iconprogress,
+                                height: 50,
+                                width: 50,
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      L10n.tr(
+                                        "Today's Progress",
+                                        "Kemajuan Hari Ini",
+                                      ),
+                                      style: TextStyle(
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: AppColors.button,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      L10n.tr(
+                                        "$_completedTasksCount out of $_totalTasks tasks completed",
+                                        "$_completedTasksCount dari $_totalTasks tugas selesai",
+                                      ),
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: AppColors.normaltext,
+                                        fontFamily: "Nunito",
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
-
-                          SizedBox(width: 10),
-
-                          Expanded(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Today's progress",
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.button,
-                                  ),
+                          if (_totalTasks > 0) ...[
+                            const SizedBox(height: 16),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: LinearProgressIndicator(
+                                value: _completedTasksCount / _totalTasks,
+                                backgroundColor: Colors.white.withValues(
+                                  alpha: 0.3,
                                 ),
-                                Text(
-                                  "$_completedTasksCount out of $_totalTasks tasks completed",
-                                  style: TextStyle(color: AppColors.normaltext),
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  AppColors.button,
                                 ),
-                              ],
+                                minHeight: 8,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
@@ -714,44 +854,58 @@ class _HomepageState extends State<Homepage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            "Turn big tasks into small, doable steps",
+                            L10n.tr(
+                              "Turn big tasks into small, doable steps",
+                              "Ubah tugas besar menjadi langkah kecil yang bisa dilakukan",
+                            ),
                             style: TextStyle(
+                              fontFamily: "Quicksand",
                               fontWeight: FontWeight.bold,
+                              fontSize: 16,
                               color: AppColors.button,
                             ),
                           ),
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 12),
                           TextFormField(
                             controller: breakdowncontroller,
                             maxLines: 2,
-                            style: const TextStyle(color: Color(0xFF5852A0)),
+                            style: TextStyle(
+                              color: AppColors.button,
+                              fontFamily: "Nunito",
+                              fontSize: 14,
+                            ),
                             decoration: InputDecoration(
-                              hintText: "Let AI break down your task",
-                              hintStyle: TextStyle(color: AppColors.background),
-
+                              hintText: L10n.tr(
+                                "Let AI break down your task...",
+                                "Biar AI memecah tugas Anda...",
+                              ),
+                              hintStyle: TextStyle(
+                                color: AppColors.button.withValues(alpha: 0.4),
+                              ),
                               border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(16),
                                 borderSide: BorderSide.none,
                               ),
-
                               enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(16),
                                 borderSide: BorderSide.none,
                               ),
-
                               focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(16),
                                 borderSide: BorderSide(
-                                  color: Colors.indigo.shade200,
+                                  color: AppColors.button,
                                   width: 1.5,
                                 ),
                               ),
-
                               filled: true,
-                              fillColor: Colors.grey.shade100,
+                              fillColor: Colors.white.withValues(alpha: 0.6),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 12,
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 15),
+                          const SizedBox(height: 16),
                           Center(
                             child: _isLoadingAI
                                 ? SizedBox(
@@ -762,12 +916,33 @@ class _HomepageState extends State<Homepage> {
                                       strokeWidth: 3,
                                     ),
                                   )
-                                : SmallButton(
-                                    sign: "Break down task",
-                                    warnaBox: AppColors.button,
-                                    textbuttoncolor: Colors.white,
-                                    leadImage: AppImage.iconsubtask,
+                                : ElevatedButton.icon(
                                     onPressed: _breakDownTaskWithAI,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.button,
+                                      foregroundColor: Colors.white,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 24,
+                                        vertical: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(20),
+                                      ),
+                                    ),
+                                    icon: Image.asset(
+                                      AppImage.iconsubtask,
+                                      width: 18,
+                                      height: 18,
+                                      color: Colors.white,
+                                    ),
+                                    label: Text(
+                                      L10n.tr("Break down task", "Pecah Tugas"),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                      ),
+                                    ),
                                   ),
                           ),
                         ],
