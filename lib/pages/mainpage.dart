@@ -40,45 +40,50 @@ class MainpageState extends State<Mainpage> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> pages = [
-      Homepage(),
-      Tasklistpage(),
-      Pomodoropage(),
-      EnergyPage(),
-      SettingProfile(),
-    ];
+    return ValueListenableBuilder<String>(
+      valueListenable: AppColors.themeNotifier,
+      builder: (context, theme, child) {
+        final List<Widget> pages = [
+          Homepage(),
+          Tasklistpage(),
+          Pomodoropage(),
+          EnergyPage(),
+          SettingProfile(),
+        ];
 
-    return Scaffold(
-      body: pages[selectedIndex],
-      bottomNavigationBar: CurvedNavigationBar(
-        color: AppColors.background2,
-        key: _bottomNavigationKey,
-        index: selectedIndex,
-        backgroundColor: AppColors.button,
-        items: <Widget>[
-          Icon(Icons.home, size: 30, color: AppColors.button),
-          Icon(Icons.task_alt, size: 30, color: AppColors.button),
-          Icon(Icons.timer, size: 30, color: AppColors.button),
-          Icon(Icons.electric_bolt_rounded, size: 30, color: AppColors.button),
-          Icon(Icons.person, size: 30, color: AppColors.button),
-        ],
-        onTap: (index) {
-          setState(() {
-            selectedIndex = index;
-          });
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: AppColors.button,
-        onPressed: () async {
-          await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const CreateTaskPage()),
-          );
-          TaskNotifier.notify();
-        },
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
+        return Scaffold(
+          body: pages[selectedIndex],
+          bottomNavigationBar: CurvedNavigationBar(
+            color: AppColors.background2,
+            key: _bottomNavigationKey,
+            index: selectedIndex,
+            backgroundColor: AppColors.button,
+            items: <Widget>[
+              Icon(Icons.home, size: 30, color: AppColors.button),
+              Icon(Icons.task_alt, size: 30, color: AppColors.button),
+              Icon(Icons.timer, size: 30, color: AppColors.button),
+              Icon(Icons.electric_bolt_rounded, size: 30, color: AppColors.button),
+              Icon(Icons.person, size: 30, color: AppColors.button),
+            ],
+            onTap: (index) {
+              setState(() {
+                selectedIndex = index;
+              });
+            },
+          ),
+          floatingActionButton: FloatingActionButton(
+            backgroundColor: AppColors.button,
+            onPressed: () async {
+              await Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const CreateTaskPage()),
+              );
+              TaskNotifier.notify();
+            },
+            child: const Icon(Icons.add, color: Colors.white),
+          ),
+        );
+      },
     );
   }
 }
