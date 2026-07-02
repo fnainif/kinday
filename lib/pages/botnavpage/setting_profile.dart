@@ -1,4 +1,5 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:kinday/constant/app_colors.dart';
@@ -6,11 +7,11 @@ import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/constant/l10n.dart';
-import 'package:kinday/database/db_helper.dart';
-import 'package:kinday/models/user_model_sql.dart';
 import 'package:kinday/constant/task_notifier.dart';
-import 'package:kinday/database/preference_handler.dart';
+import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/notification_helper.dart';
+import 'package:kinday/database/preference_handler.dart';
+import 'package:kinday/models/user_model_sql.dart';
 import 'package:kinday/pages/additional/about.dart';
 import 'package:kinday/pages/additional/changepass.dart';
 import 'package:kinday/pages/additional/faq.dart';
@@ -120,25 +121,27 @@ class _SettingProfileState extends State<SettingProfile> {
 
   int _calculateStreak(List<DateTime> creationDays) {
     if (creationDays.isEmpty) return 0;
-    
+
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
-    
-    final uniqueDays = creationDays.map((d) => DateTime(d.year, d.month, d.day)).toSet();
-    
+
+    final uniqueDays = creationDays
+        .map((d) => DateTime(d.year, d.month, d.day))
+        .toSet();
+
     if (!uniqueDays.contains(today) && !uniqueDays.contains(yesterday)) {
       return 0;
     }
-    
+
     DateTime checkDay = uniqueDays.contains(today) ? today : yesterday;
     int streak = 0;
-    
+
     while (uniqueDays.contains(checkDay)) {
       streak++;
       checkDay = checkDay.subtract(const Duration(days: 1));
     }
-    
+
     return streak;
   }
 
@@ -200,7 +203,9 @@ class _SettingProfileState extends State<SettingProfile> {
                   padding: const EdgeInsets.all(2),
                   child: CircleAvatar(
                     radius: 22,
-                    backgroundColor: AppColors.background.withValues(alpha: 0.2),
+                    backgroundColor: AppColors.background.withValues(
+                      alpha: 0.2,
+                    ),
                     child: child,
                   ),
                 ),
@@ -209,7 +214,8 @@ class _SettingProfileState extends State<SettingProfile> {
 
             Widget buildCustomAvatarOption() {
               final isSelected = dialogAvatarKey == 'custom';
-              final hasImage = dialogAvatarPath != null && dialogAvatarPath!.isNotEmpty;
+              final hasImage =
+                  dialogAvatarPath != null && dialogAvatarPath!.isNotEmpty;
 
               return GestureDetector(
                 onTap: () async {
@@ -246,7 +252,9 @@ class _SettingProfileState extends State<SettingProfile> {
                   padding: const EdgeInsets.all(2),
                   child: CircleAvatar(
                     radius: 22,
-                    backgroundColor: AppColors.background.withValues(alpha: 0.2),
+                    backgroundColor: AppColors.background.withValues(
+                      alpha: 0.2,
+                    ),
                     backgroundImage: hasImage
                         ? FileImage(File(dialogAvatarPath!))
                         : null,
@@ -326,7 +334,9 @@ class _SettingProfileState extends State<SettingProfile> {
                         buildAvatarOption(
                           'letter',
                           Text(
-                            nameController.text.isNotEmpty ? nameController.text[0].toUpperCase() : "U",
+                            nameController.text.isNotEmpty
+                                ? nameController.text[0].toUpperCase()
+                                : "U",
                             style: TextStyle(
                               color: AppColors.button,
                               fontWeight: FontWeight.bold,
@@ -337,25 +347,45 @@ class _SettingProfileState extends State<SettingProfile> {
                         buildAvatarOption(
                           'login',
                           ClipOval(
-                            child: Image.asset(AppImage.mascotlogin, fit: BoxFit.cover, width: 44, height: 44),
+                            child: Image.asset(
+                              AppImage.mascotlogin,
+                              fit: BoxFit.cover,
+                              width: 44,
+                              height: 44,
+                            ),
                           ),
                         ),
                         buildAvatarOption(
                           'task',
                           ClipOval(
-                            child: Image.asset(AppImage.mascottask, fit: BoxFit.cover, width: 44, height: 44),
+                            child: Image.asset(
+                              AppImage.mascottask,
+                              fit: BoxFit.cover,
+                              width: 44,
+                              height: 44,
+                            ),
                           ),
                         ),
                         buildAvatarOption(
                           'focus',
                           ClipOval(
-                            child: Image.asset(AppImage.mascotfocus, fit: BoxFit.cover, width: 44, height: 44),
+                            child: Image.asset(
+                              AppImage.mascotfocus,
+                              fit: BoxFit.cover,
+                              width: 44,
+                              height: 44,
+                            ),
                           ),
                         ),
                         buildAvatarOption(
                           'star',
                           ClipOval(
-                            child: Image.asset(AppImage.mascotstar, fit: BoxFit.cover, width: 44, height: 44),
+                            child: Image.asset(
+                              AppImage.mascotstar,
+                              fit: BoxFit.cover,
+                              width: 44,
+                              height: 44,
+                            ),
                           ),
                         ),
                         buildCustomAvatarOption(),
@@ -381,7 +411,10 @@ class _SettingProfileState extends State<SettingProfile> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            L10n.tr("Name cannot be empty.", "Nama tidak boleh kosong.")
+                            L10n.tr(
+                              "Name cannot be empty.",
+                              "Nama tidak boleh kosong.",
+                            ),
                           ),
                         ),
                       );
@@ -391,7 +424,10 @@ class _SettingProfileState extends State<SettingProfile> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            L10n.tr("Email cannot be empty.", "Email tidak boleh kosong.")
+                            L10n.tr(
+                              "Email cannot be empty.",
+                              "Email tidak boleh kosong.",
+                            ),
                           ),
                         ),
                       );
@@ -402,7 +438,10 @@ class _SettingProfileState extends State<SettingProfile> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            L10n.tr("Please enter a valid email.", "Silakan masukkan email yang valid.")
+                            L10n.tr(
+                              "Please enter a valid email.",
+                              "Silakan masukkan email yang valid.",
+                            ),
                           ),
                         ),
                       );
@@ -414,13 +453,19 @@ class _SettingProfileState extends State<SettingProfile> {
                     final userId = prefs.getInt('user_id') ?? 1;
 
                     // Unique email check
-                    final isTaken = await dbHelper.isEmailRegistered(email, excludeUserId: userId);
+                    final isTaken = await dbHelper.isEmailRegistered(
+                      email,
+                      excludeUserId: userId,
+                    );
                     if (isTaken) {
                       if (context.mounted) {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              L10n.tr("Email is already taken by another account.", "Email sudah digunakan oleh akun lain.")
+                              L10n.tr(
+                                "Email is already taken by another account.",
+                                "Email sudah digunakan oleh akun lain.",
+                              ),
                             ),
                             backgroundColor: Colors.redAccent,
                           ),
@@ -447,7 +492,10 @@ class _SettingProfileState extends State<SettingProfile> {
                       await prefs.setString('user_email', email);
                       await prefs.setString('user_avatar', dialogAvatarKey);
                       if (dialogAvatarPath != null) {
-                        await prefs.setString('user_avatar_path', dialogAvatarPath!);
+                        await prefs.setString(
+                          'user_avatar_path',
+                          dialogAvatarPath!,
+                        );
                       } else {
                         await prefs.remove('user_avatar_path');
                       }
@@ -467,7 +515,10 @@ class _SettingProfileState extends State<SettingProfile> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              L10n.tr("Profile updated successfully!", "Profil berhasil diperbarui!")
+                              L10n.tr(
+                                "Profile updated successfully!",
+                                "Profil berhasil diperbarui!",
+                              ),
                             ),
                             backgroundColor: Colors.green,
                           ),
@@ -478,7 +529,10 @@ class _SettingProfileState extends State<SettingProfile> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              L10n.tr("Failed to update profile.", "Gagal memperbarui profil.")
+                              L10n.tr(
+                                "Failed to update profile.",
+                                "Gagal memperbarui profil.",
+                              ),
                             ),
                             backgroundColor: Colors.redAccent,
                           ),
@@ -598,10 +652,7 @@ class _SettingProfileState extends State<SettingProfile> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text(
-                        "Settings & Profile",
-                        style: AppTextStyles.greeting,
-                      ),
+                      Text("Settings & Profile", style: AppTextStyles.greeting),
                       Transform.translate(
                         offset: const Offset(0, -5),
                         child: Text(
@@ -634,12 +685,22 @@ class _SettingProfileState extends State<SettingProfile> {
                                   CircleAvatar(
                                     radius: 36,
                                     backgroundColor: AppColors.button,
-                                    backgroundImage: _avatarKey == 'custom' && _avatarPath != null && _avatarPath!.isNotEmpty
+                                    backgroundImage:
+                                        _avatarKey == 'custom' &&
+                                            _avatarPath != null &&
+                                            _avatarPath!.isNotEmpty
                                         ? FileImage(File(_avatarPath!))
-                                        : (_avatarKey != 'letter' && _avatarKey.isNotEmpty
-                                            ? AssetImage(_getAvatarAssetPath(_avatarKey))
-                                            : null),
-                                    child: (_avatarKey == 'letter' || _avatarKey.isEmpty)
+                                        : (_avatarKey != 'letter' &&
+                                                  _avatarKey.isNotEmpty
+                                              ? AssetImage(
+                                                  _getAvatarAssetPath(
+                                                    _avatarKey,
+                                                  ),
+                                                )
+                                              : null),
+                                    child:
+                                        (_avatarKey == 'letter' ||
+                                            _avatarKey.isEmpty)
                                         ? Text(
                                             _name.isNotEmpty
                                                 ? _name[0].toUpperCase()
@@ -714,7 +775,10 @@ class _SettingProfileState extends State<SettingProfile> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceAround,
                             children: [
-                              _buildStatItem("$_completedTasksCount", "Completed"),
+                              _buildStatItem(
+                                "$_completedTasksCount",
+                                "Completed",
+                              ),
                               Container(
                                 width: 1,
                                 height: 30,
@@ -730,40 +794,11 @@ class _SettingProfileState extends State<SettingProfile> {
                                   alpha: 0.5,
                                 ),
                               ),
-                              _buildStatItem(_formatFocusTime(_totalFocusMinutes), "Focus Time"),
+                              _buildStatItem(
+                                _formatFocusTime(_totalFocusMinutes),
+                                "Focus Time",
+                              ),
                             ],
-                          ),
-                        ],
-                      ),
-                    ),
-
-                    _buildSectionHeader("Statistics"),
-                    Container1(
-                      width: double.infinity,
-                      child: Column(
-                        children: [
-                          _buildStatRow(
-                            icon: Icons.check_circle_outline,
-                            label: "Completed Tasks",
-                            value: "$_completedTasksCount",
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Divider(height: 1, color: Colors.grey.shade200),
-                          ),
-                          _buildStatRow(
-                            icon: Icons.local_fire_department_outlined,
-                            label: "Current Streak",
-                            value: "$_streakDays days",
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: Divider(height: 1, color: Colors.grey.shade200),
-                          ),
-                          _buildStatRow(
-                            icon: Icons.timer_outlined,
-                            label: "Focus Time",
-                            value: _formatFocusTime(_totalFocusMinutes),
                           ),
                         ],
                       ),
@@ -815,11 +850,13 @@ class _SettingProfileState extends State<SettingProfile> {
                               width: double.infinity,
                               child: OutlinedButton.icon(
                                 onPressed: () async {
-                                  await NotificationHelper().showInstantNotification(
-                                    id: 9999,
-                                    title: "Test Notification",
-                                    body: "If you see this, notifications are working perfectly!",
-                                  );
+                                  await NotificationHelper()
+                                      .showInstantNotification(
+                                        id: 9999,
+                                        title: "Test Notification",
+                                        body:
+                                            "If you see this, notifications are working perfectly!",
+                                      );
                                 },
                                 icon: Icon(
                                   Icons.notifications_active_outlined,
@@ -843,10 +880,7 @@ class _SettingProfileState extends State<SettingProfile> {
                             ),
                           ],
                           const SizedBox(height: 8),
-                          Divider(
-                            height: 1,
-                            color: AppColors.containerline1,
-                          ),
+                          Divider(height: 1, color: AppColors.containerline1),
                           const SizedBox(height: 8),
                           // Theme Selector Dropdown
                           Row(
@@ -878,32 +912,49 @@ class _SettingProfileState extends State<SettingProfile> {
                                   fontWeight: FontWeight.bold,
                                 ),
                                 underline: const SizedBox(),
-                                items: const [
-                                  "Lavender Dreams",
-                                  "Sakura Bloom",
-                                  "Matcha Garden",
-                                  "Sky Blue",
-                                  "Peach Cream",
-                                  "Moonlight Lavender",
-                                  "Twilight Blue",
-                                  "Midnight Forest"
-                                ].map((String name) {
-                                  String emoji = "";
-                                  switch (name) {
-                                    case "Lavender Dreams": emoji = "💜"; break;
-                                    case "Sakura Bloom": emoji = "🌸"; break;
-                                    case "Matcha Garden": emoji = "🌿"; break;
-                                    case "Sky Blue": emoji = "☁️"; break;
-                                    case "Peach Cream": emoji = "🍑"; break;
-                                    case "Moonlight Lavender": emoji = "🌙"; break;
-                                    case "Twilight Blue": emoji = "🌌"; break;
-                                    case "Midnight Forest": emoji = "🌲"; break;
-                                  }
-                                  return DropdownMenuItem<String>(
-                                    value: name,
-                                    child: Text("$emoji $name"),
-                                  );
-                                }).toList(),
+                                items:
+                                    const [
+                                      "Lavender Dreams",
+                                      "Sakura Bloom",
+                                      "Matcha Garden",
+                                      "Sky Blue",
+                                      "Peach Cream",
+                                      "Moonlight Lavender",
+                                      "Twilight Blue",
+                                      "Midnight Forest",
+                                    ].map((String name) {
+                                      String emoji = "";
+                                      switch (name) {
+                                        case "Lavender Dreams":
+                                          emoji = "💜";
+                                          break;
+                                        case "Sakura Bloom":
+                                          emoji = "🌸";
+                                          break;
+                                        case "Matcha Garden":
+                                          emoji = "🌿";
+                                          break;
+                                        case "Sky Blue":
+                                          emoji = "☁️";
+                                          break;
+                                        case "Peach Cream":
+                                          emoji = "🍑";
+                                          break;
+                                        case "Moonlight Lavender":
+                                          emoji = "🌙";
+                                          break;
+                                        case "Twilight Blue":
+                                          emoji = "🌌";
+                                          break;
+                                        case "Midnight Forest":
+                                          emoji = "🌲";
+                                          break;
+                                      }
+                                      return DropdownMenuItem<String>(
+                                        value: name,
+                                        child: Text("$emoji $name"),
+                                      );
+                                    }).toList(),
                                 onChanged: (value) {
                                   if (value != null) {
                                     setState(() {
@@ -916,10 +967,7 @@ class _SettingProfileState extends State<SettingProfile> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Divider(
-                            height: 1,
-                            color: AppColors.containerline1,
-                          ),
+                          Divider(height: 1, color: AppColors.containerline1),
                           const SizedBox(height: 8),
                           // AI Breakdown Detail
                           Row(
@@ -971,10 +1019,7 @@ class _SettingProfileState extends State<SettingProfile> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          Divider(
-                            height: 1,
-                            color: AppColors.containerline1,
-                          ),
+                          Divider(height: 1, color: AppColors.containerline1),
                           const SizedBox(height: 8),
                           // App Language selector
                           Row(
@@ -1113,10 +1158,7 @@ class _SettingProfileState extends State<SettingProfile> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          Divider(
-                            height: 1,
-                            color: AppColors.containerline2,
-                          ),
+                          Divider(height: 1, color: AppColors.containerline2),
                           const SizedBox(height: 16),
                           Row(
                             children: [
@@ -1190,9 +1232,7 @@ class _SettingProfileState extends State<SettingProfile> {
                                     ),
                                   ),
                                   style: OutlinedButton.styleFrom(
-                                    side: BorderSide(
-                                      color: AppColors.button,
-                                    ),
+                                    side: BorderSide(color: AppColors.button),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),

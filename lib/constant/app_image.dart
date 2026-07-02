@@ -20,4 +20,6 @@ class AppImage {
   static String elvlmid = "$folderAsset/elvl3.png";
   static String elvlmidlo = "$folderAsset/elvl4.png";
   static String elvllow = "$folderAsset/elvl5.png";
+  static String logoSplashscreen = "$folderAsset/logo_splashscreen.gif";
 }
+
