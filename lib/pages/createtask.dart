@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:google_generative_ai/google_generative_ai.dart';
 
 import 'package:cool_dropdown/cool_dropdown.dart';
 import 'package:cool_dropdown/models/cool_dropdown_item.dart';
@@ -42,6 +43,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   bool _isListeningTitle = false;
   bool _isListeningDesc = false;
   bool _isRestoring = false;
+  bool _isLoadingAI = false;
 
   @override
   void initState() {
@@ -398,6 +400,141 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     _autosaveDraft();
   }
 
+  Future<void> _breakDownTaskWithAI() async {
+    final taskTitle = titleController.text.trim();
+    if (taskTitle.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            L10n.tr(
+              "Please write what you want to do today first!",
+              "Silakan tulis apa yang ingin Anda lakukan hari ini terlebih dahulu!",
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    // Attempt to load API Key from environment define, otherwise use a placeholder
+    const apiKey = String.fromEnvironment('GEMINI_API_KEY');
+    if (apiKey.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            L10n.tr("AI Unavailable", "AI Tidak Tersedia"),
+            style: TextStyle(
+              fontFamily: "Quicksand",
+              fontWeight: FontWeight.bold,
+              color: AppColors.button,
+            ),
+          ),
+          content: Text(
+            L10n.tr(
+              "This AI feature cannot be used yet.",
+              "Fitur AI ini belum dapat digunakan untuk saat ini.",
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoadingAI = true;
+    });
+
+    try {
+      final model = GenerativeModel(
+        model: 'gemini-1.5-flash',
+        apiKey: apiKey,
+      );
+
+      final prompt = 'Break down the task: "$taskTitle" into 3 to 5 brief, actionable subtasks. '
+          'Output a JSON list of strings only. Example: ["Subtask 1", "Subtask 2"]. Do not include markdown code block formatting.';
+
+      final content = [Content.text(prompt)];
+      final response = await model.generateContent(content);
+
+      if (response.text != null) {
+        String cleanJson = response.text!.trim();
+        // Remove markdown formatting if present
+        if (cleanJson.startsWith("```")) {
+          // Remove start ```json or ```
+          final match = RegExp(r'^```(?:json)?\s*(.*?)\s*```$', dotAll: true).firstMatch(cleanJson);
+          if (match != null && match.groupCount >= 1) {
+            cleanJson = match.group(1)!.trim();
+          } else {
+            // Fallback manual clean
+            if (cleanJson.startsWith("```json")) {
+              cleanJson = cleanJson.substring(7);
+            } else if (cleanJson.startsWith("```")) {
+              cleanJson = cleanJson.substring(3);
+            }
+            if (cleanJson.endsWith("```")) {
+              cleanJson = cleanJson.substring(0, cleanJson.length - 3);
+            }
+            cleanJson = cleanJson.trim();
+          }
+        }
+
+        final List decodedList = jsonDecode(cleanJson);
+        setState(() {
+          for (var subtaskTitle in decodedList) {
+            if (subtaskTitle is String && subtaskTitle.trim().isNotEmpty) {
+              subtasks.add({
+                "title": subtaskTitle.trim(),
+                "isDone": false,
+              });
+            }
+          }
+        });
+        _autosaveDraft();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                L10n.tr(
+                  "AI broke down your task successfully!",
+                  "AI berhasil memecah tugas Anda!",
+                ),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("AI error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              L10n.tr(
+                "Failed to break down task: $e",
+                "Gagal memecah tugas: $e",
+              ),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingAI = false;
+        });
+      }
+    }
+  }
+
   @override
   void dispose() {
     _speech.stop();
@@ -410,32 +547,57 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = AppColors.background2 == Colors.black87;
+    final cardDecoration = BoxDecoration(
+      color: isDark
+          ? Colors.black.withOpacity(0.2)
+          : Colors.white.withOpacity(0.55),
+      borderRadius: BorderRadius.circular(24),
+      border: Border.all(color: AppColors.button.withOpacity(0.12), width: 1.5),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(0.03),
+          blurRadius: 15,
+          offset: const Offset(0, 8),
+        ),
+      ],
+    );
+
     return Scaffold(
       body: BgContainer(
         child: SingleChildScrollView(
           child: Column(
             children: [
               Padding(
-                padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+                padding: const EdgeInsets.fromLTRB(16, 50, 20, 10),
                 child: Row(
                   children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text("Create New Task", style: AppTextStyles.greeting),
-
-                        Transform.translate(
-                          offset: const Offset(0, -5),
-                          child: Text(
+                    IconButton(
+                      icon: Icon(
+                        Icons.arrow_back_ios_new,
+                        color: AppColors.button,
+                        size: 22,
+                      ),
+                      onPressed: () => Navigator.maybePop(context),
+                    ),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "Create New Task",
+                            style: AppTextStyles.greeting,
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
                             "Tiny progress is still progress",
                             style: AppTextStyles.affirmation,
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                    const Spacer(),
-                    Image.asset(AppImage.mascotlogin, height: 120),
+                    Image.asset(AppImage.mascotlogin, height: 90),
                   ],
                 ),
               ),
@@ -447,119 +609,164 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   right: 20,
                 ),
                 child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white30,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.star_border,
-                              size: 20,
-                              color: AppColors.containerline1,
+                  decoration: cardDecoration,
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.star_border,
+                            size: 22,
+                            color: AppColors.button,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            "What do you want to do today?",
+                            style: TextStyle(
+                              fontFamily: "Quicksand",
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: AppColors.button,
                             ),
-                            const SizedBox(width: 10),
-                            const Text("What do you want to do today?"),
-                          ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: titleController,
+                        maxLines: 2,
+                        style: TextStyle(
+                          color: AppColors.button,
+                          fontFamily: "Nunito",
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(height: 5),
-                        TextFormField(
-                          controller: titleController,
-                          maxLines: 2,
-                          style: TextStyle(color: AppColors.button),
-                          decoration: InputDecoration(
-                            hintText: "eg. Study for Exam",
-                            hintStyle: TextStyle(color: AppColors.background),
-
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
+                        decoration: InputDecoration(
+                          hintText: "eg. Study for Exam",
+                          hintStyle: TextStyle(
+                            color: AppColors.button.withOpacity(0.5),
+                            fontFamily: "Nunito",
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(
+                              color: AppColors.button.withOpacity(0.1),
+                              width: 1.5,
                             ),
-
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(
+                              color: AppColors.button,
+                              width: 2.0,
                             ),
-
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.background,
-                                width: 1.5,
-                              ),
-                            ),
-
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            suffixIcon: SpeechMicButton(
+                          ),
+                          filled: true,
+                          fillColor: isDark
+                              ? Colors.black.withOpacity(0.25)
+                              : Colors.white.withOpacity(0.7),
+                          suffixIcon: Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: SpeechMicButton(
                               isListening: _isListeningTitle,
                               onTap: () =>
                                   _listenForField(titleController, true),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 15),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.description_outlined,
-                              size: 20,
-                              color: AppColors.containerline1,
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.description_outlined,
+                            size: 22,
+                            color: AppColors.button,
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            "Description (Optional)",
+                            style: TextStyle(
+                              fontFamily: "Quicksand",
+                              fontWeight: FontWeight.bold,
+                              fontSize: 15,
+                              color: AppColors.button,
                             ),
-                            const SizedBox(width: 10),
-                            const Text("Description (Optional)"),
-                          ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: descController,
+                        maxLines: 3,
+                        style: TextStyle(
+                          color: AppColors.button,
+                          fontFamily: "Nunito",
+                          fontWeight: FontWeight.w600,
                         ),
-                        const SizedBox(height: 5),
-                        TextFormField(
-                          controller: descController,
-                          maxLines: 3,
-                          style: TextStyle(color: AppColors.button),
-                          decoration: InputDecoration(
-                            hintText: "Add details about this task...",
-                            hintStyle: TextStyle(color: AppColors.background),
-
-                            border: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
+                        decoration: InputDecoration(
+                          hintText: "Add details about this task...",
+                          hintStyle: TextStyle(
+                            color: AppColors.button.withOpacity(0.5),
+                            fontFamily: "Nunito",
+                          ),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide.none,
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(
+                              color: AppColors.button.withOpacity(0.1),
+                              width: 1.5,
                             ),
-
-                            enabledBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide.none,
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(16),
+                            borderSide: BorderSide(
+                              color: AppColors.button,
+                              width: 2.0,
                             ),
-
-                            focusedBorder: OutlineInputBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              borderSide: BorderSide(
-                                color: AppColors.background,
-                                width: 1.5,
-                              ),
-                            ),
-
-                            filled: true,
-                            fillColor: Colors.grey.shade100,
-                            suffixIcon: SpeechMicButton(
+                          ),
+                          filled: true,
+                          fillColor: isDark
+                              ? Colors.black.withOpacity(0.25)
+                              : Colors.white.withOpacity(0.7),
+                          suffixIcon: Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: SpeechMicButton(
                               isListening: _isListeningDesc,
                               onTap: () =>
                                   _listenForField(descController, false),
                             ),
                           ),
                         ),
-                        const SizedBox(height: 15),
-                        SmallButton(
-                          sign: "Break down task",
-                          warnaBox: AppColors.background,
-                          destination: Pleaceholderpage(),
-                          textbuttoncolor: Colors.white,
-                          leadImage: AppImage.iconsubtask,
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 15),
+                      Center(
+                        child: _isLoadingAI
+                            ? SizedBox(
+                                height: 36,
+                                width: 36,
+                                child: CircularProgressIndicator(
+                                  color: AppColors.button,
+                                  strokeWidth: 3,
+                                ),
+                              )
+                            : SmallButton(
+                                sign: "Break down task",
+                                warnaBox: AppColors.button,
+                                textbuttoncolor: Colors.white,
+                                leadImage: AppImage.iconsubtask,
+                                onPressed: _breakDownTaskWithAI,
+                              ),
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -571,390 +778,558 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   right: 20,
                 ),
                 child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white30,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Image.asset(
-                              AppImage.iconduedate,
-                              height: 20,
-                              width: 20,
-                            ),
-                            const SizedBox(width: 10),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text("Due Date"),
-
-                                ElevatedButton.icon(
-                                  onPressed: () async {
-                                    final DateTime? picked =
-                                        await showDatePicker(
-                                          context: context,
-                                          initialDate: DateTime.now(),
-                                          firstDate: DateTime(1990),
-                                          lastDate: DateTime(2100),
-                                        );
-                                    if (picked != null) {
-                                      setState(() {
-                                        selectedDate = picked;
-                                      });
-                                      _autosaveDraft();
-                                    }
-                                  },
-                                  label: Text(
-                                    selectedDate == null
-                                        ? L10n.tr(
-                                            "Choose Date",
-                                            "Pilih Tanggal",
-                                          )
-                                        : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
-                                    style: TextStyle(color: AppColors.button),
-                                  ),
-                                ),
-                                if (selectedDate != null)
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.clear,
-                                      color: Colors.redAccent,
-                                      size: 18,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        selectedDate = null;
-                                        selectedTime = null;
-                                        selectedReminderMinutes = null;
-                                      });
-                                      _autosaveDraft();
-                                    },
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-
-                        if (selectedDate != null) ...[
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10.0),
-                            child: Divider(
-                              thickness: 1,
-                              color: AppColors.background,
-                            ),
-                          ),
+                  decoration: cardDecoration,
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
                           Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Image.asset(
-                                AppImage.iconduetime,
-                                height: 20,
-                                width: 20,
-                              ),
-                              SizedBox(width: 10),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const SizedBox(width: 10),
-                                  const Text("Due Time (Opt)"),
-
-                                  Row(
-                                    children: [
-                                      ElevatedButton.icon(
-                                        onPressed: () async {
-                                          final TimeOfDay? picked =
-                                              await showTimePicker(
-                                                context: context,
-                                                initialTime:
-                                                    selectedTime ??
-                                                    TimeOfDay.now(),
-                                              );
-                                          if (picked != null) {
-                                            setState(() {
-                                              selectedTime = picked;
-                                            });
-                                            _autosaveDraft();
-                                          }
-                                        },
-                                        label: Text(
-                                          selectedTime == null
-                                              ? L10n.tr(
-                                                  "Choose Time",
-                                                  "Pilih Jam",
-                                                )
-                                              : selectedTime!.format(context),
-                                          style: TextStyle(
-                                            color: AppColors.button,
-                                          ),
-                                        ),
-                                      ),
-
-                                      if (selectedTime != null)
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.clear,
-                                            color: Colors.redAccent,
-                                            size: 18,
-                                          ),
-                                          onPressed: () {
-                                            setState(() {
-                                              selectedTime = null;
-                                            });
-                                            _autosaveDraft();
-                                          },
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10.0),
-                            child: Divider(
-                              thickness: 1,
-                              color: AppColors.background,
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.notifications_active_outlined,
-                                size: 20,
+                                AppImage.iconduedate,
+                                height: 22,
+                                width: 22,
                                 color: AppColors.button,
                               ),
                               const SizedBox(width: 10),
-                              const Text("Reminder"),
-                              const Spacer(),
-                              DropdownButton<int?>(
-                                value: selectedReminderMinutes,
-                                dropdownColor: Colors.white,
-                                style: TextStyle(color: AppColors.button),
-                                items: const [
-                                  DropdownMenuItem(
-                                    value: null,
-                                    child: Text("No reminder"),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 0,
-                                    child: Text("At due time"),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 5,
-                                    child: Text("5 minutes before"),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 10,
-                                    child: Text("10 minutes before"),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 15,
-                                    child: Text("15 minutes before"),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 30,
-                                    child: Text("30 minutes before"),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 60,
-                                    child: Text("1 hour before"),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: 1440,
-                                    child: Text("1 day before"),
-                                  ),
-                                ],
-                                onChanged: (int? value) {
-                                  setState(() {
-                                    selectedReminderMinutes = value;
-                                  });
-                                  _autosaveDraft();
-                                },
+                              Text(
+                                "Due Date",
+                                style: TextStyle(
+                                  fontFamily: "Quicksand",
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: AppColors.button,
+                                ),
                               ),
                             ],
                           ),
-                        ],
-
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10.0),
-                          child: Divider(
-                            thickness: 1,
-                            color: AppColors.background,
-                          ),
-                        ),
-
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.repeat,
-                              color: AppColors.button,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 10),
-                            const Text("Repeat"),
-                            const Spacer(),
-                            DropdownButton<RepeatType>(
-                              value: _repeatType,
-                              dropdownColor: Colors.white,
-                              style: TextStyle(color: AppColors.button),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: RepeatType.none,
-                                  child: Text("None"),
-                                ),
-                                DropdownMenuItem(
-                                  value: RepeatType.daily,
-                                  child: Text("Every Day"),
-                                ),
-                                DropdownMenuItem(
-                                  value: RepeatType.selectedDays,
-                                  child: Text("Every Few Days"),
-                                ),
-                                DropdownMenuItem(
-                                  value: RepeatType.weekly,
-                                  child: Text("Every Week"),
-                                ),
-                                DropdownMenuItem(
-                                  value: RepeatType.monthly,
-                                  child: Text("Every Month"),
-                                ),
-                                DropdownMenuItem(
-                                  value: RepeatType.yearly,
-                                  child: Text("Every Year"),
-                                ),
-                              ],
-                              onChanged: (RepeatType? value) {
-                                setState(() {
-                                  _repeatType = value ?? RepeatType.none;
-                                });
-                                _autosaveDraft();
-                              },
-                            ),
-                          ],
-                        ),
-
-                        if (_repeatType == RepeatType.selectedDays) ...[
-                          const SizedBox(height: 10),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children:
-                                [
-                                  {"label": "Mon", "value": DateTime.monday},
-                                  {"label": "Tue", "value": DateTime.tuesday},
-                                  {"label": "Wed", "value": DateTime.wednesday},
-                                  {"label": "Thu", "value": DateTime.thursday},
-                                  {"label": "Fri", "value": DateTime.friday},
-                                  {"label": "Sat", "value": DateTime.saturday},
-                                  {"label": "Sun", "value": DateTime.sunday},
-                                ].map((day) {
-                                  final isSelected = _selectedWeekDays.contains(
-                                    day["value"],
-                                  );
-                                  return GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        if (isSelected) {
-                                          _selectedWeekDays.remove(
-                                            day["value"],
-                                          );
-                                        } else {
-                                          _selectedWeekDays.add(
-                                            day["value"] as int,
-                                          );
-                                        }
-                                      });
-                                      _autosaveDraft();
-                                    },
-                                    child: Container(
-                                      width: 38,
-                                      height: 38,
-                                      decoration: BoxDecoration(
-                                        color: isSelected
-                                            ? AppColors.button
-                                            : Colors.grey.shade200,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      alignment: Alignment.center,
-                                      child: Text(
-                                        day["label"] as String,
-                                        style: TextStyle(
-                                          color: isSelected
-                                              ? Colors.white
-                                              : Colors.black,
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }).toList(),
-                          ),
-                        ],
-
-                        if (_repeatType != RepeatType.none) ...[
-                          Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 10.0),
-                            child: Divider(
-                              thickness: 1,
-                              color: AppColors.background,
-                            ),
-                          ),
                           Row(
                             children: [
-                              Icon(
-                                Icons.event_busy,
-                                color: AppColors.button,
-                                size: 20,
-                              ),
-                              const SizedBox(width: 10),
-                              const Text("Finish Date (optional)"),
-                              const Spacer(),
-                              if (_finishDate != null)
+                              if (selectedDate != null)
                                 IconButton(
                                   icon: const Icon(
                                     Icons.clear,
                                     color: Colors.redAccent,
-                                    size: 18,
+                                    size: 20,
                                   ),
                                   onPressed: () {
                                     setState(() {
-                                      _finishDate = null;
+                                      selectedDate = null;
+                                      selectedTime = null;
+                                      selectedReminderMinutes = null;
                                     });
                                     _autosaveDraft();
                                   },
                                 ),
-                              ElevatedButton.icon(
+                              OutlinedButton.icon(
+                                icon: Icon(
+                                  Icons.calendar_today,
+                                  size: 16,
+                                  color: AppColors.button,
+                                ),
+                                style: OutlinedButton.styleFrom(
+                                  side: BorderSide(
+                                    color: AppColors.button.withOpacity(0.3),
+                                  ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                ),
                                 onPressed: () async {
                                   final DateTime? picked = await showDatePicker(
                                     context: context,
-                                    initialDate: _finishDate ?? DateTime.now(),
-                                    firstDate: DateTime.now(),
+                                    initialDate: DateTime.now(),
+                                    firstDate: DateTime(1990),
                                     lastDate: DateTime(2100),
                                   );
                                   if (picked != null) {
                                     setState(() {
-                                      _finishDate = picked;
+                                      selectedDate = picked;
                                     });
                                     _autosaveDraft();
                                   }
                                 },
                                 label: Text(
-                                  _finishDate == null
+                                  selectedDate == null
                                       ? L10n.tr("Choose Date", "Pilih Tanggal")
-                                      : "${_finishDate!.day}/${_finishDate!.month}/${_finishDate!.year}",
-                                  style: TextStyle(color: AppColors.button),
+                                      : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
+                                  style: TextStyle(
+                                    color: AppColors.button,
+                                    fontFamily: "Quicksand",
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
                             ],
                           ),
                         ],
+                      ),
+                      if (selectedDate != null) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12.0),
+                          child: Divider(
+                            thickness: 1,
+                            color: AppColors.button.withOpacity(0.1),
+                          ),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Image.asset(
+                                  AppImage.iconduetime,
+                                  height: 22,
+                                  width: 22,
+                                  color: AppColors.button,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  "Due Time (Opt)",
+                                  style: TextStyle(
+                                    fontFamily: "Quicksand",
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: AppColors.button,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                if (selectedTime != null)
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      color: Colors.redAccent,
+                                      size: 20,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        selectedTime = null;
+                                      });
+                                      _autosaveDraft();
+                                    },
+                                  ),
+                                OutlinedButton.icon(
+                                  icon: Icon(
+                                    Icons.access_time,
+                                    size: 16,
+                                    color: AppColors.button,
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(
+                                      color: AppColors.button.withOpacity(0.3),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    final TimeOfDay? picked =
+                                        await showTimePicker(
+                                          context: context,
+                                          initialTime:
+                                              selectedTime ?? TimeOfDay.now(),
+                                        );
+                                    if (picked != null) {
+                                      setState(() {
+                                        selectedTime = picked;
+                                      });
+                                      _autosaveDraft();
+                                    }
+                                  },
+                                  label: Text(
+                                    selectedTime == null
+                                        ? L10n.tr("Choose Time", "Pilih Jam")
+                                        : selectedTime!.format(context),
+                                    style: TextStyle(
+                                      color: AppColors.button,
+                                      fontFamily: "Quicksand",
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12.0),
+                          child: Divider(
+                            thickness: 1,
+                            color: AppColors.button.withOpacity(0.1),
+                          ),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.notifications_active_outlined,
+                                  size: 22,
+                                  color: AppColors.button,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  "Reminder",
+                                  style: TextStyle(
+                                    fontFamily: "Quicksand",
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: AppColors.button,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.black.withOpacity(0.25)
+                                    : Colors.white.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.button.withOpacity(0.15),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<int?>(
+                                  value: selectedReminderMinutes,
+                                  dropdownColor: isDark
+                                      ? Colors.grey.shade900
+                                      : Colors.white,
+                                  style: TextStyle(
+                                    color: AppColors.button,
+                                    fontFamily: "Nunito",
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  icon: Icon(
+                                    Icons.arrow_drop_down,
+                                    color: AppColors.button,
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: null,
+                                      child: Text("No reminder"),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 0,
+                                      child: Text("At due time"),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 5,
+                                      child: Text("5 minutes before"),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 10,
+                                      child: Text("10 minutes before"),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 15,
+                                      child: Text("15 minutes before"),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 30,
+                                      child: Text("30 minutes before"),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 60,
+                                      child: Text("1 hour before"),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 1440,
+                                      child: Text("1 day before"),
+                                    ),
+                                  ],
+                                  onChanged: (int? value) {
+                                    setState(() {
+                                      selectedReminderMinutes = value;
+                                    });
+                                    _autosaveDraft();
+                                  },
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ],
-                    ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        child: Divider(
+                          thickness: 1,
+                          color: AppColors.button.withOpacity(0.1),
+                        ),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.repeat,
+                                color: AppColors.button,
+                                size: 22,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                "Repeat",
+                                style: TextStyle(
+                                  fontFamily: "Quicksand",
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: AppColors.button,
+                                ),
+                              ),
+                            ],
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.black.withOpacity(0.25)
+                                  : Colors.white.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.button.withOpacity(0.15),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<RepeatType>(
+                                value: _repeatType,
+                                dropdownColor: isDark
+                                    ? Colors.grey.shade900
+                                    : Colors.white,
+                                style: TextStyle(
+                                  color: AppColors.button,
+                                  fontFamily: "Nunito",
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                icon: Icon(
+                                  Icons.arrow_drop_down,
+                                  color: AppColors.button,
+                                ),
+                                items: const [
+                                  DropdownMenuItem(
+                                    value: RepeatType.none,
+                                    child: Text("None"),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: RepeatType.daily,
+                                    child: Text("Every Day"),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: RepeatType.selectedDays,
+                                    child: Text("Every Few Days"),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: RepeatType.weekly,
+                                    child: Text("Every Week"),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: RepeatType.monthly,
+                                    child: Text("Every Month"),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: RepeatType.yearly,
+                                    child: Text("Every Year"),
+                                  ),
+                                ],
+                                onChanged: (RepeatType? value) {
+                                  setState(() {
+                                    _repeatType = value ?? RepeatType.none;
+                                  });
+                                  _autosaveDraft();
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (_repeatType == RepeatType.selectedDays) ...[
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children:
+                              [
+                                {"label": "Mon", "value": DateTime.monday},
+                                {"label": "Tue", "value": DateTime.tuesday},
+                                {"label": "Wed", "value": DateTime.wednesday},
+                                {"label": "Thu", "value": DateTime.thursday},
+                                {"label": "Fri", "value": DateTime.friday},
+                                {"label": "Sat", "value": DateTime.saturday},
+                                {"label": "Sun", "value": DateTime.sunday},
+                              ].map((day) {
+                                final isSelected = _selectedWeekDays.contains(
+                                  day["value"],
+                                );
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      if (isSelected) {
+                                        _selectedWeekDays.remove(day["value"]);
+                                      } else {
+                                        _selectedWeekDays.add(
+                                          day["value"] as int,
+                                        );
+                                      }
+                                    });
+                                    _autosaveDraft();
+                                  },
+                                  child: AnimatedContainer(
+                                    duration: const Duration(milliseconds: 200),
+                                    width: 38,
+                                    height: 38,
+                                    decoration: BoxDecoration(
+                                      color: isSelected
+                                          ? AppColors.button
+                                          : AppColors.button.withOpacity(0.08),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isSelected
+                                            ? AppColors.button
+                                            : AppColors.button.withOpacity(
+                                                0.15,
+                                              ),
+                                        width: 1,
+                                      ),
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      day["label"] as String,
+                                      style: TextStyle(
+                                        color: isSelected
+                                            ? Colors.white
+                                            : AppColors.button.withOpacity(0.8),
+                                        fontSize: 12,
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                        ),
+                      ],
+                      if (_repeatType != RepeatType.none) ...[
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12.0),
+                          child: Divider(
+                            thickness: 1,
+                            color: AppColors.button.withOpacity(0.1),
+                          ),
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.event_busy,
+                                  color: AppColors.button,
+                                  size: 22,
+                                ),
+                                const SizedBox(width: 10),
+                                Text(
+                                  "Finish Date (opt.)",
+                                  style: TextStyle(
+                                    fontFamily: "Quicksand",
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: AppColors.button,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                if (_finishDate != null)
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      color: Colors.redAccent,
+                                      size: 20,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _finishDate = null;
+                                      });
+                                      _autosaveDraft();
+                                    },
+                                  ),
+                                OutlinedButton.icon(
+                                  icon: Icon(
+                                    Icons.calendar_today,
+                                    size: 16,
+                                    color: AppColors.button,
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(
+                                      color: AppColors.button.withOpacity(0.3),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    final DateTime? picked =
+                                        await showDatePicker(
+                                          context: context,
+                                          initialDate:
+                                              _finishDate ?? DateTime.now(),
+                                          firstDate: DateTime.now(),
+                                          lastDate: DateTime(2100),
+                                        );
+                                    if (picked != null) {
+                                      setState(() {
+                                        _finishDate = picked;
+                                      });
+                                      _autosaveDraft();
+                                    }
+                                  },
+                                  label: Text(
+                                    _finishDate == null
+                                        ? L10n.tr(
+                                            "Choose Date",
+                                            "Pilih Tanggal",
+                                          )
+                                        : "${_finishDate!.day}/${_finishDate!.month}/${_finishDate!.year}",
+                                    style: TextStyle(
+                                      color: AppColors.button,
+                                      fontFamily: "Quicksand",
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ),
@@ -966,87 +1341,162 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   right: 20,
                 ),
                 child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white30,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20.0),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Image.asset(
-                              AppImage.iconpriority,
-                              height: 20,
-                              width: 20,
-                            ),
-                            SizedBox(width: 10),
-                            Text("Priority"),
-
-                            Spacer(),
-
-                            DropdownButton<String>(
-                              value: selectedDropdown,
-                              dropdownColor: Colors.white,
-
-                              iconEnabledColor: Colors.black,
-
-                              style: TextStyle(color: AppColors.button),
-                              items:
-                                  [
-                                    "Low priority",
-                                    "Mid priority",
-                                    "High priority",
-                                  ].map((String val) {
-                                    return DropdownMenuItem(
-                                      value: val,
-                                      child: Text(val),
-                                    );
-                                  }).toList(),
-                              onChanged: (String? value) {
-                                setState(() {
-                                  selectedDropdown = value;
-                                });
-                                _autosaveDraft();
-                              },
-                            ),
-                          ],
-                        ),
-
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 10.0),
-                          child: Divider(
-                            thickness: 1,
-                            color: AppColors.background,
+                  decoration: cardDecoration,
+                  padding: const EdgeInsets.all(20.0),
+                  child: Column(
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Image.asset(
+                                AppImage.iconpriority,
+                                height: 22,
+                                width: 22,
+                                color: AppColors.button,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                "Priority",
+                                style: TextStyle(
+                                  fontFamily: "Quicksand",
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: AppColors.button,
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Image.asset(
-                              AppImage.iconenergylvl,
-                              height: 20,
-                              width: 20,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 2,
                             ),
-                            SizedBox(width: 10),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Text("Energy level required"),
-                                  SizedBox(height: 5),
-                                  CoolDropdown(
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? Colors.black.withOpacity(0.25)
+                                  : Colors.white.withOpacity(0.7),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: AppColors.button.withOpacity(0.15),
+                                width: 1.5,
+                              ),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                value: selectedDropdown,
+                                dropdownColor: isDark
+                                    ? Colors.grey.shade900
+                                    : Colors.white,
+                                style: TextStyle(
+                                  color: AppColors.button,
+                                  fontFamily: "Nunito",
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                icon: Icon(
+                                  Icons.arrow_drop_down,
+                                  color: AppColors.button,
+                                ),
+                                items:
+                                    [
+                                      "Low priority",
+                                      "Mid priority",
+                                      "High priority",
+                                    ].map((String val) {
+                                      return DropdownMenuItem(
+                                        value: val,
+                                        child: Text(val),
+                                      );
+                                    }).toList(),
+                                onChanged: (String? value) {
+                                  setState(() {
+                                    selectedDropdown = value;
+                                  });
+                                  _autosaveDraft();
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 12.0),
+                        child: Divider(
+                          thickness: 1,
+                          color: AppColors.button.withOpacity(0.1),
+                        ),
+                      ),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Image.asset(
+                            AppImage.iconenergylvl,
+                            height: 22,
+                            width: 22,
+                            color: AppColors.button,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Energy level required",
+                                  style: TextStyle(
+                                    fontFamily: "Quicksand",
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 15,
+                                    color: AppColors.button,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Theme(
+                                  data: Theme.of(context).copyWith(
+                                    canvasColor: isDark
+                                        ? Colors.grey.shade900
+                                        : Colors.white,
+                                  ),
+                                  child: CoolDropdown(
                                     controller: energylvlController,
                                     dropdownList: energylvl,
-                                    defaultItem: energylvl.first,
-                                    resultOptions: const ResultOptions(
-                                      width: 200,
-                                      render: ResultRender.all,
+                                    defaultItem: energylvl.firstWhere(
+                                      (item) => item.value == selectedEnergy,
+                                      orElse: () => energylvl.first,
                                     ),
-                                    dropdownOptions: const DropdownOptions(
-                                      width: 200,
+                                    resultOptions: ResultOptions(
+                                      width: double.infinity,
+                                      height: 50,
+                                      render: ResultRender.all,
+                                      placeholder: 'Select Energy',
+                                      textStyle: TextStyle(
+                                        color: AppColors.button,
+                                        fontFamily: "Nunito",
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      boxDecoration: BoxDecoration(
+                                        color: isDark
+                                            ? Colors.black.withValues(
+                                                alpha: 0.25,
+                                              )
+                                            : Colors.white.withValues(
+                                                alpha: 0.7,
+                                              ),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: AppColors.button.withValues(
+                                            alpha: 0.15,
+                                          ),
+                                          width: 1.5,
+                                        ),
+                                      ),
+                                    ),
+                                    dropdownOptions: DropdownOptions(
+                                      width: 280,
+                                      color: isDark
+                                          ? Colors.grey.shade900
+                                          : Colors.white,
+                                      borderRadius: BorderRadius.circular(16),
                                     ),
                                     onChange: (value) {
                                       setState(() {
@@ -1054,19 +1504,27 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                       });
                                       _autosaveDraft();
                                     },
-                                    dropdownItemOptions:
-                                        const DropdownItemOptions(
-                                          render: DropdownItemRender.reverse,
-                                          alignment: Alignment.centerLeft,
+                                    dropdownItemOptions: DropdownItemOptions(
+                                      render: DropdownItemRender.reverse,
+                                      alignment: Alignment.centerLeft,
+                                      selectedBoxDecoration: BoxDecoration(
+                                        color: AppColors.button.withOpacity(
+                                          0.1,
                                         ),
+                                      ),
+                                      textStyle: TextStyle(
+                                        color: AppColors.button,
+                                        fontFamily: "Nunito",
+                                      ),
+                                    ),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                      ],
-                    ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -1078,68 +1536,106 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   right: 20,
                 ),
                 child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
+                  decoration: cardDecoration,
+                  padding: const EdgeInsets.all(20.0),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Image.asset(
-                            AppImage.iconsubtask,
-                            height: 20,
-                            width: 20,
+                          Row(
+                            children: [
+                              Image.asset(
+                                AppImage.iconsubtask,
+                                height: 22,
+                                width: 22,
+                                color: AppColors.button,
+                              ),
+                              const SizedBox(width: 10),
+                              Text(
+                                "Subtasks",
+                                style: TextStyle(
+                                  fontFamily: "Quicksand",
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                  color: AppColors.button,
+                                ),
+                              ),
+                            ],
                           ),
-                          SizedBox(width: 10),
-                          Text("Subtasks"),
-
-                          Spacer(),
-
-                          PopupMenuButton<String>(
-                            icon: Icon(
-                              Icons.sort,
-                              size: 20,
-                              color: AppColors.button,
-                            ),
-                            tooltip: "Sort subtasks",
-                            onSelected: _sortSubtasks,
-                            itemBuilder: (BuildContext context) =>
-                                <PopupMenuEntry<String>>[
-                                  const PopupMenuItem<String>(
-                                    value: 'A-Z',
-                                    child: Text('Alphabetical (A-Z)'),
+                          Row(
+                            children: [
+                              PopupMenuButton<String>(
+                                icon: Icon(
+                                  Icons.sort,
+                                  size: 22,
+                                  color: AppColors.button,
+                                ),
+                                tooltip: "Sort subtasks",
+                                onSelected: _sortSubtasks,
+                                color: isDark
+                                    ? Colors.grey.shade900
+                                    : Colors.white,
+                                itemBuilder: (BuildContext context) =>
+                                    <PopupMenuEntry<String>>[
+                                      const PopupMenuItem<String>(
+                                        value: 'A-Z',
+                                        child: Text('Alphabetical (A-Z)'),
+                                      ),
+                                      const PopupMenuItem<String>(
+                                        value: 'Z-A',
+                                        child: Text('Alphabetical (Z-A)'),
+                                      ),
+                                      const PopupMenuItem<String>(
+                                        value: 'Incomplete first',
+                                        child: Text('Incomplete first'),
+                                      ),
+                                      const PopupMenuItem<String>(
+                                        value: 'Completed first',
+                                        child: Text('Completed first'),
+                                      ),
+                                    ],
+                              ),
+                              TextButton.icon(
+                                onPressed: _showAddSubtaskDialog,
+                                icon: Icon(
+                                  Icons.add,
+                                  color: AppColors.button,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  "Add subtask",
+                                  style: TextStyle(
+                                    color: AppColors.button,
+                                    fontFamily: "Quicksand",
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  const PopupMenuItem<String>(
-                                    value: 'Z-A',
-                                    child: Text('Alphabetical (Z-A)'),
-                                  ),
-                                  const PopupMenuItem<String>(
-                                    value: 'Incomplete first',
-                                    child: Text('Incomplete first'),
-                                  ),
-                                  const PopupMenuItem<String>(
-                                    value: 'Completed first',
-                                    child: Text('Completed first'),
-                                  ),
-                                ],
-                          ),
-
-                          TextButton.icon(
-                            onPressed: _showAddSubtaskDialog,
-                            icon: Icon(Icons.add),
-                            label: Text("Add subtask"),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-
+                      const SizedBox(height: 12),
                       Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 20),
+                        padding: subtasks.isEmpty
+                            ? const EdgeInsets.symmetric(
+                                vertical: 30,
+                                horizontal: 16,
+                              )
+                            : const EdgeInsets.symmetric(
+                                vertical: 8,
+                                horizontal: 8,
+                              ),
                         decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.black.withOpacity(0.12)
+                              : Colors.white.withOpacity(0.35),
                           border: Border.all(
-                            color: AppColors.background,
-                            style: BorderStyle.solid,
+                            color: AppColors.button.withOpacity(0.15),
+                            width: 1.5,
                           ),
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -1148,26 +1644,27 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 children: [
                                   Icon(
                                     Icons.assignment_outlined,
-                                    size: 60,
-                                    color: AppColors.normaltext,
+                                    size: 48,
+                                    color: AppColors.button.withOpacity(0.5),
                                   ),
-
-                                  SizedBox(height: 12),
-
+                                  const SizedBox(height: 12),
                                   Text(
                                     "No subtasks yet",
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: AppColors.normaltext,
+                                      fontFamily: "Quicksand",
+                                      color: AppColors.button.withOpacity(0.7),
                                     ),
                                   ),
-
-                                  SizedBox(height: 6),
-
+                                  const SizedBox(height: 6),
                                   Text(
                                     "Break this task down or keep it simple!",
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(color: Colors.grey),
+                                    style: TextStyle(
+                                      fontFamily: "Nunito",
+                                      color: AppColors.button.withOpacity(0.5),
+                                      fontSize: 12,
+                                    ),
                                   ),
                                 ],
                               )
@@ -1188,111 +1685,216 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 },
                                 itemBuilder: (context, index) {
                                   final sub = subtasks[index];
-                                  return ListTile(
+                                  final isDone = sub["isDone"] ?? false;
+                                  return Container(
                                     key: ValueKey(
                                       (sub["title"] ?? "") + index.toString(),
                                     ),
-                                    contentPadding: const EdgeInsets.symmetric(
-                                      horizontal: 8.0,
+                                    margin: const EdgeInsets.symmetric(
+                                      vertical: 4,
                                     ),
-                                    leading: Checkbox(
-                                      activeColor: AppColors.button,
-                                      value: sub["isDone"] ?? false,
-                                      onChanged: (value) {
-                                        setState(() {
-                                          sub["isDone"] = value;
-                                        });
-                                        _autosaveDraft();
-                                      },
-                                    ),
-                                    title: Text(
-                                      sub["title"] ?? "",
-                                      style: TextStyle(
-                                        color: const Color(0xFF5852A0),
-                                        decoration: (sub["isDone"] ?? false)
-                                            ? TextDecoration.lineThrough
-                                            : TextDecoration.none,
+                                    decoration: BoxDecoration(
+                                      color: isDark
+                                          ? (isDone
+                                                ? Colors.black.withOpacity(0.1)
+                                                : Colors.black.withOpacity(
+                                                    0.25,
+                                                  ))
+                                          : (isDone
+                                                ? Colors.white.withOpacity(0.4)
+                                                : Colors.white.withOpacity(
+                                                    0.8,
+                                                  )),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: isDone
+                                            ? AppColors.button.withOpacity(0.08)
+                                            : AppColors.button.withOpacity(
+                                                0.18,
+                                              ),
                                       ),
                                     ),
-                                    trailing: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          icon: Icon(
-                                            Icons.edit_outlined,
-                                            color: AppColors.button,
+                                    child: ListTile(
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 8.0,
                                           ),
-                                          onPressed: () {
-                                            final editController =
-                                                TextEditingController(
-                                                  text: sub["title"],
-                                                );
-                                            showDialog(
-                                              context: context,
-                                              builder: (context) => AlertDialog(
-                                                title: const Text(
-                                                  "Edit Subtask",
-                                                ),
-                                                content: TextField(
-                                                  controller: editController,
-                                                  decoration:
-                                                      const InputDecoration(
-                                                        hintText:
-                                                            "Edit subtask title",
+                                      leading: Checkbox(
+                                        activeColor: AppColors.button,
+                                        checkColor: Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        value: isDone,
+                                        onChanged: (value) {
+                                          setState(() {
+                                            sub["isDone"] = value;
+                                          });
+                                          _autosaveDraft();
+                                        },
+                                      ),
+                                      title: Text(
+                                        sub["title"] ?? "",
+                                        style: TextStyle(
+                                          color: AppColors.button.withValues(
+                                            alpha: isDone ? 0.6 : 1.0,
+                                          ),
+                                          fontFamily: "Nunito",
+                                          fontWeight: FontWeight.bold,
+                                          decoration: isDone
+                                              ? TextDecoration.lineThrough
+                                              : TextDecoration.none,
+                                        ),
+                                      ),
+                                      trailing: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: Icon(
+                                              Icons.edit_outlined,
+                                              color: AppColors.button
+                                                  .withOpacity(0.8),
+                                              size: 20,
+                                            ),
+                                            onPressed: () {
+                                              final editController =
+                                                  TextEditingController(
+                                                    text: sub["title"],
+                                                  );
+                                              showDialog(
+                                                context: context,
+                                                builder: (context) => AlertDialog(
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          20,
+                                                        ),
+                                                  ),
+                                                  title: Text(
+                                                    "Edit Subtask",
+                                                    style: TextStyle(
+                                                      fontFamily: "Quicksand",
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: AppColors.button,
+                                                    ),
+                                                  ),
+                                                  content: TextField(
+                                                    controller: editController,
+                                                    style: TextStyle(
+                                                      color: AppColors.button,
+                                                      fontFamily: "Nunito",
+                                                    ),
+                                                    decoration: InputDecoration(
+                                                      hintText:
+                                                          "Edit subtask title",
+                                                      hintStyle: TextStyle(
+                                                        color: AppColors.button
+                                                            .withOpacity(0.5),
                                                       ),
-                                                  autofocus: true,
+                                                      border: OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                      ),
+                                                      focusedBorder:
+                                                          OutlineInputBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  12,
+                                                                ),
+                                                            borderSide:
+                                                                BorderSide(
+                                                                  color: AppColors
+                                                                      .button,
+                                                                  width: 2,
+                                                                ),
+                                                          ),
+                                                    ),
+                                                    autofocus: true,
+                                                  ),
+                                                  actions: [
+                                                    TextButton(
+                                                      onPressed: () =>
+                                                          Navigator.pop(
+                                                            context,
+                                                          ),
+                                                      child: Text(
+                                                        "Cancel",
+                                                        style: TextStyle(
+                                                          color: AppColors
+                                                              .button
+                                                              .withOpacity(0.7),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    ElevatedButton(
+                                                      onPressed: () {
+                                                        final text =
+                                                            editController.text
+                                                                .trim();
+                                                        if (text.isNotEmpty) {
+                                                          setState(() {
+                                                            sub["title"] = text;
+                                                          });
+                                                          _autosaveDraft();
+                                                        }
+                                                        Navigator.pop(context);
+                                                      },
+                                                      style: ElevatedButton.styleFrom(
+                                                        backgroundColor:
+                                                            AppColors.button,
+                                                        shape: RoundedRectangleBorder(
+                                                          borderRadius:
+                                                              BorderRadius.circular(
+                                                                12,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                      child: const Text(
+                                                        "Save",
+                                                        style: TextStyle(
+                                                          color: Colors.white,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
-                                                actions: [
-                                                  TextButton(
-                                                    onPressed: () =>
-                                                        Navigator.pop(context),
-                                                    child: const Text("Cancel"),
+                                              );
+                                            },
+                                          ),
+                                          IconButton(
+                                            icon: const Icon(
+                                              Icons.delete_outline,
+                                              color: Colors.redAccent,
+                                              size: 20,
+                                            ),
+                                            onPressed: () {
+                                              setState(() {
+                                                subtasks.removeAt(index);
+                                              });
+                                              _autosaveDraft();
+                                            },
+                                          ),
+                                          ReorderableDragStartListener(
+                                            index: index,
+                                            child: Padding(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8.0,
                                                   ),
-                                                  ElevatedButton(
-                                                    onPressed: () {
-                                                      final text =
-                                                          editController.text
-                                                              .trim();
-                                                      if (text.isNotEmpty) {
-                                                        setState(() {
-                                                          sub["title"] = text;
-                                                        });
-                                                        _autosaveDraft();
-                                                      }
-                                                      Navigator.pop(context);
-                                                    },
-                                                    child: const Text("Save"),
-                                                  ),
-                                                ],
+                                              child: Icon(
+                                                Icons.drag_handle,
+                                                color: AppColors.button
+                                                    .withOpacity(0.5),
                                               ),
-                                            );
-                                          },
-                                        ),
-                                        IconButton(
-                                          icon: const Icon(
-                                            Icons.delete_outline,
-                                            color: Colors.red,
-                                          ),
-                                          onPressed: () {
-                                            setState(() {
-                                              subtasks.removeAt(index);
-                                            });
-                                            _autosaveDraft();
-                                          },
-                                        ),
-                                        ReorderableDragStartListener(
-                                          index: index,
-                                          child: const Padding(
-                                            padding: EdgeInsets.symmetric(
-                                              horizontal: 8.0,
-                                            ),
-                                            child: Icon(
-                                              Icons.drag_handle,
-                                              color: Colors.grey,
                                             ),
                                           ),
-                                        ),
-                                      ],
+                                        ],
+                                      ),
                                     ),
                                   );
                                 },
@@ -1311,7 +1913,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 ),
                 child: SizedBox(
                   width: double.infinity,
-                  child: ElevatedButton(
+                  child: ElevatedButton.icon(
                     onPressed: () async {
                       final title = titleController.text.trim();
                       if (title.isEmpty) {
@@ -1382,9 +1984,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
                       navigator.pop(); // Go back to the previous screen
                     },
+                    icon: const Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.white,
+                    ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.button,
-                      elevation: 0,
+                      elevation: 3,
+                      shadowColor: AppColors.button.withOpacity(0.4),
                       padding: const EdgeInsets.symmetric(
                         vertical: 16,
                         horizontal: 20,
@@ -1393,9 +2000,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         borderRadius: BorderRadius.circular(40),
                       ),
                     ),
-                    child: const Text(
+                    label: const Text(
                       "Save Task",
-                      style: TextStyle(color: Colors.white, fontSize: 16),
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontFamily: "Quicksand",
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -1413,19 +2025,37 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: Text("Add Subtask"),
-
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          "Add Subtask",
+          style: TextStyle(
+            fontFamily: "Quicksand",
+            fontWeight: FontWeight.bold,
+            color: AppColors.button,
+          ),
+        ),
         content: TextField(
           controller: subtaskcontroller,
-          decoration: InputDecoration(hintText: "Eg. Read Chapter 1"),
+          style: TextStyle(color: AppColors.button, fontFamily: "Nunito"),
+          decoration: InputDecoration(
+            hintText: "Eg. Read Chapter 1",
+            hintStyle: TextStyle(color: AppColors.button.withOpacity(0.5)),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: AppColors.button, width: 2),
+            ),
+          ),
+          autofocus: true,
         ),
-
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text("Cancel"),
+            child: Text(
+              "Cancel",
+              style: TextStyle(color: AppColors.button.withOpacity(0.7)),
+            ),
           ),
-
           ElevatedButton(
             onPressed: () {
               if (subtaskcontroller.text.trim().isNotEmpty) {
@@ -1440,7 +2070,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
               Navigator.pop(context);
             },
-            child: Text("Add"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.button,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: const Text("Add", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

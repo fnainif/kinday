@@ -1,8 +1,11 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_textstyle.dart';
 import 'package:kinday/constant/app_widget.dart';
+import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/constant/task_notifier.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/pages/botnavpage/pomodoropage.dart';
@@ -26,6 +29,7 @@ class _HomepageState extends State<Homepage> {
   TaskCard? _suggestedTask;
   int _totalTasks = 0;
   int _completedTasksCount = 0;
+  bool _isLoadingAI = false;
 
   @override
   void initState() {
@@ -153,6 +157,151 @@ class _HomepageState extends State<Homepage> {
         return "Mid-Low";
       default:
         return "Low";
+    }
+  }
+
+  Future<void> _breakDownTaskWithAI() async {
+    final taskTitle = breakdowncontroller.text.trim();
+    if (taskTitle.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            L10n.tr(
+              "Please write what you want to do today first!",
+              "Silakan tulis apa yang ingin Anda lakukan hari ini terlebih dahulu!",
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    const apiKey = String.fromEnvironment('GEMINI_API_KEY');
+    if (apiKey.isEmpty) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: Text(
+            L10n.tr("AI Unavailable", "AI Tidak Tersedia"),
+            style: TextStyle(
+              fontFamily: "Quicksand",
+              fontWeight: FontWeight.bold,
+              color: AppColors.button,
+            ),
+          ),
+          content: Text(
+            L10n.tr(
+              "This AI feature cannot be used yet.",
+              "Fitur AI ini belum dapat digunakan untuk saat ini.",
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("OK"),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _isLoadingAI = true;
+    });
+
+    try {
+      final model = GenerativeModel(
+        model: 'gemini-1.5-flash',
+        apiKey: apiKey,
+      );
+
+      final prompt = 'Break down the task: "$taskTitle" into 3 to 5 brief, actionable subtasks. '
+          'Output a JSON list of strings only. Example: ["Subtask 1", "Subtask 2"]. Do not include markdown code block formatting.';
+
+      final content = [Content.text(prompt)];
+      final response = await model.generateContent(content);
+
+      if (response.text != null) {
+        String cleanJson = response.text!.trim();
+        if (cleanJson.startsWith("```")) {
+          final match = RegExp(r'^```(?:json)?\s*(.*?)\s*```$', dotAll: true).firstMatch(cleanJson);
+          if (match != null && match.groupCount >= 1) {
+            cleanJson = match.group(1)!.trim();
+          } else {
+            if (cleanJson.startsWith("```json")) {
+              cleanJson = cleanJson.substring(7);
+            } else if (cleanJson.startsWith("```")) {
+              cleanJson = cleanJson.substring(3);
+            }
+            if (cleanJson.endsWith("```")) {
+              cleanJson = cleanJson.substring(0, cleanJson.length - 3);
+            }
+            cleanJson = cleanJson.trim();
+          }
+        }
+
+        final List decodedList = jsonDecode(cleanJson);
+        final List<Map<String, dynamic>> subtaskMaps = [];
+        for (var subtaskTitle in decodedList) {
+          if (subtaskTitle is String && subtaskTitle.trim().isNotEmpty) {
+            subtaskMaps.add({
+              "title": subtaskTitle.trim(),
+              "isDone": false,
+            });
+          }
+        }
+
+        final newTask = TaskCard(
+          title: taskTitle,
+          description: "AI Generated Breakdown",
+          energylvl: 3, // medium energy
+          prioritytask: 2, // medium priority
+          subtasks: subtaskMaps,
+          createdAt: DateTime.now(),
+        );
+
+        final dbHelper = DBHelper();
+        final insertedId = await dbHelper.insertTask(newTask, _userId ?? 1);
+        newTask.id = insertedId;
+
+        breakdowncontroller.clear();
+        TaskNotifier.notify();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                L10n.tr(
+                  "AI broke down and created your task successfully!",
+                  "AI berhasil memecah dan membuat tugas Anda!",
+                ),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("AI error: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              L10n.tr(
+                "Failed to break down task: $e",
+                "Gagal memecah tugas: $e",
+              ),
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingAI = false;
+        });
+      }
     }
   }
 
@@ -601,6 +750,25 @@ class _HomepageState extends State<Homepage> {
                               filled: true,
                               fillColor: Colors.grey.shade100,
                             ),
+                          ),
+                          const SizedBox(height: 15),
+                          Center(
+                            child: _isLoadingAI
+                                ? SizedBox(
+                                    height: 36,
+                                    width: 36,
+                                    child: CircularProgressIndicator(
+                                      color: AppColors.button,
+                                      strokeWidth: 3,
+                                    ),
+                                  )
+                                : SmallButton(
+                                    sign: "Break down task",
+                                    warnaBox: AppColors.button,
+                                    textbuttoncolor: Colors.white,
+                                    leadImage: AppImage.iconsubtask,
+                                    onPressed: _breakDownTaskWithAI,
+                                  ),
                           ),
                         ],
                       ),

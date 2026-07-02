@@ -1411,20 +1411,20 @@ class EnergyLevelView extends StatelessWidget {
                   ],
                 ),
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    if (recommendedTasks.isEmpty)
-                      Text(
-                        "Tidak ada tugas",
-                        style: TextStyle(color: AppColors.normaltext),
-                      )
-                    else
-                      ...recommendedTasks.map(buildTaskCard),
-                  ],
+              if (recommendedTasks.isEmpty)
+                Center(
+                  child: Image.asset(
+                    "assets/images/Tidakadatugas.gif",
+                    height: 120,
+                  ),
+                )
+              else
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: recommendedTasks.map(buildTaskCard).toList(),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -1448,20 +1448,20 @@ class EnergyLevelView extends StatelessWidget {
                   ],
                 ),
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    if (lowEnergyTasks.isEmpty)
-                      Text(
-                        "Tidak ada tugas",
-                        style: TextStyle(color: AppColors.normaltext),
-                      )
-                    else
-                      ...lowEnergyTasks.map(buildTaskCard),
-                  ],
+              if (lowEnergyTasks.isEmpty)
+                Center(
+                  child: Image.asset(
+                    "assets/images/Tidakadatugas.gif",
+                    height: 120,
+                  ),
+                )
+              else
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: lowEnergyTasks.map(buildTaskCard).toList(),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -1489,20 +1489,20 @@ class EnergyLevelView extends StatelessWidget {
                   ],
                 ),
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    if (highFocusTasks.isEmpty)
-                      Text(
-                        "Tidak ada tugas",
-                        style: TextStyle(color: AppColors.normaltext),
-                      )
-                    else
-                      ...highFocusTasks.map(buildTaskCard),
-                  ],
+              if (highFocusTasks.isEmpty)
+                Center(
+                  child: Image.asset(
+                    "assets/images/Tidakadatugas.gif",
+                    height: 120,
+                  ),
+                )
+              else
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: highFocusTasks.map(buildTaskCard).toList(),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -1581,19 +1581,20 @@ class DueDateView extends StatelessWidget {
                   ],
                 ),
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: todayTasks.isEmpty
-                      ? [
-                          Text(
-                            "Tidak ada tugas",
-                            style: TextStyle(color: AppColors.normaltext),
-                          ),
-                        ]
-                      : todayTasks.map(buildTaskCard).toList(),
+              if (todayTasks.isEmpty)
+                Center(
+                  child: Image.asset(
+                    "assets/images/Tidakadatugas.gif",
+                    height: 120,
+                  ),
+                )
+              else
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: todayTasks.map(buildTaskCard).toList(),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -1617,19 +1618,20 @@ class DueDateView extends StatelessWidget {
                   ],
                 ),
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: tomorrowTasks.isEmpty
-                      ? [
-                          Text(
-                            "Tidak ada tugas",
-                            style: TextStyle(color: AppColors.normaltext),
-                          ),
-                        ]
-                      : tomorrowTasks.map(buildTaskCard).toList(),
+              if (tomorrowTasks.isEmpty)
+                Center(
+                  child: Image.asset(
+                    "assets/images/Tidakadatugas.gif",
+                    height: 120,
+                  ),
+                )
+              else
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: tomorrowTasks.map(buildTaskCard).toList(),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -1653,19 +1655,20 @@ class DueDateView extends StatelessWidget {
                   ],
                 ),
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: upcomingTasks.isEmpty
-                      ? [
-                          Text(
-                            "Tidak ada tugas",
-                            style: TextStyle(color: AppColors.normaltext),
-                          ),
-                        ]
-                      : upcomingTasks.map(buildTaskCard).toList(),
+              if (upcomingTasks.isEmpty)
+                Center(
+                  child: Image.asset(
+                    "assets/images/Tidakadatugas.gif",
+                    height: 120,
+                  ),
+                )
+              else
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: upcomingTasks.map(buildTaskCard).toList(),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -1693,19 +1696,20 @@ class DueDateView extends StatelessWidget {
                   ],
                 ),
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: completedTasks.isEmpty
-                      ? [
-                          Text(
-                            "Tidak ada tugas",
-                            style: TextStyle(color: AppColors.normaltext),
-                          ),
-                        ]
-                      : completedTasks.map(buildTaskCard).toList(),
+              if (completedTasks.isEmpty)
+                Center(
+                  child: Image.asset(
+                    "assets/images/Tidakadatugas.gif",
+                    height: 120,
+                  ),
+                )
+              else
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: completedTasks.map(buildTaskCard).toList(),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -1764,20 +1768,20 @@ class PriorityView extends StatelessWidget {
                   ],
                 ),
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    if (highPriority.isEmpty)
-                      Text(
-                        "Tidak ada tugas",
-                        style: TextStyle(color: AppColors.normaltext),
-                      )
-                    else
-                      ...highPriority.map(buildTaskCard),
-                  ],
+              if (highPriority.isEmpty)
+                Center(
+                  child: Image.asset(
+                    "assets/images/Tidakadatugas.gif",
+                    height: 120,
+                  ),
+                )
+              else
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: highPriority.map(buildTaskCard).toList(),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -1801,20 +1805,20 @@ class PriorityView extends StatelessWidget {
                   ],
                 ),
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    if (midPriority.isEmpty)
-                      Text(
-                        "Tidak ada tugas",
-                        style: TextStyle(color: AppColors.normaltext),
-                      )
-                    else
-                      ...midPriority.map(buildTaskCard),
-                  ],
+              if (midPriority.isEmpty)
+                Center(
+                  child: Image.asset(
+                    "assets/images/Tidakadatugas.gif",
+                    height: 120,
+                  ),
+                )
+              else
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: midPriority.map(buildTaskCard).toList(),
+                  ),
                 ),
-              ),
             ],
           ),
         ),
@@ -1838,20 +1842,20 @@ class PriorityView extends StatelessWidget {
                   ],
                 ),
               ),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    if (lowPriority.isEmpty)
-                      Text(
-                        "Tidak ada tugas",
-                        style: TextStyle(color: AppColors.normaltext),
-                      )
-                    else
-                      ...lowPriority.map(buildTaskCard),
-                  ],
+              if (lowPriority.isEmpty)
+                Center(
+                  child: Image.asset(
+                    "assets/images/Tidakadatugas.gif",
+                    height: 120,
+                  ),
+                )
+              else
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: lowPriority.map(buildTaskCard).toList(),
+                  ),
                 ),
-              ),
             ],
           ),
         ),

@@ -97,30 +97,35 @@ class SmallButton extends StatelessWidget {
     super.key,
     required this.sign,
     required this.warnaBox,
-    required this.destination,
+    this.destination,
     this.leadImage,
     this.buttonSize = 16,
     required this.textbuttoncolor,
+    this.onPressed,
   });
 
   final String sign;
   final Color warnaBox;
   final Color textbuttoncolor;
   final double buttonSize;
-  final Widget destination;
+  final Widget? destination;
   final String? leadImage;
+  final VoidCallback? onPressed;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
       // width: double.infinity,
       child: ElevatedButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => destination),
-          );
-        },
+        onPressed: onPressed ??
+            () {
+              if (destination != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => destination!),
+                );
+              }
+            },
         style: ElevatedButton.styleFrom(
           backgroundColor: warnaBox,
           elevation: 0,

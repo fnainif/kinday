@@ -16,7 +16,7 @@ class EnergyPage extends StatefulWidget {
 }
 
 class EnergyLogData {
-  final int energy;
+  final double energy;
   final double hour;
 
   EnergyLogData({required this.energy, required this.hour});
@@ -25,7 +25,8 @@ class EnergyLogData {
 class _EnergyPageState extends State<EnergyPage> {
   int? _userId;
   int _currentEnergyLvl = 3;
-  List<EnergyLogData> chartData = [];
+  List<EnergyLogData> scatterData = [];
+  List<EnergyLogData> averageCurveData = [];
 
   // Insight computed states
   String _highestEnergyHourStr = "09:00";
@@ -57,7 +58,7 @@ class _EnergyPageState extends State<EnergyPage> {
         final hourDouble = dt.hour + (dt.minute / 60.0);
         loadedLogs.add(
           EnergyLogData(
-            energy: log['energy'] as int,
+            energy: (log['energy'] as int).toDouble(),
             hour: double.parse(hourDouble.toStringAsFixed(2)),
           ),
         );
@@ -66,9 +67,10 @@ class _EnergyPageState extends State<EnergyPage> {
       }
     }
 
-    // --- 1. Peak & Valley Hours calculation ---
+    // --- 1. Peak & Valley Hours calculation & Average Rhythm Curve ---
     String highestHourStr = "09:00";
     String lowestHourStr = "15:00";
+    final List<EnergyLogData> avgCurve = [];
 
     if (dbLogs.isNotEmpty) {
       final Map<int, List<int>> energyByHour = {};
@@ -98,7 +100,16 @@ class _EnergyPageState extends State<EnergyPage> {
             minAvg = avg;
             minHour = hour;
           }
+
+          avgCurve.add(
+            EnergyLogData(
+              hour: hour.toDouble(),
+              energy: double.parse(avg.toStringAsFixed(2)),
+            ),
+          );
         });
+
+        avgCurve.sort((a, b) => a.hour.compareTo(b.hour));
 
         if (maxHour != -1) {
           highestHourStr = "${maxHour.toString().padLeft(2, '0')}:00";
@@ -218,7 +229,8 @@ class _EnergyPageState extends State<EnergyPage> {
       if (latestEnergy != null) {
         _currentEnergyLvl = latestEnergy;
       }
-      chartData = loadedLogs;
+      scatterData = loadedLogs;
+      averageCurveData = avgCurve;
       _highestEnergyHourStr = highestHourStr;
       _lowestEnergyHourStr = lowestHourStr;
       _productivityDropDay = worstProductivityDay;
@@ -446,57 +458,174 @@ class _EnergyPageState extends State<EnergyPage> {
                 ),
               ),
 
-              SizedBox(
-                height: 200,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                  child: SfCartesianChart(
-                    primaryXAxis: const NumericAxis(
-                      minimum: 0,
-                      maximum: 24,
-                      interval: 2,
+              Container1(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.insights,
+                          color: AppColors.button,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          L10n.tr("Daily Energy Rhythm", "Ritme Energi Harian"),
+                          style: TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.button,
+                            fontFamily: "Quicksand",
+                          ),
+                        ),
+                      ],
                     ),
-
-                    primaryYAxis: NumericAxis(
-                      minimum: 1,
-                      maximum: 5,
-                      interval: 1,
-                      axisLabelFormatter: (args) {
-                        String label = '';
-
-                        switch (args.value.toInt()) {
-                          case 1:
-                            label = 'Low';
-                            break;
-                          case 2:
-                            label = 'Mid-Low';
-                            break;
-                          case 3:
-                            label = 'Medium';
-                            break;
-                          case 4:
-                            label = 'Mid-High';
-                            break;
-                          case 5:
-                            label = 'High';
-                            break;
-                        }
-
-                        return ChartAxisLabel(
-                          label,
-                          const TextStyle(fontSize: 12),
-                        );
-                      },
-                    ),
-
-                    series: <ScatterSeries<EnergyLogData, double>>[
-                      ScatterSeries<EnergyLogData, double>(
-                        dataSource: chartData,
-                        xValueMapper: (data, _) => data.hour,
-                        yValueMapper: (data, _) => data.energy,
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: 200,
+                      child: SfCartesianChart(
+                        plotAreaBorderWidth: 0,
+                        margin: EdgeInsets.zero,
+                        tooltipBehavior: TooltipBehavior(
+                          enable: true,
+                          header: '',
+                          activationMode: ActivationMode.singleTap,
+                          builder: (dynamic data, dynamic point, dynamic series,
+                              int pointIndex, int seriesIndex) {
+                            final logData = data as EnergyLogData;
+                            final hourInt = logData.hour.toInt();
+                            final minInt = ((logData.hour - hourInt) * 60).round();
+                            final timeStr =
+                                "${hourInt.toString().padLeft(2, '0')}:${minInt.toString().padLeft(2, '0')}";
+                            final energyLabel = _getEnergyLabel(logData.energy.round());
+                            return Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppColors.button,
+                                borderRadius: BorderRadius.circular(8),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.15),
+                                    blurRadius: 4,
+                                    offset: const Offset(0, 2),
+                                  )
+                                ],
+                              ),
+                              child: Text(
+                                "$timeStr - $energyLabel",
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'Quicksand',
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                        primaryXAxis: NumericAxis(
+                          minimum: 0,
+                          maximum: 24,
+                          interval: 4,
+                          axisLine: const AxisLine(width: 0),
+                          majorTickLines: const MajorTickLines(size: 0),
+                          majorGridLines: const MajorGridLines(width: 0),
+                          axisLabelFormatter: (args) {
+                            final hr = args.value.toInt();
+                            final displayHour = hr.toString().padLeft(2, '0') + ":00";
+                            return ChartAxisLabel(
+                              displayHour,
+                              TextStyle(
+                                color: AppColors.button,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                                fontFamily: 'Quicksand',
+                              ),
+                            );
+                          },
+                        ),
+                        primaryYAxis: NumericAxis(
+                          minimum: 1,
+                          maximum: 5,
+                          interval: 1,
+                          axisLine: const AxisLine(width: 0),
+                          majorTickLines: const MajorTickLines(size: 0),
+                          majorGridLines: MajorGridLines(
+                            width: 1,
+                            color: AppColors.containerline2.withValues(alpha: 0.15),
+                            dashArray: const [4, 4],
+                          ),
+                          axisLabelFormatter: (args) {
+                            String label = '';
+                            switch (args.value.toInt()) {
+                              case 1:
+                                label = L10n.tr('Low', 'Rendah');
+                                break;
+                              case 2:
+                                label = L10n.tr('Mid-Low', 'Cukup Rendah');
+                                break;
+                              case 3:
+                                label = L10n.tr('Medium', 'Sedang');
+                                break;
+                              case 4:
+                                label = L10n.tr('Mid-High', 'Cukup Tinggi');
+                                break;
+                              case 5:
+                                label = L10n.tr('High', 'Tinggi');
+                                break;
+                            }
+                            return ChartAxisLabel(
+                              label,
+                              TextStyle(
+                                color: AppColors.button,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                                fontFamily: 'Quicksand',
+                              ),
+                            );
+                          },
+                        ),
+                        series: <CartesianSeries<EnergyLogData, double>>[
+                          if (averageCurveData.length >= 2)
+                            SplineAreaSeries<EnergyLogData, double>(
+                              dataSource: averageCurveData,
+                              xValueMapper: (data, _) => data.hour,
+                              yValueMapper: (data, _) => data.energy,
+                              name: L10n.tr("Average Rhythm", "Rata-rata Ritme"),
+                              gradient: LinearGradient(
+                                colors: [
+                                  AppColors.button.withValues(alpha: 0.35),
+                                  AppColors.button.withValues(alpha: 0.02),
+                                ],
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                              ),
+                              borderColor: AppColors.button,
+                              borderWidth: 3,
+                            ),
+                          ScatterSeries<EnergyLogData, double>(
+                            dataSource: scatterData,
+                            xValueMapper: (data, _) => data.hour,
+                            yValueMapper: (data, _) => data.energy,
+                            name: L10n.tr("Logs", "Log"),
+                            markerSettings: MarkerSettings(
+                              isVisible: true,
+                              shape: DataMarkerType.circle,
+                              width: 10,
+                              height: 10,
+                              color: AppColors.container2,
+                              borderColor: AppColors.button,
+                              borderWidth: 2.5,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
 
