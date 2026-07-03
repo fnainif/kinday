@@ -1,9 +1,9 @@
 import 'dart:convert';
-import 'package:google_generative_ai/google_generative_ai.dart';
 
 import 'package:cool_dropdown/cool_dropdown.dart';
 import 'package:cool_dropdown/models/cool_dropdown_item.dart';
 import 'package:flutter/material.dart';
+import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_textstyle.dart';
@@ -11,7 +11,6 @@ import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/notification_helper.dart';
-import 'package:kinday/pages/dummy/pleaceholderpage.dart';
 import 'package:kinday/widgets/speech_mic_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -422,7 +421,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
           title: Text(
             L10n.tr("AI Unavailable", "AI Tidak Tersedia"),
             style: TextStyle(
@@ -453,12 +454,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     });
 
     try {
-      final model = GenerativeModel(
-        model: 'gemini-1.5-flash',
-        apiKey: apiKey,
-      );
+      final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
 
-      final prompt = 'Break down the task: "$taskTitle" into 3 to 5 brief, actionable subtasks. '
+      final prompt =
+          'Break down the task: "$taskTitle" into 3 to 5 brief, actionable subtasks. '
           'Output a JSON list of strings only. Example: ["Subtask 1", "Subtask 2"]. Do not include markdown code block formatting.';
 
       final content = [Content.text(prompt)];
@@ -469,7 +468,10 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         // Remove markdown formatting if present
         if (cleanJson.startsWith("```")) {
           // Remove start ```json or ```
-          final match = RegExp(r'^```(?:json)?\s*(.*?)\s*```$', dotAll: true).firstMatch(cleanJson);
+          final match = RegExp(
+            r'^```(?:json)?\s*(.*?)\s*```$',
+            dotAll: true,
+          ).firstMatch(cleanJson);
           if (match != null && match.groupCount >= 1) {
             cleanJson = match.group(1)!.trim();
           } else {
@@ -490,10 +492,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         setState(() {
           for (var subtaskTitle in decodedList) {
             if (subtaskTitle is String && subtaskTitle.trim().isNotEmpty) {
-              subtasks.add({
-                "title": subtaskTitle.trim(),
-                "isDone": false,
-              });
+              subtasks.add({"title": subtaskTitle.trim(), "isDone": false});
             }
           }
         });
@@ -785,26 +784,32 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Image.asset(
-                                AppImage.iconduedate,
-                                height: 22,
-                                width: 22,
-                                color: AppColors.button,
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                "Due Date",
-                                style: TextStyle(
-                                  fontFamily: "Quicksand",
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Image.asset(
+                                  AppImage.iconduedate,
+                                  height: 22,
+                                  width: 22,
                                   color: AppColors.button,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    "Due Date",
+                                    style: TextStyle(
+                                      fontFamily: "Quicksand",
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                      color: AppColors.button,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
+                          const SizedBox(width: 8),
                           Row(
                             children: [
                               if (selectedDate != null)
@@ -881,26 +886,32 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              children: [
-                                Image.asset(
-                                  AppImage.iconduetime,
-                                  height: 22,
-                                  width: 22,
-                                  color: AppColors.button,
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  "Due Time (Opt)",
-                                  style: TextStyle(
-                                    fontFamily: "Quicksand",
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Image.asset(
+                                    AppImage.iconduetime,
+                                    height: 22,
+                                    width: 22,
                                     color: AppColors.button,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      "Due Time (Opt)",
+                                      style: TextStyle(
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: AppColors.button,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
+                            const SizedBox(width: 8),
                             Row(
                               children: [
                                 if (selectedTime != null)
@@ -974,95 +985,128 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.notifications_active_outlined,
-                                  size: 22,
-                                  color: AppColors.button,
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  "Reminder",
-                                  style: TextStyle(
-                                    fontFamily: "Quicksand",
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.notifications_active_outlined,
+                                    size: 22,
                                     color: AppColors.button,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      "Reminder",
+                                      style: TextStyle(
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: AppColors.button,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? Colors.black.withOpacity(0.25)
-                                    : Colors.white.withOpacity(0.7),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: AppColors.button.withOpacity(0.15),
-                                  width: 1.5,
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
                                 ),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<int?>(
-                                  value: selectedReminderMinutes,
-                                  dropdownColor: isDark
-                                      ? Colors.grey.shade900
-                                      : Colors.white,
-                                  style: TextStyle(
-                                    color: AppColors.button,
-                                    fontFamily: "Nunito",
-                                    fontWeight: FontWeight.bold,
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.black.withOpacity(0.25)
+                                      : Colors.white.withOpacity(0.7),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.button.withOpacity(0.15),
+                                    width: 1.5,
                                   ),
-                                  icon: Icon(
-                                    Icons.arrow_drop_down,
-                                    color: AppColors.button,
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<int?>(
+                                    isExpanded: true,
+                                    value: selectedReminderMinutes,
+                                    dropdownColor: isDark
+                                        ? Colors.grey.shade900
+                                        : Colors.white,
+                                    style: TextStyle(
+                                      color: AppColors.button,
+                                      fontFamily: "Nunito",
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    icon: Icon(
+                                      Icons.arrow_drop_down,
+                                      color: AppColors.button,
+                                    ),
+                                    items: const [
+                                      DropdownMenuItem(
+                                        value: null,
+                                        child: Text(
+                                          "No reminder",
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 0,
+                                        child: Text(
+                                          "At due time",
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 5,
+                                        child: Text(
+                                          "5 minutes before",
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 10,
+                                        child: Text(
+                                          "10 minutes before",
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 15,
+                                        child: Text(
+                                          "15 minutes before",
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 30,
+                                        child: Text(
+                                          "30 minutes before",
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 60,
+                                        child: Text(
+                                          "1 hour before",
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: 1440,
+                                        child: Text(
+                                          "1 day before",
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                    onChanged: (int? value) {
+                                      setState(() {
+                                        selectedReminderMinutes = value;
+                                      });
+                                      _autosaveDraft();
+                                    },
                                   ),
-                                  items: const [
-                                    DropdownMenuItem(
-                                      value: null,
-                                      child: Text("No reminder"),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 0,
-                                      child: Text("At due time"),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 5,
-                                      child: Text("5 minutes before"),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 10,
-                                      child: Text("10 minutes before"),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 15,
-                                      child: Text("15 minutes before"),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 30,
-                                      child: Text("30 minutes before"),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 60,
-                                      child: Text("1 hour before"),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: 1440,
-                                      child: Text("1 day before"),
-                                    ),
-                                  ],
-                                  onChanged: (int? value) {
-                                    setState(() {
-                                      selectedReminderMinutes = value;
-                                    });
-                                    _autosaveDraft();
-                                  },
                                 ),
                               ),
                             ),
@@ -1079,87 +1123,114 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.repeat,
-                                color: AppColors.button,
-                                size: 22,
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                "Repeat",
-                                style: TextStyle(
-                                  fontFamily: "Quicksand",
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.repeat,
                                   color: AppColors.button,
+                                  size: 22,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    "Repeat",
+                                    style: TextStyle(
+                                      fontFamily: "Quicksand",
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                      color: AppColors.button,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.black.withOpacity(0.25)
-                                  : Colors.white.withOpacity(0.7),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppColors.button.withOpacity(0.15),
-                                width: 1.5,
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
                               ),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<RepeatType>(
-                                value: _repeatType,
-                                dropdownColor: isDark
-                                    ? Colors.grey.shade900
-                                    : Colors.white,
-                                style: TextStyle(
-                                  color: AppColors.button,
-                                  fontFamily: "Nunito",
-                                  fontWeight: FontWeight.bold,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.black.withOpacity(0.25)
+                                    : Colors.white.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.button.withOpacity(0.15),
+                                  width: 1.5,
                                 ),
-                                icon: Icon(
-                                  Icons.arrow_drop_down,
-                                  color: AppColors.button,
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<RepeatType>(
+                                  isExpanded: true,
+                                  value: _repeatType,
+                                  dropdownColor: isDark
+                                      ? Colors.grey.shade900
+                                      : Colors.white,
+                                  style: TextStyle(
+                                    color: AppColors.button,
+                                    fontFamily: "Nunito",
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  icon: Icon(
+                                    Icons.arrow_drop_down,
+                                    color: AppColors.button,
+                                  ),
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: RepeatType.none,
+                                      child: Text(
+                                        "None",
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: RepeatType.daily,
+                                      child: Text(
+                                        "Every Day",
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: RepeatType.selectedDays,
+                                      child: Text(
+                                        "Every Few Days",
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: RepeatType.weekly,
+                                      child: Text(
+                                        "Every Week",
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: RepeatType.monthly,
+                                      child: Text(
+                                        "Every Month",
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: RepeatType.yearly,
+                                      child: Text(
+                                        "Every Year",
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                  onChanged: (RepeatType? value) {
+                                    setState(() {
+                                      _repeatType = value ?? RepeatType.none;
+                                    });
+                                    _autosaveDraft();
+                                  },
                                 ),
-                                items: const [
-                                  DropdownMenuItem(
-                                    value: RepeatType.none,
-                                    child: Text("None"),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: RepeatType.daily,
-                                    child: Text("Every Day"),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: RepeatType.selectedDays,
-                                    child: Text("Every Few Days"),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: RepeatType.weekly,
-                                    child: Text("Every Week"),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: RepeatType.monthly,
-                                    child: Text("Every Month"),
-                                  ),
-                                  DropdownMenuItem(
-                                    value: RepeatType.yearly,
-                                    child: Text("Every Year"),
-                                  ),
-                                ],
-                                onChanged: (RepeatType? value) {
-                                  setState(() {
-                                    _repeatType = value ?? RepeatType.none;
-                                  });
-                                  _autosaveDraft();
-                                },
                               ),
                             ),
                           ),
@@ -1241,25 +1312,31 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.event_busy,
-                                  color: AppColors.button,
-                                  size: 22,
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  "Finish Date (opt.)",
-                                  style: TextStyle(
-                                    fontFamily: "Quicksand",
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.event_busy,
                                     color: AppColors.button,
+                                    size: 22,
                                   ),
-                                ),
-                              ],
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      "Finish Date (opt.)",
+                                      style: TextStyle(
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: AppColors.button,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
+                            const SizedBox(width: 8),
                             Row(
                               children: [
                                 if (_finishDate != null)
@@ -1348,73 +1425,85 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Image.asset(
-                                AppImage.iconpriority,
-                                height: 22,
-                                width: 22,
-                                color: AppColors.button,
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                "Priority",
-                                style: TextStyle(
-                                  fontFamily: "Quicksand",
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Image.asset(
+                                  AppImage.iconpriority,
+                                  height: 22,
+                                  width: 22,
                                   color: AppColors.button,
                                 ),
-                              ),
-                            ],
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    "Priority",
+                                    style: TextStyle(
+                                      fontFamily: "Quicksand",
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                      color: AppColors.button,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? Colors.black.withOpacity(0.25)
-                                  : Colors.white.withOpacity(0.7),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: AppColors.button.withOpacity(0.15),
-                                width: 1.5,
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
                               ),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: selectedDropdown,
-                                dropdownColor: isDark
-                                    ? Colors.grey.shade900
-                                    : Colors.white,
-                                style: TextStyle(
-                                  color: AppColors.button,
-                                  fontFamily: "Nunito",
-                                  fontWeight: FontWeight.bold,
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.black.withOpacity(0.25)
+                                    : Colors.white.withOpacity(0.7),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: AppColors.button.withOpacity(0.15),
+                                  width: 1.5,
                                 ),
-                                icon: Icon(
-                                  Icons.arrow_drop_down,
-                                  color: AppColors.button,
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<String>(
+                                  isExpanded: true,
+                                  value: selectedDropdown,
+                                  dropdownColor: isDark
+                                      ? Colors.grey.shade900
+                                      : Colors.white,
+                                  style: TextStyle(
+                                    color: AppColors.button,
+                                    fontFamily: "Nunito",
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                  icon: Icon(
+                                    Icons.arrow_drop_down,
+                                    color: AppColors.button,
+                                  ),
+                                  items:
+                                      [
+                                        "Low priority",
+                                        "Mid priority",
+                                        "High priority",
+                                      ].map((String val) {
+                                        return DropdownMenuItem(
+                                          value: val,
+                                          child: Text(
+                                            val,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        );
+                                      }).toList(),
+                                  onChanged: (String? value) {
+                                    setState(() {
+                                      selectedDropdown = value;
+                                    });
+                                    _autosaveDraft();
+                                  },
                                 ),
-                                items:
-                                    [
-                                      "Low priority",
-                                      "Mid priority",
-                                      "High priority",
-                                    ].map((String val) {
-                                      return DropdownMenuItem(
-                                        value: val,
-                                        child: Text(val),
-                                      );
-                                    }).toList(),
-                                onChanged: (String? value) {
-                                  setState(() {
-                                    selectedDropdown = value;
-                                  });
-                                  _autosaveDraft();
-                                },
                               ),
                             ),
                           ),
@@ -2024,62 +2113,69 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          "Add Subtask",
-          style: TextStyle(
-            fontFamily: "Quicksand",
-            fontWeight: FontWeight.bold,
-            color: AppColors.button,
-          ),
-        ),
-        content: TextField(
-          controller: subtaskcontroller,
-          style: TextStyle(color: AppColors.button, fontFamily: "Nunito"),
-          decoration: InputDecoration(
-            hintText: "Eg. Read Chapter 1",
-            hintStyle: TextStyle(color: AppColors.button.withOpacity(0.5)),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(color: AppColors.button, width: 2),
-            ),
-          ),
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              "Cancel",
-              style: TextStyle(color: AppColors.button.withOpacity(0.7)),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (subtaskcontroller.text.trim().isNotEmpty) {
-                setState(() {
-                  subtasks.add({
-                    "title": subtaskcontroller.text.trim(),
-                    "isDone": false,
-                  });
-                });
-                _autosaveDraft();
-              }
-
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.button,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Text(
+                "Add Subtask",
+                style: TextStyle(
+                  fontFamily: "Quicksand",
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.button,
+                ),
               ),
-            ),
-            child: const Text("Add", style: TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+              content: TextField(
+                controller: subtaskcontroller,
+                style: TextStyle(color: AppColors.button, fontFamily: "Nunito"),
+                decoration: InputDecoration(
+                  hintText: "Eg. Read Chapter 1",
+                  hintStyle: TextStyle(color: AppColors.button.withValues(alpha: 0.5)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: AppColors.button, width: 2),
+                  ),
+                ),
+                autofocus: true,
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    "Done",
+                    style: TextStyle(color: AppColors.button.withValues(alpha: 0.7)),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    final text = subtaskcontroller.text.trim();
+                    if (text.isNotEmpty) {
+                      setState(() {
+                        subtasks.add({
+                          "title": text,
+                          "isDone": false,
+                        });
+                      });
+                      _autosaveDraft();
+                      subtaskcontroller.clear();
+                      setDialogState(() {});
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.button,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text("Add", style: TextStyle(color: Colors.white)),
+                ),
+              ],
+            );
+          },
+        );
+      },
     );
   }
 

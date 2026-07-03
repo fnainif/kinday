@@ -43,7 +43,7 @@ class MyApp extends StatelessWidget {
           builder: (context, theme, child) {
             return MaterialApp(
               debugShowCheckedModeBanner: false,
-              title: 'Flutter Demo',
+              title: 'Kinday',
               theme: ThemeData(
                 colorScheme: ColorScheme.fromSeed(seedColor: AppColors.button),
               ),

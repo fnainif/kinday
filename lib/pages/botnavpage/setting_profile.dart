@@ -822,23 +822,28 @@ class _SettingProfileState extends State<SettingProfile> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.notifications_active_rounded,
-                                    color: AppColors.button,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    L10n.tr("Enable Notifications", "Aktifkan Notifikasi"),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.notifications_active_rounded,
                                       color: AppColors.button,
-                                      fontFamily: "Quicksand",
+                                      size: 20,
                                     ),
-                                  ),
-                                ],
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        L10n.tr("Enable Notifications", "Aktifkan Notifikasi"),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.button,
+                                          fontFamily: "Quicksand",
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                               Switch.adaptive(
                                 value: _notificationsEnabled,
@@ -897,95 +902,107 @@ class _SettingProfileState extends State<SettingProfile> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.palette_rounded,
-                                    color: AppColors.button,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    L10n.tr("App Theme", "Tema Aplikasi"),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.palette_rounded,
                                       color: AppColors.button,
-                                      fontFamily: "Quicksand",
+                                      size: 20,
                                     ),
-                                  ),
-                                ],
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.6),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: AppColors.containerline1.withValues(alpha: 0.3),
-                                  ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        L10n.tr("App Theme", "Tema Aplikasi"),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.button,
+                                          fontFamily: "Quicksand",
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    value: _currentTheme,
-                                    dropdownColor: Colors.white,
-                                    iconEnabledColor: AppColors.button,
-                                    style: TextStyle(
-                                      color: AppColors.button,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: "Quicksand",
-                                      fontSize: 13,
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: AppColors.containerline1.withValues(alpha: 0.3),
                                     ),
-                                    items:
-                                        const [
-                                          "Lavender Dreams",
-                                          "Sakura Bloom",
-                                          "Matcha Garden",
-                                          "Sky Blue",
-                                          "Peach Cream",
-                                          "Moonlight Lavender",
-                                          "Twilight Blue",
-                                          "Midnight Forest",
-                                        ].map((String name) {
-                                          String emoji = "";
-                                          switch (name) {
-                                            case "Lavender Dreams":
-                                              emoji = "💜";
-                                              break;
-                                            case "Sakura Bloom":
-                                              emoji = "🌸";
-                                              break;
-                                            case "Matcha Garden":
-                                              emoji = "🌿";
-                                              break;
-                                            case "Sky Blue":
-                                              emoji = "☁️";
-                                              break;
-                                            case "Peach Cream":
-                                              emoji = "🍑";
-                                              break;
-                                            case "Moonlight Lavender":
-                                              emoji = "🌙";
-                                              break;
-                                            case "Twilight Blue":
-                                              emoji = "🌌";
-                                              break;
-                                            case "Midnight Forest":
-                                              emoji = "🌲";
-                                              break;
-                                          }
-                                          return DropdownMenuItem<String>(
-                                            value: name,
-                                            child: Text("$emoji $name"),
-                                          );
-                                        }).toList(),
-                                    onChanged: (value) {
-                                      if (value != null) {
-                                        setState(() {
-                                          _currentTheme = value;
-                                        });
-                                        AppColors.setTheme(value);
-                                      }
-                                    },
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      isExpanded: true,
+                                      value: _currentTheme,
+                                      dropdownColor: Colors.white,
+                                      iconEnabledColor: AppColors.button,
+                                      style: TextStyle(
+                                        color: AppColors.button,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: "Quicksand",
+                                        fontSize: 13,
+                                      ),
+                                      items:
+                                          const [
+                                            "Lavender Dreams",
+                                            "Sakura Bloom",
+                                            "Matcha Garden",
+                                            "Sky Blue",
+                                            "Peach Cream",
+                                            "Moonlight Lavender",
+                                            "Twilight Blue",
+                                            "Midnight Forest",
+                                          ].map((String name) {
+                                            String emoji = "";
+                                            switch (name) {
+                                              case "Lavender Dreams":
+                                                emoji = "💜";
+                                                break;
+                                              case "Sakura Bloom":
+                                                emoji = "🌸";
+                                                break;
+                                              case "Matcha Garden":
+                                                emoji = "🌿";
+                                                break;
+                                              case "Sky Blue":
+                                                emoji = "☁️";
+                                                break;
+                                              case "Peach Cream":
+                                                emoji = "🍑";
+                                                break;
+                                              case "Moonlight Lavender":
+                                                emoji = "🌙";
+                                                break;
+                                              case "Twilight Blue":
+                                                emoji = "🌌";
+                                                break;
+                                              case "Midnight Forest":
+                                                emoji = "🌲";
+                                                break;
+                                            }
+                                            return DropdownMenuItem<String>(
+                                              value: name,
+                                              child: Text(
+                                                "$emoji $name",
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            );
+                                          }).toList(),
+                                      onChanged: (value) {
+                                        if (value != null) {
+                                          setState(() {
+                                            _currentTheme = value;
+                                          });
+                                          AppColors.setTheme(value);
+                                        }
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
@@ -998,60 +1015,72 @@ class _SettingProfileState extends State<SettingProfile> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.psychology_rounded,
-                                    color: AppColors.button,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    L10n.tr("AI Breakdown Level", "Tingkat Detail AI"),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.psychology_rounded,
                                       color: AppColors.button,
-                                      fontFamily: "Quicksand",
+                                      size: 20,
                                     ),
-                                  ),
-                                ],
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.6),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: AppColors.containerline1.withValues(alpha: 0.3),
-                                  ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        L10n.tr("AI Breakdown Level", "Tingkat Detail AI"),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.button,
+                                          fontFamily: "Quicksand",
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    value: _aiBreakdownLevel,
-                                    dropdownColor: Colors.white,
-                                    iconEnabledColor: AppColors.button,
-                                    style: TextStyle(
-                                      color: AppColors.button,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: "Quicksand",
-                                      fontSize: 13,
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: AppColors.containerline1.withValues(alpha: 0.3),
                                     ),
-                                    items: const ["Simple", "Balanced", "Detailed"]
-                                        .map(
-                                          (val) => DropdownMenuItem(
-                                            value: val,
-                                            child: Text(val),
-                                          ),
-                                        )
-                                        .toList(),
-                                    onChanged: (value) {
-                                      if (value != null) {
-                                        setState(() {
-                                          _aiBreakdownLevel = value;
-                                        });
-                                        _saveSetting('ai_breakdown_level', value);
-                                      }
-                                    },
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      isExpanded: true,
+                                      value: _aiBreakdownLevel,
+                                      dropdownColor: Colors.white,
+                                      iconEnabledColor: AppColors.button,
+                                      style: TextStyle(
+                                        color: AppColors.button,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: "Quicksand",
+                                        fontSize: 13,
+                                      ),
+                                      items: const ["Simple", "Balanced", "Detailed"]
+                                          .map(
+                                            (val) => DropdownMenuItem(
+                                              value: val,
+                                              child: Text(
+                                                val,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                      onChanged: (value) {
+                                        if (value != null) {
+                                          setState(() {
+                                            _aiBreakdownLevel = value;
+                                          });
+                                          _saveSetting('ai_breakdown_level', value);
+                                        }
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1064,61 +1093,73 @@ class _SettingProfileState extends State<SettingProfile> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.language_rounded,
-                                    color: AppColors.button,
-                                    size: 20,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    L10n.tr("App Language", "Bahasa Aplikasi"),
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.language_rounded,
                                       color: AppColors.button,
-                                      fontFamily: "Quicksand",
+                                      size: 20,
                                     ),
-                                  ),
-                                ],
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.6),
-                                  borderRadius: BorderRadius.circular(12),
-                                  border: Border.all(
-                                    color: AppColors.containerline1.withValues(alpha: 0.3),
-                                  ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        L10n.tr("App Language", "Bahasa Aplikasi"),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.button,
+                                          fontFamily: "Quicksand",
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                child: DropdownButtonHideUnderline(
-                                  child: DropdownButton<String>(
-                                    value: L10n.lang == "en"
-                                        ? "English"
-                                        : "Bahasa Indonesia",
-                                    dropdownColor: Colors.white,
-                                    iconEnabledColor: AppColors.button,
-                                    style: TextStyle(
-                                      color: AppColors.button,
-                                      fontWeight: FontWeight.bold,
-                                      fontFamily: "Quicksand",
-                                      fontSize: 13,
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: AppColors.containerline1.withValues(alpha: 0.3),
                                     ),
-                                    items: const ["English", "Bahasa Indonesia"]
-                                        .map(
-                                          (val) => DropdownMenuItem(
-                                            value: val,
-                                            child: Text(val),
-                                          ),
-                                        )
-                                        .toList(),
-                                    onChanged: (value) {
-                                      if (value != null) {
-                                        L10n.setLanguage(
-                                          value == "English" ? "en" : "id",
-                                        );
-                                      }
-                                    },
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      isExpanded: true,
+                                      value: L10n.lang == "en"
+                                          ? "English"
+                                          : "Bahasa Indonesia",
+                                      dropdownColor: Colors.white,
+                                      iconEnabledColor: AppColors.button,
+                                      style: TextStyle(
+                                        color: AppColors.button,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: "Quicksand",
+                                        fontSize: 13,
+                                      ),
+                                      items: const ["English", "Bahasa Indonesia"]
+                                          .map(
+                                            (val) => DropdownMenuItem(
+                                              value: val,
+                                              child: Text(
+                                                val,
+                                                overflow: TextOverflow.ellipsis,
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                      onChanged: (value) {
+                                        if (value != null) {
+                                          L10n.setLanguage(
+                                            value == "English" ? "en" : "id",
+                                          );
+                                        }
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
