@@ -4,7 +4,9 @@ import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
+import 'package:kinday/database/firebase_auth_service.dart';
 import 'package:kinday/database/preference_handler.dart';
+import 'package:kinday/models/user_model_firebase.dart';
 import 'package:kinday/models/user_model_sql.dart';
 import 'package:kinday/pages/auth/login.dart';
 import 'package:kinday/pages/dummy/pleaceholderpage.dart';
@@ -43,47 +45,86 @@ class _RegisterPageState extends State<RegisterPage> {
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
-    final user = UserModelSql(
-      username: username,
-      email: email,
-      password: password,
-    );
-
     final dbHelper = DBHelper();
-    final success = await dbHelper.registerUser(user);
+    final authService = FirebaseAuthService();
 
-    if (success) {
-      final registeredUser = await dbHelper.getUserByEmail(email);
-      if (registeredUser != null && registeredUser.id != null) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setInt('user_id', registeredUser.id!);
-        await prefs.setString('user_name', registeredUser.username);
-        await prefs.setString('user_email', registeredUser.email);
-        await PreferenceHandler.setLogin(true);
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text("Registration successful!")),
-          );
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const Mainpage()),
-            (route) => false,
-          );
+    try {
+      // 1. Register in Firebase Auth & Firestore
+      final firebaseUser = UserModelFirebase(
+        username: username,
+        email: email,
+        password: password,
+      );
+      final firebaseSuccess = await authService.registerUser(firebaseUser);
+
+      if (firebaseSuccess) {
+        // 2. Also register in SQLite to maintain local database compatibility
+        final sqlUser = UserModelSql(
+          username: username,
+          email: email,
+          password: password,
+        );
+        final sqlSuccess = await dbHelper.registerUser(sqlUser);
+
+        if (sqlSuccess) {
+          final registeredUser = await dbHelper.getUserByEmail(email);
+          final registeredFirebaseUser = await authService.getUserByEmail(email);
+
+          if (registeredUser != null && registeredUser.id != null) {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setInt('user_id', registeredUser.id!);
+            await prefs.setString('user_name', registeredUser.username);
+            await prefs.setString('user_email', registeredUser.email);
+            
+            if (registeredFirebaseUser != null && registeredFirebaseUser.uid != null) {
+              await prefs.setString('user_id_firebase', registeredFirebaseUser.uid!);
+            }
+            
+            await PreferenceHandler.setLogin(true);
+
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Registration successful!")),
+              );
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const Mainpage()),
+                (route) => false,
+              );
+            }
+          } else {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Error fetching user after registration."),
+                ),
+              );
+            }
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Local database registration failed."),
+              ),
+            );
+          }
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Error fetching user after registration."),
+              content: Text("Registration failed. Please try again."),
             ),
           );
         }
       }
-    } else {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Registration failed. Email might already exist."),
+          SnackBar(
+            content: Text("Registration failed: ${e.toString().replaceAll(RegExp(r'\[.*?\]'), '')}"),
+            backgroundColor: Colors.redAccent,
           ),
         );
       }

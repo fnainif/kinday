@@ -4,6 +4,8 @@ import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
+import 'package:kinday/database/firebase_auth_service.dart';
+import 'package:kinday/models/user_model_firebase.dart';
 import 'package:kinday/models/user_model_sql.dart';
 import 'package:kinday/pages/auth/login.dart';
 
@@ -22,6 +24,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
   bool _isEmailVerified = false;
   UserModelSql? _verifiedUser;
+  UserModelFirebase? _verifiedUserFirebase;
   bool _isLoading = false;
 
   @override
@@ -43,19 +46,26 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
     final email = _emailController.text.trim();
     final dbHelper = DBHelper();
+    final authService = FirebaseAuthService();
 
     try {
-      final user = await dbHelper.getUserByEmail(email);
+      final firebaseUser = await authService.getUserByEmail(email);
+      final sqlUser = await dbHelper.getUserByEmail(email);
 
-      if (user != null) {
+      if (firebaseUser != null || sqlUser != null) {
         setState(() {
           _isEmailVerified = true;
-          _verifiedUser = user;
+          _verifiedUser = sqlUser;
+          _verifiedUserFirebase = firebaseUser;
         });
+
+        // Send reset email to user's real email inbox
+        await authService.sendPasswordResetEmail(email);
+
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Email verified. Please set your new password."),
+              content: Text("Reset email sent! Please check inbox. You can also update local password below."),
               backgroundColor: Colors.green,
             ),
           );
@@ -91,7 +101,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       return;
     }
 
-    if (_verifiedUser == null) {
+    if (_verifiedUser == null && _verifiedUserFirebase == null) {
       return;
     }
 
@@ -101,18 +111,32 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
 
     final newPassword = _passwordController.text;
     final dbHelper = DBHelper();
-
-    final updatedUser = UserModelSql(
-      id: _verifiedUser!.id,
-      username: _verifiedUser!.username,
-      email: _verifiedUser!.email,
-      password: newPassword,
-    );
+    final authService = FirebaseAuthService();
 
     try {
-      final success = await dbHelper.updateUser(updatedUser);
+      bool successSql = false;
+      bool successFirebase = false;
 
-      if (success) {
+      // 1. Update local database
+      if (_verifiedUser != null) {
+        final updatedUserSql = UserModelSql(
+          id: _verifiedUser!.id,
+          username: _verifiedUser!.username,
+          email: _verifiedUser!.email,
+          password: newPassword,
+        );
+        successSql = await dbHelper.updateUser(updatedUserSql);
+      }
+
+      // 2. Update Firebase Firestore profile document
+      if (_verifiedUserFirebase != null) {
+        final updatedUserFirebase = _verifiedUserFirebase!.copyWith(
+          password: newPassword,
+        );
+        successFirebase = await authService.updateUser(updatedUserFirebase);
+      }
+
+      if (successSql || successFirebase) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(

@@ -4,8 +4,10 @@ import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
+import 'package:kinday/database/firebase_auth_service.dart';
 import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/database/preference_handler.dart';
+import 'package:kinday/models/user_model_firebase.dart';
 import 'package:kinday/pages/auth/forgotpass.dart';
 import 'package:kinday/pages/auth/register.dart';
 import 'package:kinday/pages/dummy/pleaceholderpage.dart';
@@ -48,29 +50,66 @@ class _LoginPageState extends State<LoginPage> {
     final password = _passwordController.text.trim();
 
     final dbHelper = DBHelper();
-    final user = await dbHelper.loginUser(email, password);
+    final authService = FirebaseAuthService();
 
-    if (user != null && user.id != null) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setInt('user_id', user.id!);
-      await prefs.setString('user_name', user.username);
-      await prefs.setString('user_email', user.email);
-      await PreferenceHandler.setLogin(true);
+    try {
+      // 1. Sign in via Firebase Auth
+      final firebaseUser = await authService.loginUser(email, password);
 
-      if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text("Login successful!")));
-        Navigator.pushAndRemoveUntil(
-          context,
-          MaterialPageRoute(builder: (context) => const Mainpage()),
-          (route) => false,
-        );
+      if (firebaseUser != null) {
+        // Check if user exists in local SQLite database by email
+        var localUser = await dbHelper.getUserByEmail(email);
+        if (localUser == null) {
+          // If not, register locally to generate an integer ID
+          final successRegisterLocal = await dbHelper.registerUser(firebaseUser.toSql());
+          if (successRegisterLocal) {
+            localUser = await dbHelper.getUserByEmail(email);
+          }
+        }
+
+        if (localUser != null && localUser.id != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setInt('user_id', localUser.id!);
+          await prefs.setString('user_name', localUser.username);
+          await prefs.setString('user_email', localUser.email);
+          
+          if (firebaseUser.uid != null) {
+            await prefs.setString('user_id_firebase', firebaseUser.uid!);
+          }
+
+          await PreferenceHandler.setLogin(true);
+
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text("Login successful!")));
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const Mainpage()),
+              (route) => false,
+            );
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("Error setting up local profile session.")),
+            );
+          }
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text("Invalid email or password.")),
+          );
+        }
       }
-    } else {
+    } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Invalid email or password.")),
+          SnackBar(
+            content: Text("Login failed: ${e.toString().replaceAll(RegExp(r'\[.*?\]'), '')}"),
+            backgroundColor: Colors.redAccent,
+          ),
         );
       }
     }

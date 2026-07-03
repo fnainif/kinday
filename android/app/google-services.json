@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "397404342098",
+    "project_id": "kinday-productivity-app-15496",
+    "storage_bucket": "kinday-productivity-app-15496.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:397404342098:android:6e720345f7045692c99c8b",
+        "android_client_info": {
+          "package_name": "com.harumone.kinday"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC6reusZ1mSBRKwvs-GbJuFjm2LBW2NP2g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
