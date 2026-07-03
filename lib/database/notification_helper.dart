@@ -28,7 +28,7 @@ class NotificationHelper {
 
     // 2. Initialize FlutterLocalNotificationsPlugin
     const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+        AndroidInitializationSettings('notification_icon');
 
     const DarwinInitializationSettings initializationSettingsDarwin =
         DarwinInitializationSettings(

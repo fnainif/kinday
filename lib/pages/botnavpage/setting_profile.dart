@@ -660,7 +660,10 @@ class _SettingProfileState extends State<SettingProfile> {
                       Transform.translate(
                         offset: const Offset(0, -5),
                         child: Text(
-                          L10n.tr("Customize your Kinday experience", "Sesuaikan pengalaman Kinday-mu"),
+                          L10n.tr(
+                            "Customize your Kinday experience",
+                            "Sesuaikan pengalaman Kinday-mu",
+                          ),
                           style: AppTextStyles.affirmation,
                         ),
                       ),
@@ -754,7 +757,9 @@ class _SettingProfileState extends State<SettingProfile> {
                                       style: TextStyle(
                                         fontFamily: "Nunito",
                                         fontSize: 14,
-                                        color: AppColors.button.withValues(alpha: 0.6),
+                                        color: AppColors.button.withValues(
+                                          alpha: 0.6,
+                                        ),
                                       ),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -791,7 +796,10 @@ class _SettingProfileState extends State<SettingProfile> {
                                 ),
                               ),
                               _buildStatItem(
-                                L10n.tr("$_streakDays Days", "$_streakDays Hari"),
+                                L10n.tr(
+                                  "$_streakDays Days",
+                                  "$_streakDays Hari",
+                                ),
                                 L10n.tr("Streak", "Beruntun"),
                               ),
                               Container(
@@ -811,7 +819,9 @@ class _SettingProfileState extends State<SettingProfile> {
                       ),
                     ),
 
-                    _buildSectionHeader(L10n.tr("App Preferences", "Preferensi Aplikasi")),
+                    _buildSectionHeader(
+                      L10n.tr("App Preferences", "Preferensi Aplikasi"),
+                    ),
 
                     // Preferences Container (Container 3: Leaning pink/purple)
                     Container3(
@@ -833,7 +843,10 @@ class _SettingProfileState extends State<SettingProfile> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        L10n.tr("Enable Notifications", "Aktifkan Notifikasi"),
+                                        L10n.tr(
+                                          "Enable Notifications",
+                                          "Aktifkan Notifikasi",
+                                        ),
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: AppColors.button,
@@ -848,7 +861,9 @@ class _SettingProfileState extends State<SettingProfile> {
                               Switch.adaptive(
                                 value: _notificationsEnabled,
                                 activeColor: AppColors.button,
-                                activeTrackColor: AppColors.button.withValues(alpha: 0.5),
+                                activeTrackColor: AppColors.button.withValues(
+                                  alpha: 0.5,
+                                ),
                                 onChanged: (val) {
                                   setState(() {
                                     _notificationsEnabled = val;
@@ -878,7 +893,10 @@ class _SettingProfileState extends State<SettingProfile> {
                                   color: AppColors.button,
                                 ),
                                 label: Text(
-                                  L10n.tr("Send Test Notification", "Kirim Notifikasi Uji"),
+                                  L10n.tr(
+                                    "Send Test Notification",
+                                    "Kirim Notifikasi Uji",
+                                  ),
                                   style: TextStyle(
                                     color: AppColors.button,
                                     fontWeight: FontWeight.bold,
@@ -890,13 +908,20 @@ class _SettingProfileState extends State<SettingProfile> {
                                   shape: RoundedRectangleBorder(
                                     borderRadius: BorderRadius.circular(12),
                                   ),
-                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                  ),
                                 ),
                               ),
                             ),
                           ],
                           const SizedBox(height: 12),
-                          Divider(height: 1, color: AppColors.containerline1.withValues(alpha: 0.3)),
+                          Divider(
+                            height: 1,
+                            color: AppColors.containerline1.withValues(
+                              alpha: 0.3,
+                            ),
+                          ),
                           const SizedBox(height: 12),
                           // Theme Selector Dropdown
                           Row(
@@ -928,12 +953,16 @@ class _SettingProfileState extends State<SettingProfile> {
                               const SizedBox(width: 8),
                               Flexible(
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.white.withValues(alpha: 0.6),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: AppColors.containerline1.withValues(alpha: 0.3),
+                                      color: AppColors.containerline1
+                                          .withValues(alpha: 0.3),
                                     ),
                                   ),
                                   child: DropdownButtonHideUnderline(
@@ -1009,7 +1038,12 @@ class _SettingProfileState extends State<SettingProfile> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          Divider(height: 1, color: AppColors.containerline1.withValues(alpha: 0.3)),
+                          Divider(
+                            height: 1,
+                            color: AppColors.containerline1.withValues(
+                              alpha: 0.3,
+                            ),
+                          ),
                           const SizedBox(height: 12),
                           // AI Breakdown Detail
                           Row(
@@ -1026,7 +1060,10 @@ class _SettingProfileState extends State<SettingProfile> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        L10n.tr("AI Breakdown Level", "Tingkat Detail AI"),
+                                        L10n.tr(
+                                          "AI Breakdown Level",
+                                          "Tingkat Detail AI",
+                                        ),
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: AppColors.button,
@@ -1041,12 +1078,16 @@ class _SettingProfileState extends State<SettingProfile> {
                               const SizedBox(width: 8),
                               Flexible(
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.white.withValues(alpha: 0.6),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: AppColors.containerline1.withValues(alpha: 0.3),
+                                      color: AppColors.containerline1
+                                          .withValues(alpha: 0.3),
                                     ),
                                   ),
                                   child: DropdownButtonHideUnderline(
@@ -1061,23 +1102,32 @@ class _SettingProfileState extends State<SettingProfile> {
                                         fontFamily: "Quicksand",
                                         fontSize: 13,
                                       ),
-                                      items: const ["Simple", "Balanced", "Detailed"]
-                                          .map(
-                                            (val) => DropdownMenuItem(
-                                              value: val,
-                                              child: Text(
-                                                val,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          )
-                                          .toList(),
+                                      items:
+                                          const [
+                                                "Simple",
+                                                "Balanced",
+                                                "Detailed",
+                                              ]
+                                              .map(
+                                                (val) => DropdownMenuItem(
+                                                  value: val,
+                                                  child: Text(
+                                                    val,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              )
+                                              .toList(),
                                       onChanged: (value) {
                                         if (value != null) {
                                           setState(() {
                                             _aiBreakdownLevel = value;
                                           });
-                                          _saveSetting('ai_breakdown_level', value);
+                                          _saveSetting(
+                                            'ai_breakdown_level',
+                                            value,
+                                          );
                                         }
                                       },
                                     ),
@@ -1087,7 +1137,12 @@ class _SettingProfileState extends State<SettingProfile> {
                             ],
                           ),
                           const SizedBox(height: 12),
-                          Divider(height: 1, color: AppColors.containerline1.withValues(alpha: 0.3)),
+                          Divider(
+                            height: 1,
+                            color: AppColors.containerline1.withValues(
+                              alpha: 0.3,
+                            ),
+                          ),
                           const SizedBox(height: 12),
                           // App Language selector
                           Row(
@@ -1104,7 +1159,10 @@ class _SettingProfileState extends State<SettingProfile> {
                                     const SizedBox(width: 8),
                                     Expanded(
                                       child: Text(
-                                        L10n.tr("App Language", "Bahasa Aplikasi"),
+                                        L10n.tr(
+                                          "App Language",
+                                          "Bahasa Aplikasi",
+                                        ),
                                         style: TextStyle(
                                           fontWeight: FontWeight.bold,
                                           color: AppColors.button,
@@ -1119,12 +1177,16 @@ class _SettingProfileState extends State<SettingProfile> {
                               const SizedBox(width: 8),
                               Flexible(
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.white.withValues(alpha: 0.6),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: AppColors.containerline1.withValues(alpha: 0.3),
+                                      color: AppColors.containerline1
+                                          .withValues(alpha: 0.3),
                                     ),
                                   ),
                                   child: DropdownButtonHideUnderline(
@@ -1141,17 +1203,19 @@ class _SettingProfileState extends State<SettingProfile> {
                                         fontFamily: "Quicksand",
                                         fontSize: 13,
                                       ),
-                                      items: const ["English", "Bahasa Indonesia"]
-                                          .map(
-                                            (val) => DropdownMenuItem(
-                                              value: val,
-                                              child: Text(
-                                                val,
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            ),
-                                          )
-                                          .toList(),
+                                      items:
+                                          const ["English", "Bahasa Indonesia"]
+                                              .map(
+                                                (val) => DropdownMenuItem(
+                                                  value: val,
+                                                  child: Text(
+                                                    val,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              )
+                                              .toList(),
                                       onChanged: (value) {
                                         if (value != null) {
                                           L10n.setLanguage(
@@ -1169,7 +1233,9 @@ class _SettingProfileState extends State<SettingProfile> {
                       ),
                     ),
 
-                    _buildSectionHeader(L10n.tr("Account & Info", "Akun & Info")),
+                    _buildSectionHeader(
+                      L10n.tr("Account & Info", "Akun & Info"),
+                    ),
 
                     // Info Container (Container 1: White/Grey card style)
                     Container1(
@@ -1178,7 +1244,10 @@ class _SettingProfileState extends State<SettingProfile> {
                         children: [
                           _buildListTile(
                             icon: Icons.lock_outline_rounded,
-                            title: L10n.tr("Change Password", "Ubah Kata Sandi"),
+                            title: L10n.tr(
+                              "Change Password",
+                              "Ubah Kata Sandi",
+                            ),
                             onTap: () {
                               Navigator.push(
                                 context,
@@ -1218,7 +1287,12 @@ class _SettingProfileState extends State<SettingProfile> {
                       ),
                     ),
 
-                    _buildSectionHeader(L10n.tr("Data Backup & Restore", "Cadangkan & Pulihkan Data")),
+                    _buildSectionHeader(
+                      L10n.tr(
+                        "Data Backup & Restore",
+                        "Cadangkan & Pulihkan Data",
+                      ),
+                    ),
 
                     // Data Backup & Restore Container
                     Container2(
@@ -1254,7 +1328,12 @@ class _SettingProfileState extends State<SettingProfile> {
                             ],
                           ),
                           const SizedBox(height: 16),
-                          Divider(height: 1, color: AppColors.containerline2.withValues(alpha: 0.3)),
+                          Divider(
+                            height: 1,
+                            color: AppColors.containerline2.withValues(
+                              alpha: 0.3,
+                            ),
+                          ),
                           const SizedBox(height: 16),
                           Row(
                             children: [
@@ -1294,7 +1373,9 @@ class _SettingProfileState extends State<SettingProfile> {
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     elevation: 0,
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1333,7 +1414,9 @@ class _SettingProfileState extends State<SettingProfile> {
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    padding: const EdgeInsets.symmetric(vertical: 12),
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 12,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1353,7 +1436,10 @@ class _SettingProfileState extends State<SettingProfile> {
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           onPressed: _showLogoutDialog,
-                          icon: const Icon(Icons.logout_rounded, color: Colors.white),
+                          icon: const Icon(
+                            Icons.logout_rounded,
+                            color: Colors.white,
+                          ),
                           label: Text(
                             L10n.tr("Log Out", "Keluar"),
                             style: const TextStyle(
