@@ -1499,15 +1499,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                     ),
                                     alignment: Alignment.center,
                                     child: Text(
-                                      L10n.tr(
-                                        day["label"] as String,
-                                        day["label"] == "Mon" ? "Sen" :
-                                        day["label"] == "Tue" ? "Sel" :
-                                        day["label"] == "Wed" ? "Rab" :
-                                        day["label"] == "Thu" ? "Kam" :
-                                        day["label"] == "Fri" ? "Jum" :
-                                        day["label"] == "Sat" ? "Sab" : "Min",
-                                      ),
+                                      L10n.tr(day["label"] as String),
                                       style: TextStyle(
                                         color: isSelected
                                             ? Colors.white

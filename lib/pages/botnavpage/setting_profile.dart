@@ -18,7 +18,6 @@ import 'package:kinday/pages/additional/about.dart';
 import 'package:kinday/pages/additional/changepass.dart';
 import 'package:kinday/pages/additional/faq.dart';
 import 'package:kinday/pages/auth/login.dart';
-import 'package:kinday/pages/db_viewer_page.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingProfile extends StatefulWidget {
@@ -1353,7 +1352,9 @@ class _SettingProfileState extends State<SettingProfile> {
                                       isExpanded: true,
                                       value: L10n.lang == "en"
                                           ? "English"
-                                          : "Bahasa Indonesia",
+                                          : L10n.lang == "id"
+                                              ? "Bahasa Indonesia"
+                                              : "Japanese",
                                       dropdownColor: Colors.white,
                                       iconEnabledColor: AppColors.button,
                                       style: TextStyle(
@@ -1363,7 +1364,7 @@ class _SettingProfileState extends State<SettingProfile> {
                                         fontSize: 13,
                                       ),
                                       items:
-                                          const ["English", "Bahasa Indonesia"]
+                                          const ["English", "Bahasa Indonesia", "Japanese"]
                                               .map(
                                                 (val) => DropdownMenuItem(
                                                   value: val,
@@ -1377,9 +1378,15 @@ class _SettingProfileState extends State<SettingProfile> {
                                               .toList(),
                                       onChanged: (value) {
                                         if (value != null) {
-                                          L10n.setLanguage(
-                                            value == "English" ? "en" : "id",
-                                          );
+                                          setState(() {
+                                            L10n.setLanguage(
+                                              value == "English"
+                                                  ? "en"
+                                                  : value == "Bahasa Indonesia"
+                                                      ? "id"
+                                                      : "ja",
+                                            );
+                                          });
                                         }
                                       },
                                     ),
@@ -1590,28 +1597,7 @@ class _SettingProfileState extends State<SettingProfile> {
                       ),
                     ),
 
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20.0),
-                      child: TextButton.icon(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const DatabaseViewerPage(),
-                            ),
-                          );
-                        },
-                        icon: Icon(Icons.storage, color: AppColors.button),
-                        label: Text(
-                          "View Database (Temp)",
-                          style: TextStyle(
-                            color: AppColors.button,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: "Quicksand",
-                          ),
-                        ),
-                      ),
-                    ),
+
                     const SizedBox(height: 40),
                   ],
                 ),

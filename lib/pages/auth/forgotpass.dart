@@ -1,12 +1,9 @@
-import 'package:flutter/gestures.dart';
+﻿import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_widget.dart';
-import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/firebase_auth_service.dart';
-import 'package:kinday/models/user_model_firebase.dart';
-import 'package:kinday/models/user_model_sql.dart';
 import 'package:kinday/pages/auth/login.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
@@ -19,58 +16,31 @@ class ForgotPasswordPage extends StatefulWidget {
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
-  final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
 
-  bool _isEmailVerified = false;
-  UserModelSql? _verifiedUser;
-  UserModelFirebase? _verifiedUserFirebase;
   bool _isLoading = false;
+  bool _resetEmailSent = false;
 
   @override
   void dispose() {
     _emailController.dispose();
-    _passwordController.dispose();
-    _confirmPasswordController.dispose();
     super.dispose();
   }
 
-  Future<void> _verifyEmail() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
+  Future<void> _sendResetEmail() async {
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() {
       _isLoading = true;
     });
 
     final email = _emailController.text.trim();
-    final dbHelper = DBHelper();
     final authService = FirebaseAuthService();
 
     try {
+      // Check if email actually exists before sending reset link
       final firebaseUser = await authService.getUserByEmail(email);
-      final sqlUser = await dbHelper.getUserByEmail(email);
 
-      if (firebaseUser != null || sqlUser != null) {
-        setState(() {
-          _isEmailVerified = true;
-          _verifiedUser = sqlUser;
-          _verifiedUserFirebase = firebaseUser;
-        });
-
-        // Send reset email to user's real email inbox
-        await authService.sendPasswordResetEmail(email);
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Reset email sent! Please check inbox. You can also update local password below."),
-              backgroundColor: Colors.green,
-            ),
-          );
-        }
-      } else {
+      if (firebaseUser == null) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -79,82 +49,23 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
             ),
           );
         }
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text("Error checking email: $e"),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
-    }
-  }
-
-  Future<void> _resetPassword() async {
-    if (!_formKey.currentState!.validate()) {
-      return;
-    }
-
-    if (_verifiedUser == null && _verifiedUserFirebase == null) {
-      return;
-    }
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    final newPassword = _passwordController.text;
-    final dbHelper = DBHelper();
-    final authService = FirebaseAuthService();
-
-    try {
-      bool successSql = false;
-      bool successFirebase = false;
-
-      // 1. Update local database
-      if (_verifiedUser != null) {
-        final updatedUserSql = UserModelSql(
-          id: _verifiedUser!.id,
-          username: _verifiedUser!.username,
-          email: _verifiedUser!.email,
-          password: newPassword,
-        );
-        successSql = await dbHelper.updateUser(updatedUserSql);
+        return;
       }
 
-      // 2. Update Firebase Firestore profile document
-      if (_verifiedUserFirebase != null) {
-        final updatedUserFirebase = _verifiedUserFirebase!.copyWith(
-          password: newPassword,
-        );
-        successFirebase = await authService.updateUser(updatedUserFirebase);
-      }
+      // Send the secure Firebase password reset email
+      final sent = await authService.sendPasswordResetEmail(email);
 
-      if (successSql || successFirebase) {
+      if (sent) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text("Password updated successfully! Please login."),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const LoginPage()),
-            (route) => false,
-          );
+          setState(() {
+            _resetEmailSent = true;
+          });
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text("Failed to update password. Please try again."),
+              content: Text("Failed to send reset email. Please try again."),
               backgroundColor: Colors.redAccent,
             ),
           );
@@ -164,15 +75,19 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Error updating password: $e"),
+            content: Text(
+              "Error: ${e.toString().replaceAll(RegExp(r'\[.*?\]'), '')}",
+            ),
             backgroundColor: Colors.redAccent,
           ),
         );
       }
     } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -197,8 +112,8 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   ),
                 ),
                 Text(
-                  _isEmailVerified
-                      ? "Create a secure new password"
+                  _resetEmailSent
+                      ? "Check your inbox!"
                       : "Find your Kinday account",
                   style: TextStyle(
                     color: AppColors.button.withAlpha(204),
@@ -213,163 +128,156 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
                   ),
                   child: Padding(
                     padding: const EdgeInsets.all(35.0),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (!_isEmailVerified) ...[
-                            Text(
-                              "Email Address",
-                              style: TextStyle(
-                                color: AppColors.button,
-                                fontFamily: "Nunito",
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            InputField(
-                              hint: "Enter your email",
-                              icon: Icons.email,
-                              controller: _emailController,
-                              validator: (value) {
-                                if (value == null || value.trim().isEmpty) {
-                                  return "Please enter your email";
-                                }
-                                final emailRegex = RegExp(
-                                  r'^[^@]+@[^@]+\.[^@]+$',
-                                );
-                                if (!emailRegex.hasMatch(value.trim())) {
-                                  return "Please enter a valid email address";
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 30),
-                            _isLoading
-                                ? Center(
-                                    child: CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        AppColors.button,
-                                      ),
-                                    ),
-                                  )
-                                : AccButton(
-                                    sign: "Verify Email",
-                                    warnaBox: AppColors.button,
-                                    destination: const LoginPage(),
-                                    textbuttoncolor: Colors.white,
-                                    onPressed: _verifyEmail,
-                                  ),
-                          ] else ...[
-                            Text(
-                              "New Password",
-                              style: TextStyle(
-                                color: AppColors.button,
-                                fontFamily: "Nunito",
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            InputField(
-                              hint: "Minimum 6 characters",
-                              icon: Icons.key,
-                              pwhide: true,
-                              controller: _passwordController,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return "Please enter your new password";
-                                }
-                                if (value.length < 6) {
-                                  return "Password must be at least 6 characters";
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 20),
-                            Text(
-                              "Confirm New Password",
-                              style: TextStyle(
-                                color: AppColors.button,
-                                fontFamily: "Nunito",
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            InputField(
-                              hint: "Retype new password",
-                              icon: Icons.key_off,
-                              pwhide: true,
-                              controller: _confirmPasswordController,
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return "Please confirm your new password";
-                                }
-                                if (value != _passwordController.text) {
-                                  return "Passwords do not match!";
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 30),
-                            _isLoading
-                                ? Center(
-                                    child: CircularProgressIndicator(
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        AppColors.button,
-                                      ),
-                                    ),
-                                  )
-                                : AccButton(
-                                    sign: "Reset Password",
-                                    warnaBox: AppColors.button,
-                                    destination: const LoginPage(),
-                                    textbuttoncolor: Colors.white,
-                                    onPressed: _resetPassword,
-                                  ),
-                          ],
-                          const SizedBox(height: 25),
-                          Center(
-                            child: Text.rich(
-                              TextSpan(
-                                text: "Remembered your password? ",
-                                style: TextStyle(
-                                  color: AppColors.button,
-                                  fontFamily: "Nunito",
-                                  fontSize: 14,
-                                ),
-                                children: [
-                                  TextSpan(
-                                    recognizer: TapGestureRecognizer()
-                                      ..onTap = () {
-                                        Navigator.pushAndRemoveUntil(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (context) =>
-                                                const LoginPage(),
-                                          ),
-                                          (route) => false,
-                                        );
-                                      },
-                                    style: const TextStyle(
-                                      color: Colors.blue,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                    text: "Login",
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    child: _resetEmailSent
+                        ? _buildSuccessContent()
+                        : _buildEmailInputContent(),
                   ),
                 ),
               ],
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Shown after a reset email has been successfully sent.
+  Widget _buildSuccessContent() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Icon(
+          Icons.mark_email_read_rounded,
+          size: 60,
+          color: AppColors.button,
+        ),
+        const SizedBox(height: 16),
+        Text(
+          "Reset link sent!",
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppColors.button,
+            fontFamily: "Nunito",
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          "We sent a password reset link to:\n${_emailController.text.trim()}\n\nOpen the link in your email to create a new password, then come back and log in.",
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            color: AppColors.button.withAlpha(180),
+            fontFamily: "Nunito",
+            fontSize: 14,
+            height: 1.6,
+          ),
+        ),
+        const SizedBox(height: 30),
+        AccButton(
+          sign: "Back to Login",
+          warnaBox: AppColors.button,
+          destination: const SizedBox(),
+          textbuttoncolor: Colors.white,
+          onPressed: () {
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const LoginPage()),
+              (route) => false,
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  /// Shown initially for user to enter their email.
+  Widget _buildEmailInputContent() {
+    return Form(
+      key: _formKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            "Email Address",
+            style: TextStyle(
+              color: AppColors.button,
+              fontFamily: "Nunito",
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          InputField(
+            hint: "Enter your email",
+            icon: Icons.email,
+            controller: _emailController,
+            validator: (value) {
+              if (value == null || value.trim().isEmpty) {
+                return "Please enter your email";
+              }
+              final emailRegex = RegExp(r'^[^@]+@[^@]+\.[^@]+$');
+              if (!emailRegex.hasMatch(value.trim())) {
+                return "Please enter a valid email address";
+              }
+              return null;
+            },
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "We will send a secure reset link to this email.",
+            style: TextStyle(
+              color: AppColors.button.withAlpha(160),
+              fontFamily: "Nunito",
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 30),
+          _isLoading
+              ? Center(
+                  child: CircularProgressIndicator(
+                    valueColor: AlwaysStoppedAnimation<Color>(AppColors.button),
+                  ),
+                )
+              : AccButton(
+                  sign: "Send Reset Link",
+                  warnaBox: AppColors.button,
+                  destination: const SizedBox(),
+                  textbuttoncolor: Colors.white,
+                  onPressed: _sendResetEmail,
+                ),
+          const SizedBox(height: 25),
+          Center(
+            child: Text.rich(
+              TextSpan(
+                text: "Remembered your password? ",
+                style: TextStyle(
+                  color: AppColors.button,
+                  fontFamily: "Nunito",
+                  fontSize: 14,
+                ),
+                children: [
+                  TextSpan(
+                    recognizer: TapGestureRecognizer()
+                      ..onTap = () {
+                        Navigator.pushAndRemoveUntil(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const LoginPage(),
+                          ),
+                          (route) => false,
+                        );
+                      },
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    text: "Login",
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

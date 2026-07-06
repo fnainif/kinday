@@ -122,7 +122,7 @@ class _EnergyPageState extends State<EnergyPage> {
 
     // --- 2. Productivity drop day calculation ---
     final dbTasks = await dbHelper.getTasksForUser(userId);
-    String worstProductivityDay = "Jumat";
+    String worstProductivityDay = L10n.tr("Friday", "Jumat");
     if (dbTasks.isNotEmpty) {
       final Map<int, List<TaskCard>> tasksByDay = {};
       for (var task in dbTasks) {
@@ -243,15 +243,15 @@ class _EnergyPageState extends State<EnergyPage> {
   String _getEnergyLabel(int level) {
     switch (level) {
       case 5:
-        return "High";
+        return L10n.tr("High", "Tinggi");
       case 4:
-        return "Mid-High";
+        return L10n.tr("Mid-High", "Cukup Tinggi");
       case 3:
-        return "Medium";
+        return L10n.tr("Medium", "Sedang");
       case 2:
-        return "Mid-Low";
+        return L10n.tr("Mid-Low", "Cukup Rendah");
       default:
-        return "Low";
+        return L10n.tr("Low", "Rendah");
     }
   }
 

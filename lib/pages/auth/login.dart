@@ -9,9 +9,8 @@ import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/pages/auth/forgotpass.dart';
 import 'package:kinday/pages/auth/register.dart';
-import 'package:kinday/pages/dummy/pleaceholderpage.dart';
+import 'package:kinday/pages/auth/verify_email.dart';
 import 'package:kinday/pages/mainpage.dart';
-
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
@@ -62,7 +61,33 @@ class _LoginPageState extends State<LoginPage> {
       final firebaseUser = await authService.loginUser(email, password);
 
       if (firebaseUser != null) {
-        // Check if user exists in local SQLite database by email
+        // 2. Check if email is verified
+        final emailVerified = await authService.isEmailVerified();
+        if (!emailVerified) {
+          // Send a fresh verification email and redirect to the waiting screen
+          await authService.sendEmailVerification();
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  "Please verify your email. A new link has been sent to your inbox.",
+                ),
+                backgroundColor: Colors.orange,
+                duration: Duration(seconds: 5),
+              ),
+            );
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const EmailVerificationPage(),
+              ),
+              (route) => false,
+            );
+          }
+          return;
+        }
+
+        // 3. Check if user exists in local SQLite database by email
         var localUser = await dbHelper.getUserByEmail(email);
         if (localUser == null) {
           // If not, register locally to generate an integer ID
@@ -72,6 +97,13 @@ class _LoginPageState extends State<LoginPage> {
           if (successRegisterLocal) {
             localUser = await dbHelper.getUserByEmail(email);
           }
+        }
+
+        // 4. Sync the SQLite password in case the user reset it via email link
+        if (localUser != null && localUser.password != password) {
+          final updatedUser = localUser.copyWith(password: password);
+          await dbHelper.updateUser(updatedUser);
+          localUser = await dbHelper.getUserByEmail(email);
         }
 
         if (localUser != null && localUser.id != null) {
@@ -345,7 +377,7 @@ class _LoginPageState extends State<LoginPage> {
                           AccButton(
                             sign: "Sign In",
                             warnaBox: AppColors.button,
-                            destination: const Pleaceholderpage(),
+                            destination: const SizedBox(),
                             textbuttoncolor: Colors.white,
                             onPressed: _handleLogin,
                           ),
@@ -387,7 +419,7 @@ class _LoginPageState extends State<LoginPage> {
                             children: [
                               AccButton(
                                 warnaBox: AppColors.background,
-                                destination: const Pleaceholderpage(),
+                                destination: const SizedBox(),
                                 textbuttoncolor: AppColors.button,
                                 leadImage: AppImage.icongoogle,
                                 sign: "sign in with google",

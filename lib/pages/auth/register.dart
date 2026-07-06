@@ -5,13 +5,12 @@ import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/firebase_auth_service.dart';
-import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/models/user_model_firebase.dart';
 import 'package:kinday/models/user_model_sql.dart';
 import 'package:kinday/pages/auth/login.dart';
-import 'package:kinday/pages/dummy/pleaceholderpage.dart';
-import 'package:kinday/pages/mainpage.dart';
+import 'package:kinday/pages/auth/verify_email.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
@@ -85,15 +84,12 @@ class _RegisterPageState extends State<RegisterPage> {
               await prefs.setString('user_id_firebase', registeredFirebaseUser.uid!);
             }
             
-            await PreferenceHandler.setLogin(true);
+            // Do NOT set login = true yet — the user must verify their email first.
 
             if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Registration successful!")),
-              );
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (context) => const Mainpage()),
+                MaterialPageRoute(builder: (context) => const EmailVerificationPage()),
                 (route) => false,
               );
             }
@@ -317,7 +313,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           AccButton(
                             sign: "Register",
                             warnaBox: AppColors.button,
-                            destination: const Pleaceholderpage(),
+                            destination: const SizedBox(),
                             textbuttoncolor: Colors.white,
                             onPressed: _handleRegister,
                           ),

@@ -16,9 +16,16 @@ subprojects {
     project.layout.buildDirectory.value(newSubprojectBuildDir)
 }
 subprojects {
+    tasks.withType<JavaCompile>().configureEach {
+        options.compilerArgs.add("-Xlint:deprecation")
+    }
+}
+
+subprojects {
     project.evaluationDependsOn(":app")
 }
 
 tasks.register<Delete>("clean") {
     delete(rootProject.layout.buildDirectory)
 }
+

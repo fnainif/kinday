@@ -33,7 +33,22 @@ class UserModelSql {
     );
   }
 
+  UserModelSql copyWith({
+    int? id,
+    String? username,
+    String? email,
+    String? password,
+  }) {
+    return UserModelSql(
+      id: id ?? this.id,
+      username: username ?? this.username,
+      email: email ?? this.email,
+      password: password ?? this.password,
+    );
+  }
+
   String toJson() => json.encode(toMap());
+
 
   factory UserModelSql.fromJson(String source) =>
       UserModelSql.fromMap(json.decode(source) as Map<String, dynamic>);

@@ -27,7 +27,8 @@ class _HomepageState extends State<Homepage> {
   int? _userId;
   String _name = "User";
   int _currentEnergyLvl = 3;
-  String _lastUpdated = "No logs yet";
+  DateTime? _lastUpdatedTime;
+  bool _hasLogs = false;
   TaskCard? _suggestedTask;
   int _totalTasks = 0;
   int _completedTasksCount = 0;
@@ -59,17 +60,13 @@ class _HomepageState extends State<Homepage> {
     final latestEnergy = await dbHelper.getLatestEnergyForUser(userId);
     final userTasks = await dbHelper.getTasksForUser(userId);
 
-    String lastUpdatedStr = "No logs yet";
     final logs = await dbHelper.getEnergyLogsForUser(userId);
-    if (logs.isNotEmpty) {
+    final hasLogs = logs.isNotEmpty;
+    DateTime? lastUpdatedTime;
+    if (hasLogs) {
       try {
-        final dt = DateTime.parse(logs.last['timestamp'] as String);
-        final minStr = dt.minute.toString().padLeft(2, '0');
-        final hrStr = dt.hour.toString().padLeft(2, '0');
-        lastUpdatedStr = "Last Updated $hrStr:$minStr";
-      } catch (e) {
-        lastUpdatedStr = "Last Updated";
-      }
+        lastUpdatedTime = DateTime.parse(logs.last['timestamp'] as String);
+      } catch (_) {}
     }
 
     final activeTasks = userTasks.where((t) => !t.isCompleted).toList();
@@ -121,7 +118,8 @@ class _HomepageState extends State<Homepage> {
       if (latestEnergy != null) {
         _currentEnergyLvl = latestEnergy;
       }
-      _lastUpdated = lastUpdatedStr;
+      _lastUpdatedTime = lastUpdatedTime;
+      _hasLogs = hasLogs;
       _suggestedTask = suggested;
       _totalTasks = userTasks.length;
       _completedTasksCount = userTasks.where((t) => t.isCompleted).length;
@@ -153,15 +151,15 @@ class _HomepageState extends State<Homepage> {
   String _getEnergyLabel(int level) {
     switch (level) {
       case 5:
-        return "High";
+        return L10n.tr("High", "Tinggi");
       case 4:
-        return "Mid-High";
+        return L10n.tr("Mid-High", "Cukup Tinggi");
       case 3:
-        return "Medium";
+        return L10n.tr("Medium", "Sedang");
       case 2:
-        return "Mid-Low";
+        return L10n.tr("Mid-Low", "Cukup Rendah");
       default:
-        return "Low";
+        return L10n.tr("Low", "Rendah");
     }
   }
 
@@ -297,7 +295,18 @@ class _HomepageState extends State<Homepage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Text(
-                            L10n.tr("Good Morning,", "Selamat Pagi,"),
+                            () {
+                              final hour = DateTime.now().hour;
+                              if (hour >= 5 && hour < 12) {
+                                return L10n.tr("Good Morning,");
+                              } else if (hour >= 12 && hour < 17) {
+                                return L10n.tr("Good Afternoon,");
+                              } else if (hour >= 17 && hour < 21) {
+                                return L10n.tr("Good Evening,");
+                              } else {
+                                return L10n.tr("Good Night,");
+                              }
+                            }(),
                             style: AppTextStyles.greeting,
                           ),
                           Transform.translate(
@@ -363,7 +372,11 @@ class _HomepageState extends State<Homepage> {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                _lastUpdated,
+                                !_hasLogs
+                                    ? L10n.tr("No logs yet", "Belum ada log")
+                                    : _lastUpdatedTime != null
+                                        ? "${L10n.tr("Last Updated", "Terakhir Diperbarui")} ${_lastUpdatedTime!.hour.toString().padLeft(2, '0')}:${_lastUpdatedTime!.minute.toString().padLeft(2, '0')}"
+                                        : L10n.tr("Last Updated", "Terakhir Diperbarui"),
                                 style: TextStyle(
                                   fontSize: 11,
                                   color: AppColors.button.withValues(

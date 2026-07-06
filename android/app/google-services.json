@@ -12,7 +12,28 @@
           "package_name": "com.harumone.kinday"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "397404342098-jpaj30h3g5chbmgppmqb4mqlc4rkj2pj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.harumone.kinday",
+            "certificate_hash": "033e8680d21f40e63b7eae5b0bbd8580cd819b57"
+          }
+        },
+        {
+          "client_id": "397404342098-ochk6bbtopb25rqr1mq01l6iaqsq98g2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.harumone.kinday",
+            "certificate_hash": "31d9ce67b3449f44afebbc9c6e91d1271f907612"
+          }
+        },
+        {
+          "client_id": "397404342098-up2b9mnpe5bh87d7qkakj69kk2vdnvdu.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyC6reusZ1mSBRKwvs-GbJuFjm2LBW2NP2g"
@@ -20,7 +41,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "397404342098-up2b9mnpe5bh87d7qkakj69kk2vdnvdu.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }

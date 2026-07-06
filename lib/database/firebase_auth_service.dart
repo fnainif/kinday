@@ -32,6 +32,10 @@ class FirebaseAuthService {
             .collection('users')
             .doc(credential.user!.uid)
             .set(userWithUid.toFirestore());
+
+        // Send email verification automatically after registration
+        await credential.user!.sendEmailVerification();
+
         return true;
       }
       return false;
@@ -39,6 +43,23 @@ class FirebaseAuthService {
       debugPrint("Error registering user: $e");
       rethrow;
     }
+  }
+
+  // Send Email Verification to the currently signed-in user
+  Future<void> sendEmailVerification() async {
+    final user = _auth.currentUser;
+    if (user != null && !user.emailVerified) {
+      await user.sendEmailVerification();
+    }
+  }
+
+  // Check if the currently signed-in user's email is verified
+  // Reloads the user profile first to get the latest status from Firebase
+  Future<bool> isEmailVerified() async {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    await user.reload();
+    return _auth.currentUser?.emailVerified ?? false;
   }
 
   // Login User
