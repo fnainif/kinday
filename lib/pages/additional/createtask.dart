@@ -3,7 +3,7 @@ import 'dart:convert';
 import 'package:cool_dropdown/cool_dropdown.dart';
 import 'package:cool_dropdown/models/cool_dropdown_item.dart';
 import 'package:flutter/material.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_textstyle.dart';
@@ -415,59 +415,25 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       return;
     }
 
-    // Attempt to load API Key from environment define, otherwise use a placeholder
-    const apiKey = String.fromEnvironment('GEMINI_API_KEY');
-    if (apiKey.isEmpty) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            L10n.tr("AI Unavailable", "AI Tidak Tersedia"),
-            style: TextStyle(
-              fontFamily: "Quicksand",
-              fontWeight: FontWeight.bold,
-              color: AppColors.button,
-            ),
-          ),
-          content: Text(
-            L10n.tr(
-              "This AI feature cannot be used yet.",
-              "Fitur AI ini belum dapat digunakan untuk saat ini.",
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("OK"),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-
     setState(() {
       _isLoadingAI = true;
     });
 
     try {
-      final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
+      final model = FirebaseAI.googleAI().generativeModel(
+        model: 'gemini-3.1-flash-lite',
+      );
 
       final prompt =
           'Break down the task: "$taskTitle" into 3 to 5 brief, actionable subtasks. '
           'Output a JSON list of strings only. Example: ["Subtask 1", "Subtask 2"]. Do not include markdown code block formatting.';
 
-      final content = [Content.text(prompt)];
-      final response = await model.generateContent(content);
+      final response = await model.generateContent([Content.text(prompt)]);
 
       if (response.text != null) {
         String cleanJson = response.text!.trim();
         // Remove markdown formatting if present
         if (cleanJson.startsWith("```")) {
-          // Remove start ```json or ```
           final match = RegExp(
             r'^```(?:json)?\s*(.*?)\s*```$',
             dotAll: true,
@@ -475,7 +441,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
           if (match != null && match.groupCount >= 1) {
             cleanJson = match.group(1)!.trim();
           } else {
-            // Fallback manual clean
             if (cleanJson.startsWith("```json")) {
               cleanJson = cleanJson.substring(7);
             } else if (cleanJson.startsWith("```")) {
@@ -489,26 +454,30 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         }
 
         final List decodedList = jsonDecode(cleanJson);
-        setState(() {
-          for (var subtaskTitle in decodedList) {
-            if (subtaskTitle is String && subtaskTitle.trim().isNotEmpty) {
-              subtasks.add({"title": subtaskTitle.trim(), "isDone": false});
-            }
-          }
-        });
-        _autosaveDraft();
+        final List<String> aiSubtasks = decodedList
+            .whereType<String>()
+            .where((s) => s.trim().isNotEmpty)
+            .map((s) => s.trim())
+            .toList();
 
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                L10n.tr(
-                  "AI broke down your task successfully!",
-                  "AI berhasil memecah tugas Anda!",
+        if (aiSubtasks.isEmpty) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  L10n.tr(
+                    "AI could not generate subtasks. Try a more descriptive task.",
+                    "AI tidak dapat menghasilkan sub-tugas. Coba tugas yang lebih deskriptif.",
+                  ),
                 ),
               ),
-            ),
-          );
+            );
+          }
+          return;
+        }
+
+        if (mounted) {
+          await _showAISubtasksDialog(aiSubtasks);
         }
       }
     } catch (e) {
@@ -530,6 +499,248 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         setState(() {
           _isLoadingAI = false;
         });
+      }
+    }
+  }
+
+  Future<void> _showAISubtasksDialog(List<String> aiSubtasks) async {
+    final isDark = AppColors.background2 == Colors.black87;
+    // Track which subtasks are selected (all selected by default)
+    final List<bool> selected = List.filled(aiSubtasks.length, true);
+
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            final selectedCount = selected.where((s) => s).length;
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+              ),
+              backgroundColor: isDark
+                  ? const Color(0xFF1E1E2E)
+                  : Colors.white,
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.button.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.auto_awesome,
+                      color: AppColors.button,
+                      size: 22,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          L10n.tr("AI Subtasks", "Sub-tugas AI"),
+                          style: TextStyle(
+                            fontFamily: "Quicksand",
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: isDark ? Colors.white : AppColors.button,
+                          ),
+                        ),
+                        Text(
+                          L10n.tr(
+                            "$selectedCount of ${aiSubtasks.length} selected",
+                            "$selectedCount dari ${aiSubtasks.length} dipilih",
+                          ),
+                          style: TextStyle(
+                            fontFamily: "Nunito",
+                            fontSize: 12,
+                            color: (isDark ? Colors.white : AppColors.button)
+                                .withOpacity(0.6),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Divider(
+                      color: AppColors.button.withOpacity(0.1),
+                      thickness: 1,
+                    ),
+                    const SizedBox(height: 4),
+                    ...List.generate(aiSubtasks.length, (index) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4.0),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () {
+                              setDialogState(() {
+                                selected[index] = !selected[index];
+                              });
+                            },
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: selected[index]
+                                    ? AppColors.button.withOpacity(0.08)
+                                    : (isDark
+                                        ? Colors.white.withOpacity(0.04)
+                                        : Colors.grey.withOpacity(0.06)),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: selected[index]
+                                      ? AppColors.button.withOpacity(0.3)
+                                      : Colors.transparent,
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  AnimatedSwitcher(
+                                    duration: const Duration(milliseconds: 200),
+                                    child: Icon(
+                                      selected[index]
+                                          ? Icons.check_circle_rounded
+                                          : Icons.circle_outlined,
+                                      key: ValueKey(selected[index]),
+                                      color: selected[index]
+                                          ? AppColors.button
+                                          : (isDark
+                                              ? Colors.white38
+                                              : Colors.grey),
+                                      size: 22,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      aiSubtasks[index],
+                                      style: TextStyle(
+                                        fontFamily: "Nunito",
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                        color: isDark
+                                            ? Colors.white
+                                            : AppColors.button,
+                                        decoration: selected[index]
+                                            ? null
+                                            : TextDecoration.lineThrough,
+                                        decorationColor: isDark
+                                            ? Colors.white38
+                                            : Colors.grey,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
+              ),
+              actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              actions: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context, false),
+                        style: OutlinedButton.styleFrom(
+                          side: BorderSide(
+                            color: AppColors.button.withOpacity(0.3),
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        child: Text(
+                          L10n.tr("Cancel", "Batal"),
+                          style: TextStyle(
+                            fontFamily: "Quicksand",
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? Colors.white70 : AppColors.button,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: selectedCount == 0
+                            ? null
+                            : () => Navigator.pop(context, true),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.button,
+                          disabledBackgroundColor:
+                              AppColors.button.withOpacity(0.3),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          elevation: 0,
+                        ),
+                        child: Text(
+                          L10n.tr(
+                            "Add ($selectedCount)",
+                            "Tambah ($selectedCount)",
+                          ),
+                          style: const TextStyle(
+                            fontFamily: "Quicksand",
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+
+    if (result == true) {
+      setState(() {
+        for (int i = 0; i < aiSubtasks.length; i++) {
+          if (selected[i]) {
+            subtasks.add({"title": aiSubtasks[i], "isDone": false});
+          }
+        }
+      });
+      _autosaveDraft();
+
+      if (mounted) {
+        final addedCount = selected.where((s) => s).length;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              L10n.tr(
+                "$addedCount subtask(s) added successfully!",
+                "$addedCount sub-tugas berhasil ditambahkan!",
+              ),
+            ),
+          ),
+        );
       }
     }
   }
@@ -584,13 +795,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Text(
-                            "Create New Task",
+                           Text(
+                            L10n.tr("Create New Task", "Buat Tugas Baru"),
                             style: AppTextStyles.greeting,
                           ),
                           const SizedBox(height: 2),
                           Text(
-                            "Tiny progress is still progress",
+                            L10n.tr("Tiny progress is still progress", "Kemajuan kecil tetaplah kemajuan"),
                             style: AppTextStyles.affirmation,
                           ),
                         ],
@@ -621,13 +832,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             color: AppColors.button,
                           ),
                           const SizedBox(width: 10),
-                          Text(
-                            "What do you want to do today?",
-                            style: TextStyle(
-                              fontFamily: "Quicksand",
-                              fontWeight: FontWeight.bold,
-                              fontSize: 15,
-                              color: AppColors.button,
+                          Expanded(
+                            child: Text(
+                              L10n.tr("What do you want to do today?", "Apa yang ingin Anda lakukan hari ini?"),
+                              style: TextStyle(
+                                fontFamily: "Quicksand",
+                                fontWeight: FontWeight.bold,
+                                fontSize: 15,
+                                color: AppColors.button,
+                              ),
                             ),
                           ),
                         ],
@@ -642,7 +855,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           fontWeight: FontWeight.w600,
                         ),
                         decoration: InputDecoration(
-                          hintText: "eg. Study for Exam",
+                          hintText: L10n.tr("eg. Study for Exam", "misal: Belajar untuk Ujian"),
                           hintStyle: TextStyle(
                             color: AppColors.button.withOpacity(0.5),
                             fontFamily: "Nunito",
@@ -688,8 +901,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             color: AppColors.button,
                           ),
                           const SizedBox(width: 10),
-                          Text(
-                            "Description (Optional)",
+                           Text(
+                            L10n.tr("Description (Optional)", "Deskripsi (Opsional)"),
                             style: TextStyle(
                               fontFamily: "Quicksand",
                               fontWeight: FontWeight.bold,
@@ -709,7 +922,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           fontWeight: FontWeight.w600,
                         ),
                         decoration: InputDecoration(
-                          hintText: "Add details about this task...",
+                          hintText: L10n.tr("Add details about this task...", "Tambahkan detail tentang tugas ini..."),
                           hintStyle: TextStyle(
                             color: AppColors.button.withOpacity(0.5),
                             fontFamily: "Nunito",
@@ -758,7 +971,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 ),
                               )
                             : SmallButton(
-                                sign: "Break down task",
+                                sign: L10n.tr("Break down task", "Pecah Tugas"),
                                 warnaBox: AppColors.button,
                                 textbuttoncolor: Colors.white,
                                 leadImage: AppImage.iconsubtask,
@@ -796,7 +1009,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    "Due Date",
+                                    L10n.tr("Due Date", "Batas Waktu"),
                                     style: TextStyle(
                                       fontFamily: "Quicksand",
                                       fontWeight: FontWeight.bold,
@@ -898,7 +1111,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      "Due Time (Opt)",
+                                      L10n.tr("Due Time (Opt)", "Waktu Tenggat (Opsional)"),
                                       style: TextStyle(
                                         fontFamily: "Quicksand",
                                         fontWeight: FontWeight.bold,
@@ -996,7 +1209,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      "Reminder",
+                                      L10n.tr("Reminder", "Pengingat"),
                                       style: TextStyle(
                                         fontFamily: "Quicksand",
                                         fontWeight: FontWeight.bold,
@@ -1042,60 +1255,60 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                       Icons.arrow_drop_down,
                                       color: AppColors.button,
                                     ),
-                                    items: const [
+                                    items: [
                                       DropdownMenuItem(
                                         value: null,
                                         child: Text(
-                                          "No reminder",
+                                          L10n.tr("No reminder", "Tanpa pengingat"),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       DropdownMenuItem(
                                         value: 0,
                                         child: Text(
-                                          "At due time",
+                                          L10n.tr("At due time", "Pada batas waktu"),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       DropdownMenuItem(
                                         value: 5,
                                         child: Text(
-                                          "5 minutes before",
+                                          L10n.tr("5 minutes before", "5 menit sebelum"),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       DropdownMenuItem(
                                         value: 10,
                                         child: Text(
-                                          "10 minutes before",
+                                          L10n.tr("10 minutes before", "10 menit sebelum"),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       DropdownMenuItem(
                                         value: 15,
                                         child: Text(
-                                          "15 minutes before",
+                                          L10n.tr("15 minutes before", "15 menit sebelum"),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       DropdownMenuItem(
                                         value: 30,
                                         child: Text(
-                                          "30 minutes before",
+                                          L10n.tr("30 minutes before", "30 menit sebelum"),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       DropdownMenuItem(
                                         value: 60,
                                         child: Text(
-                                          "1 hour before",
+                                          L10n.tr("1 hour before", "1 jam sebelum"),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
                                       DropdownMenuItem(
                                         value: 1440,
                                         child: Text(
-                                          "1 day before",
+                                          L10n.tr("1 day before", "1 hari sebelum"),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
@@ -1134,7 +1347,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    "Repeat",
+                                    L10n.tr("Repeat", "Ulang"),
                                     style: TextStyle(
                                       fontFamily: "Quicksand",
                                       fontWeight: FontWeight.bold,
@@ -1180,46 +1393,46 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                     Icons.arrow_drop_down,
                                     color: AppColors.button,
                                   ),
-                                  items: const [
+                                  items: [
                                     DropdownMenuItem(
                                       value: RepeatType.none,
                                       child: Text(
-                                        "None",
+                                        L10n.tr("None", "Tidak ada"),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                     DropdownMenuItem(
                                       value: RepeatType.daily,
                                       child: Text(
-                                        "Every Day",
+                                        L10n.tr("Every Day", "Setiap Hari"),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                     DropdownMenuItem(
                                       value: RepeatType.selectedDays,
                                       child: Text(
-                                        "Every Few Days",
+                                        L10n.tr("Every Few Days", "Setiap Beberapa Hari"),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                     DropdownMenuItem(
                                       value: RepeatType.weekly,
                                       child: Text(
-                                        "Every Week",
+                                        L10n.tr("Every Week", "Setiap Minggu"),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                     DropdownMenuItem(
                                       value: RepeatType.monthly,
                                       child: Text(
-                                        "Every Month",
+                                        L10n.tr("Every Month", "Setiap Bulan"),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
                                     DropdownMenuItem(
                                       value: RepeatType.yearly,
                                       child: Text(
-                                        "Every Year",
+                                        L10n.tr("Every Year", "Setiap Tahun"),
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),
@@ -1286,7 +1499,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                     ),
                                     alignment: Alignment.center,
                                     child: Text(
-                                      day["label"] as String,
+                                      L10n.tr(
+                                        day["label"] as String,
+                                        day["label"] == "Mon" ? "Sen" :
+                                        day["label"] == "Tue" ? "Sel" :
+                                        day["label"] == "Wed" ? "Rab" :
+                                        day["label"] == "Thu" ? "Kam" :
+                                        day["label"] == "Fri" ? "Jum" :
+                                        day["label"] == "Sat" ? "Sab" : "Min",
+                                      ),
                                       style: TextStyle(
                                         color: isSelected
                                             ? Colors.white
@@ -1323,7 +1544,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      "Finish Date (opt.)",
+                                      L10n.tr("Finish Date (opt.)", "Tanggal Selesai (opsional)"),
                                       style: TextStyle(
                                         fontFamily: "Quicksand",
                                         fontWeight: FontWeight.bold,
@@ -1437,7 +1658,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
-                                    "Priority",
+                                    L10n.tr("Priority", "Prioritas"),
                                     style: TextStyle(
                                       fontFamily: "Quicksand",
                                       fontWeight: FontWeight.bold,
@@ -1489,10 +1710,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                         "Mid priority",
                                         "High priority",
                                       ].map((String val) {
+                                        String indVal = val;
+                                        if (val == "Low priority") indVal = "Prioritas Rendah";
+                                        if (val == "Mid priority") indVal = "Prioritas Sedang";
+                                        if (val == "High priority") indVal = "Prioritas Tinggi";
                                         return DropdownMenuItem(
                                           value: val,
                                           child: Text(
-                                            val,
+                                            L10n.tr(val, indVal),
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         );
@@ -1531,7 +1756,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Energy level required",
+                                  L10n.tr("Energy level required", "Tingkat energi yang dibutuhkan"),
                                   style: TextStyle(
                                     fontFamily: "Quicksand",
                                     fontWeight: FontWeight.bold,
@@ -1557,7 +1782,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                       width: double.infinity,
                                       height: 50,
                                       render: ResultRender.all,
-                                      placeholder: 'Select Energy',
+                                      placeholder: L10n.tr('Select Energy', 'Pilih Energi'),
                                       textStyle: TextStyle(
                                         color: AppColors.button,
                                         fontFamily: "Nunito",
@@ -1633,76 +1858,99 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              Image.asset(
-                                AppImage.iconsubtask,
-                                height: 22,
-                                width: 22,
-                                color: AppColors.button,
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
-                                "Subtasks",
-                                style: TextStyle(
-                                  fontFamily: "Quicksand",
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 15,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Image.asset(
+                                  AppImage.iconsubtask,
+                                  height: 22,
+                                  width: 22,
                                   color: AppColors.button,
                                 ),
-                              ),
-                            ],
-                          ),
-                          Row(
-                            children: [
-                              PopupMenuButton<String>(
-                                icon: Icon(
-                                  Icons.sort,
-                                  size: 22,
-                                  color: AppColors.button,
-                                ),
-                                tooltip: "Sort subtasks",
-                                onSelected: _sortSubtasks,
-                                color: isDark
-                                    ? Colors.grey.shade900
-                                    : Colors.white,
-                                itemBuilder: (BuildContext context) =>
-                                    <PopupMenuEntry<String>>[
-                                      const PopupMenuItem<String>(
-                                        value: 'A-Z',
-                                        child: Text('Alphabetical (A-Z)'),
-                                      ),
-                                      const PopupMenuItem<String>(
-                                        value: 'Z-A',
-                                        child: Text('Alphabetical (Z-A)'),
-                                      ),
-                                      const PopupMenuItem<String>(
-                                        value: 'Incomplete first',
-                                        child: Text('Incomplete first'),
-                                      ),
-                                      const PopupMenuItem<String>(
-                                        value: 'Completed first',
-                                        child: Text('Completed first'),
-                                      ),
-                                    ],
-                              ),
-                              TextButton.icon(
-                                onPressed: _showAddSubtaskDialog,
-                                icon: Icon(
-                                  Icons.add,
-                                  color: AppColors.button,
-                                  size: 18,
-                                ),
-                                label: Text(
-                                  "Add subtask",
-                                  style: TextStyle(
-                                    color: AppColors.button,
-                                    fontFamily: "Quicksand",
-                                    fontWeight: FontWeight.bold,
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Text(
+                                    L10n.tr("Subtasks", "Sub-tugas"),
+                                    style: TextStyle(
+                                      fontFamily: "Quicksand",
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                      color: AppColors.button,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                PopupMenuButton<String>(
+                                  icon: Icon(
+                                    Icons.sort,
+                                    size: 22,
+                                    color: AppColors.button,
+                                  ),
+                                  tooltip: L10n.tr("Sort subtasks", "Urutkan sub-tugas"),
+                                  onSelected: _sortSubtasks,
+                                  color: isDark
+                                      ? Colors.grey.shade900
+                                      : Colors.white,
+                                  itemBuilder: (BuildContext context) =>
+                                      <PopupMenuEntry<String>>[
+                                        PopupMenuItem<String>(
+                                          value: 'A-Z',
+                                          child: Text(L10n.tr('Alphabetical (A-Z)', 'Alfabetis (A-Z)')),
+                                        ),
+                                        PopupMenuItem<String>(
+                                          value: 'Z-A',
+                                          child: Text(L10n.tr('Alphabetical (Z-A)', 'Alfabetis (Z-A)')),
+                                        ),
+                                        PopupMenuItem<String>(
+                                          value: 'Incomplete first',
+                                          child: Text(L10n.tr('Incomplete first', 'Belum selesai dahulu')),
+                                        ),
+                                        PopupMenuItem<String>(
+                                          value: 'Completed first',
+                                          child: Text(L10n.tr('Completed first', 'Selesai dahulu')),
+                                        ),
+                                      ],
+                                ),
+                                Flexible(
+                                  child: TextButton(
+                                    onPressed: _showAddSubtaskDialog,
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.add,
+                                          color: AppColors.button,
+                                          size: 18,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Flexible(
+                                          child: Text(
+                                            L10n.tr("Add subtask", "Tambah sub-tugas"),
+                                            style: TextStyle(
+                                              color: AppColors.button,
+                                              fontFamily: "Quicksand",
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ],
                       ),
@@ -1738,7 +1986,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
-                                    "No subtasks yet",
+                                    L10n.tr("No subtasks yet", "Belum ada sub-tugas"),
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontFamily: "Quicksand",
@@ -1747,7 +1995,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    "Break this task down or keep it simple!",
+                                    L10n.tr("Break this task down or keep it simple!", "Pecah tugas ini atau biarkan sederhana!"),
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontFamily: "Nunito",
@@ -1861,8 +2109,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                                           20,
                                                         ),
                                                   ),
-                                                  title: Text(
-                                                    "Edit Subtask",
+                                                   title: Text(
+                                                    L10n.tr("Edit Subtask", "Ubah Sub-tugas"),
                                                     style: TextStyle(
                                                       fontFamily: "Quicksand",
                                                       fontWeight:
@@ -1878,7 +2126,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                                     ),
                                                     decoration: InputDecoration(
                                                       hintText:
-                                                          "Edit subtask title",
+                                                          L10n.tr("Edit subtask title", "Ubah judul sub-tugas"),
                                                       hintStyle: TextStyle(
                                                         color: AppColors.button
                                                             .withOpacity(0.5),
@@ -1912,7 +2160,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                                             context,
                                                           ),
                                                       child: Text(
-                                                        "Cancel",
+                                                        L10n.tr("Cancel", "Batal"),
                                                         style: TextStyle(
                                                           color: AppColors
                                                               .button
@@ -1943,9 +2191,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                                               ),
                                                         ),
                                                       ),
-                                                      child: const Text(
-                                                        "Save",
-                                                        style: TextStyle(
+                                                      child: Text(
+                                                        L10n.tr("Save", "Simpan"),
+                                                        style: const TextStyle(
                                                           color: Colors.white,
                                                         ),
                                                       ),
@@ -2007,8 +2255,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       final title = titleController.text.trim();
                       if (title.isEmpty) {
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text("Task title cannot be empty"),
+                          SnackBar(
+                            content: Text(L10n.tr("Task title cannot be empty", "Judul tugas tidak boleh kosong")),
                           ),
                         );
                         return;
@@ -2089,9 +2337,9 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         borderRadius: BorderRadius.circular(40),
                       ),
                     ),
-                    label: const Text(
-                      "Save Task",
-                      style: TextStyle(
+                    label: Text(
+                      L10n.tr("Save Task", "Simpan Tugas"),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontFamily: "Quicksand",
@@ -2119,7 +2367,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             return AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
               title: Text(
-                "Add Subtask",
+                L10n.tr("Add Subtask", "Tambah Sub-tugas"),
                 style: TextStyle(
                   fontFamily: "Quicksand",
                   fontWeight: FontWeight.bold,
@@ -2130,7 +2378,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 controller: subtaskcontroller,
                 style: TextStyle(color: AppColors.button, fontFamily: "Nunito"),
                 decoration: InputDecoration(
-                  hintText: "Eg. Read Chapter 1",
+                  hintText: L10n.tr("Eg. Read Chapter 1", "Misal: Baca Bab 1"),
                   hintStyle: TextStyle(color: AppColors.button.withValues(alpha: 0.5)),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   focusedBorder: OutlineInputBorder(
@@ -2144,7 +2392,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                 TextButton(
                   onPressed: () => Navigator.pop(context),
                   child: Text(
-                    "Done",
+                    L10n.tr("Done", "Selesai"),
                     style: TextStyle(color: AppColors.button.withValues(alpha: 0.7)),
                   ),
                 ),
@@ -2169,7 +2417,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text("Add", style: TextStyle(color: Colors.white)),
+                  child: Text(L10n.tr("Add", "Tambah"), style: const TextStyle(color: Colors.white)),
                 ),
               ],
             );
@@ -2182,33 +2430,28 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   final List<CoolDropdownItem<String>> energylvl = [
     CoolDropdownItem<String>(
       icon: Image.asset(AppImage.elvllow, height: 25, width: 25),
-      label: 'Low Energy',
+      label: L10n.tr('Low Energy', 'Energi Rendah'),
       value: 'low',
     ),
     CoolDropdownItem<String>(
       icon: Image.asset(AppImage.elvlmidlo, height: 25, width: 25),
-      label: 'Mid-Low Energy',
+      label: L10n.tr('Mid-Low Energy', 'Energi Cukup Rendah'),
       value: 'midlow',
     ),
     CoolDropdownItem<String>(
       icon: Image.asset(AppImage.elvlmid, height: 25, width: 25),
-      label: 'Medium Energy',
+      label: L10n.tr('Medium Energy', 'Energi Sedang'),
       value: 'mid',
     ),
     CoolDropdownItem<String>(
       icon: Image.asset(AppImage.elvlmidhi, height: 25, width: 25),
-      label: 'Mid-High Energy',
+      label: L10n.tr('Mid-High Energy', 'Energi Cukup Tinggi'),
       value: 'midhigh',
     ),
     CoolDropdownItem<String>(
       icon: Image.asset(AppImage.elvlhi, height: 25, width: 25),
-      label: 'High Energy',
+      label: L10n.tr('High Energy', 'Energi Tinggi'),
       value: 'high',
     ),
-    // {'label': 'Low Energy', 'value': 'low', 'icon': Icons.water_drop},
-    // {'label': 'Mid-Low Energy', 'value': 'midlow', 'icon': Icons.park},
-    // {'label': 'Medium Energy', 'value': 'mid', 'icon': Icons.waves},
-    // {'label': 'Mid-High Energy', 'value': 'midhigh', 'icon': Icons.coffee},
-    // {'label': 'High Energy', 'value': 'high', 'icon': Icons.coffee},
   ];
 }

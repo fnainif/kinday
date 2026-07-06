@@ -3,12 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/task_notifier.dart';
 import 'package:kinday/database/notification_helper.dart';
+import 'package:kinday/pages/additional/createtask.dart';
 import 'package:kinday/pages/botnavpage/energylog.dart';
 import 'package:kinday/pages/botnavpage/homepage.dart';
 import 'package:kinday/pages/botnavpage/pomodoropage.dart';
 import 'package:kinday/pages/botnavpage/setting_profile.dart';
 import 'package:kinday/pages/botnavpage/tasklistpage.dart';
-import 'package:kinday/pages/createtask.dart';
 
 class Mainpage extends StatefulWidget {
   const Mainpage({super.key});
@@ -62,7 +62,11 @@ class MainpageState extends State<Mainpage> {
               Icon(Icons.home, size: 30, color: AppColors.button),
               Icon(Icons.task_alt, size: 30, color: AppColors.button),
               Icon(Icons.timer, size: 30, color: AppColors.button),
-              Icon(Icons.electric_bolt_rounded, size: 30, color: AppColors.button),
+              Icon(
+                Icons.electric_bolt_rounded,
+                size: 30,
+                color: AppColors.button,
+              ),
               Icon(Icons.person, size: 30, color: AppColors.button),
             ],
             onTap: (index) {

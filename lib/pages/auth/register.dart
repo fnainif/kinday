@@ -26,6 +26,7 @@ class _RegisterPageState extends State<RegisterPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -40,6 +41,10 @@ class _RegisterPageState extends State<RegisterPage> {
     if (!_formKey.currentState!.validate()) {
       return;
     }
+
+    setState(() {
+      _isLoading = true;
+    });
 
     final username = _usernameController.text.trim();
     final email = _emailController.text.trim();
@@ -92,6 +97,7 @@ class _RegisterPageState extends State<RegisterPage> {
                 (route) => false,
               );
             }
+            return;
           } else {
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
@@ -129,10 +135,39 @@ class _RegisterPageState extends State<RegisterPage> {
         );
       }
     }
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        body: BgContainer(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(
+                  AppImage.logoSplashscreen,
+                  height: 150,
+                  width: 150,
+                ),
+                const SizedBox(height: 24),
+                CircularProgressIndicator(
+                  color: AppColors.button,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: BgContainer(
         child: SingleChildScrollView(

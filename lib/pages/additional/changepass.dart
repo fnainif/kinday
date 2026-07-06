@@ -6,6 +6,7 @@ import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/models/user_model_sql.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:kinday/database/firebase_auth_service.dart';
 
 class ChangePassPage extends StatefulWidget {
   const ChangePassPage({super.key});
@@ -73,52 +74,62 @@ class _ChangePassPageState extends State<ChangePassPage> {
         return;
       }
 
-      if (user.password != _currentPasswordController.text) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(L10n.tr("Incorrect current password.", "Kata sandi saat ini salah.")),
-              backgroundColor: Colors.redAccent,
-            ),
-          );
-        }
-        return;
-      }
-
-      final updatedUser = UserModelSql(
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        password: _newPasswordController.text,
+      // 1. Change password in Firebase (reauthenticates & updates Auth & Firestore)
+      final firebaseSuccess = await FirebaseAuthService().changePassword(
+        _currentPasswordController.text,
+        _newPasswordController.text,
       );
 
-      final success = await dbHelper.updateUser(updatedUser);
+      if (firebaseSuccess) {
+        // 2. Sync password change to SQLite
+        final updatedUser = UserModelSql(
+          id: user.id,
+          username: user.username,
+          email: user.email,
+          password: _newPasswordController.text,
+        );
 
-      if (success) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(L10n.tr("Password updated successfully!", "Kata sandi berhasil diperbarui!")),
-              backgroundColor: Colors.green,
-            ),
-          );
-          Navigator.pop(context);
+        final success = await dbHelper.updateUser(updatedUser);
+
+        if (success) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(L10n.tr("Password updated successfully!", "Kata sandi berhasil diperbarui!")),
+                backgroundColor: Colors.green,
+              ),
+            );
+            Navigator.pop(context);
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(L10n.tr("Failed to sync SQLite password.", "Gagal menyinkronkan kata sandi SQLite.")),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+          }
         }
       } else {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(L10n.tr("Failed to update password. Please try again.", "Gagal memperbarui kata sandi. Silakan coba lagi.")),
+              content: Text(L10n.tr("Failed to update password in Firebase.", "Gagal memperbarui kata sandi di Firebase.")),
               backgroundColor: Colors.redAccent,
             ),
           );
         }
       }
     } catch (e) {
+      String errorMessage = e.toString().replaceAll(RegExp(r'\[.*?\]'), '');
+      if (e.toString().contains("wrong-password") || e.toString().contains("invalid-credential")) {
+        errorMessage = L10n.tr("Incorrect current password.", "Kata sandi saat ini salah.");
+      }
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(L10n.tr("An error occurred: $e", "Terjadi kesalahan: $e")),
+            content: Text(L10n.tr("An error occurred: $errorMessage", "Terjadi kesalahan: $errorMessage")),
             backgroundColor: Colors.redAccent,
           ),
         );

@@ -1,5 +1,5 @@
 class AppImage {
-  static String folderAsset = "assets/images";
+  static String folderAsset = "assets/images/lavender_bunny";
   static String placeholder = "$folderAsset/placeholder_potrait.png";
   static String mascotlogin = "$folderAsset/Mascot_login1.png";
   static String mascottask = "$folderAsset/Mascot_1b.png";
@@ -8,7 +8,7 @@ class AppImage {
   static String iconenergy = "$folderAsset/Icon1.png";
   static String icontask = "$folderAsset/Icon2.png";
   static String iconprogress = "$folderAsset/Icon4.png";
-  static String icongoogle = "$folderAsset/google-logo-9827.png";
+  static String icongoogle = "assets/images/google-logo-9827.png";
   static String iconfacebook = "$folderAsset/logo-facebookpng-32254.png";
   static String iconduedate = "$folderAsset/duedate.png";
   static String iconduetime = "$folderAsset/duetime.png";

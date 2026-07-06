@@ -447,4 +447,64 @@ class DBHelper {
     final db = await database;
     return await db.delete(tableName, where: 'id = ?', whereArgs: [id]);
   }
+
+  // --- Backup and Restore helper operations ---
+
+  Future<bool> taskExists(int userId, String title, String createdAt) async {
+    final db = await database;
+    final List<Map<String, dynamic>> results = await db.query(
+      'tasks',
+      where: 'userId = ? AND title = ? AND createdAt = ?',
+      whereArgs: [userId, title, createdAt],
+    );
+    return results.isNotEmpty;
+  }
+
+  Future<List<Map<String, dynamic>>> getRawTasksForUser(int userId) async {
+    final db = await database;
+    return await db.query(
+      'tasks',
+      where: 'userId = ?',
+      whereArgs: [userId],
+    );
+  }
+
+  Future<bool> energyLogExists(int userId, String timestamp) async {
+    final db = await database;
+    final List<Map<String, dynamic>> results = await db.query(
+      'energy_logs',
+      where: 'userId = ? AND timestamp = ?',
+      whereArgs: [userId, timestamp],
+    );
+    return results.isNotEmpty;
+  }
+
+  Future<bool> focusSessionExists(int userId, String timestamp) async {
+    final db = await database;
+    final List<Map<String, dynamic>> results = await db.query(
+      'focus_sessions',
+      where: 'userId = ? AND timestamp = ?',
+      whereArgs: [userId, timestamp],
+    );
+    return results.isNotEmpty;
+  }
+
+  Future<List<Map<String, dynamic>>> getFocusSessionsForUser(int userId) async {
+    final db = await database;
+    return await db.query(
+      'focus_sessions',
+      where: 'userId = ?',
+      whereArgs: [userId],
+    );
+  }
+
+  Future<int> insertFocusSessionWithTimestamp(int userId, int durationMinutes, String timestamp) async {
+    final db = await database;
+    final map = {
+      'userId': userId,
+      'durationMinutes': durationMinutes,
+      'timestamp': timestamp,
+    };
+    return await db.insert('focus_sessions', map);
+  }
 }

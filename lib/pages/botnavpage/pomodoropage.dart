@@ -668,14 +668,17 @@ class _PomodoropageState extends State<Pomodoropage> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                L10n.tr("Background Sound", "Suara Latar Belakang"),
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.button,
-                  fontFamily: "Quicksand",
+              Expanded(
+                child: Text(
+                  L10n.tr("Background Sound", "Suara Latar Belakang"),
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.button,
+                    fontFamily: "Quicksand",
+                  ),
                 ),
               ),
+              const SizedBox(width: 8),
               DropdownButton<String>(
                 value: _selectedSound,
                 dropdownColor: Colors.white,
@@ -842,7 +845,7 @@ class _PomodoropageState extends State<Pomodoropage> {
                   onPressed: resetTimer,
                   icon: Icon(Icons.refresh_rounded, color: AppColors.button, size: 18),
                   label: Text(
-                    L10n.tr("Reset Timer", "Reset Timer"),
+                    L10n.tr("Reset Timer", "Atur Ulang Timer"),
                     style: TextStyle(
                       color: AppColors.button,
                       fontWeight: FontWeight.bold,

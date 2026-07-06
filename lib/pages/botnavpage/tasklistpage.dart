@@ -268,7 +268,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Text(
-                            "Edit Task Details",
+                            L10n.tr("Edit Task Details", "Ubah Detail Tugas"),
                             style: TextStyle(
                               fontSize: 22,
                               fontWeight: FontWeight.bold,
@@ -905,9 +905,9 @@ class _TasklistpageState extends State<Tasklistpage> {
                       ),
                       const SizedBox(height: 16),
                       // Subtask Header and List
-                      const Text(
-                        "Subtasks",
-                        style: TextStyle(
+                      Text(
+                        L10n.tr("Subtasks", "Sub-tugas"),
+                        style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
@@ -921,7 +921,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                               controller: newSubtaskController,
                               style: const TextStyle(color: Color(0xFF5852A0)),
                               decoration: InputDecoration(
-                                hintText: "Add new subtask...",
+                                hintText: L10n.tr("Add new subtask...", "Tambah sub-tugas baru..."),
                                 hintStyle: TextStyle(
                                   color: Colors.grey.shade400,
                                 ),
@@ -975,7 +975,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                       const SizedBox(height: 12),
                       if (tempSubtasks.isEmpty)
                         Text(
-                          "No subtasks yet",
+                          L10n.tr("No subtasks yet", "Belum ada sub-tugas"),
                           style: TextStyle(
                             color: Colors.grey.shade500,
                             fontSize: 13,
@@ -1040,12 +1040,12 @@ class _TasklistpageState extends State<Tasklistpage> {
                                             );
                                         showDialog(
                                           context: context,
-                                          builder: (context) => AlertDialog(
-                                            title: const Text("Edit Subtask"),
+                                           builder: (context) => AlertDialog(
+                                            title: Text(L10n.tr("Edit Subtask", "Ubah Sub-tugas")),
                                             content: TextField(
                                               controller: editController,
-                                              decoration: const InputDecoration(
-                                                hintText: "Edit subtask title",
+                                              decoration: InputDecoration(
+                                                hintText: L10n.tr("Edit subtask title", "Ubah judul sub-tugas"),
                                               ),
                                               autofocus: true,
                                             ),
@@ -1053,7 +1053,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                                               TextButton(
                                                 onPressed: () =>
                                                     Navigator.pop(context),
-                                                child: const Text("Cancel"),
+                                                child: Text(L10n.tr("Cancel", "Batal")),
                                               ),
                                               ElevatedButton(
                                                 onPressed: () {
@@ -1067,7 +1067,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                                                   }
                                                   Navigator.pop(context);
                                                 },
-                                                child: const Text("Save"),
+                                                child: Text(L10n.tr("Save", "Simpan")),
                                               ),
                                             ],
                                           ),
@@ -1127,7 +1127,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                                 ),
                               ),
                               child: Text(
-                                "Cancel",
+                                L10n.tr("Cancel", "Batal"),
                                 style: TextStyle(color: AppColors.button),
                               ),
                             ),
@@ -1187,9 +1187,9 @@ class _TasklistpageState extends State<Tasklistpage> {
                                   vertical: 14,
                                 ),
                               ),
-                              child: const Text(
-                                "Save",
-                                style: TextStyle(color: Colors.white),
+                              child: Text(
+                                L10n.tr("Save", "Simpan"),
+                                style: const TextStyle(color: Colors.white),
                               ),
                             ),
                           ),
@@ -1211,15 +1211,15 @@ class _TasklistpageState extends State<Tasklistpage> {
   String _getEnergyLabel(int level) {
     switch (level) {
       case 5:
-        return "High";
+        return L10n.tr("High", "Tinggi");
       case 4:
-        return "Mid-High";
+        return L10n.tr("Mid-High", "Cukup Tinggi");
       case 3:
-        return "Mid";
+        return L10n.tr("Mid", "Sedang");
       case 2:
-        return "Mid-Low";
+        return L10n.tr("Mid-Low", "Cukup Rendah");
       default:
-        return "Low";
+        return L10n.tr("Low", "Rendah");
     }
   }
 
@@ -1237,11 +1237,11 @@ class _TasklistpageState extends State<Tasklistpage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text("Tasks", style: AppTextStyles.greeting),
+                      Text(L10n.tr("Tasks", "Tugas"), style: AppTextStyles.greeting),
                       Transform.translate(
                         offset: const Offset(0, -5),
                         child: Text(
-                          "Organized around your energy",
+                          L10n.tr("Organized around your energy", "Diorganisir berdasarkan energimu"),
                           style: AppTextStyles.affirmation,
                         ),
                       ),
@@ -1269,7 +1269,7 @@ class _TasklistpageState extends State<Tasklistpage> {
               initialValue: selectedTab,
               children: {
                 1: Text(
-                  "Energy Level",
+                  L10n.tr("Energy Level", "Tingkat Energi"),
                   style: TextStyle(
                     fontFamily: "Quicksand",
                     fontWeight: FontWeight.bold,
@@ -1278,7 +1278,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                   ),
                 ),
                 2: Text(
-                  "Due Date",
+                  L10n.tr("Due Date", "Batas Waktu"),
                   style: TextStyle(
                     fontFamily: "Quicksand",
                     fontWeight: FontWeight.bold,
@@ -1287,7 +1287,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                   ),
                 ),
                 3: Text(
-                  "Priority",
+                  L10n.tr("Priority", "Prioritas"),
                   style: TextStyle(
                     fontFamily: "Quicksand",
                     fontWeight: FontWeight.bold,
@@ -1423,7 +1423,7 @@ class EnergyLevelView extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                "assets/images/Tidakadatugas.gif",
+                "assets/images/lavender_bunny/Tidakadatugas.gif",
                 height: 100,
               ),
               const SizedBox(height: 6),
@@ -1608,7 +1608,7 @@ class DueDateView extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                "assets/images/Tidakadatugas.gif",
+                "assets/images/lavender_bunny/Tidakadatugas.gif",
                 height: 100,
               ),
               const SizedBox(height: 6),
@@ -1805,7 +1805,7 @@ class PriorityView extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Image.asset(
-                "assets/images/Tidakadatugas.gif",
+                "assets/images/lavender_bunny/Tidakadatugas.gif",
                 height: 100,
               ),
               const SizedBox(height: 6),

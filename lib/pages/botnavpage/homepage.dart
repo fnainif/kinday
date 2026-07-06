@@ -1,7 +1,7 @@
 import 'dart:convert';
 
+import 'package:firebase_ai/firebase_ai.dart';
 import 'package:flutter/material.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_textstyle.dart';
@@ -9,6 +9,7 @@ import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/constant/task_notifier.dart';
 import 'package:kinday/database/db_helper.dart';
+import 'package:kinday/database/firebase_backup_service.dart';
 import 'package:kinday/pages/botnavpage/pomodoropage.dart';
 import 'package:kinday/pages/mainpage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -50,6 +51,9 @@ class _HomepageState extends State<Homepage> {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('user_id') ?? 1;
     final name = prefs.getString('user_name') ?? "User";
+
+    // Trigger silent weekly auto-backup
+    FirebaseBackupService().checkAndRunAutoBackup(userId);
 
     final dbHelper = DBHelper();
     final latestEnergy = await dbHelper.getLatestEnergyForUser(userId);
@@ -177,52 +181,20 @@ class _HomepageState extends State<Homepage> {
       return;
     }
 
-    const apiKey = String.fromEnvironment('GEMINI_API_KEY');
-    if (apiKey.isEmpty) {
-      showDialog(
-        context: context,
-        builder: (context) => AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
-          ),
-          title: Text(
-            L10n.tr("AI Unavailable", "AI Tidak Tersedia"),
-            style: TextStyle(
-              fontFamily: "Quicksand",
-              fontWeight: FontWeight.bold,
-              color: AppColors.button,
-            ),
-          ),
-          content: Text(
-            L10n.tr(
-              "This AI feature cannot be used yet.",
-              "Fitur AI ini belum dapat digunakan untuk saat ini.",
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("OK"),
-            ),
-          ],
-        ),
-      );
-      return;
-    }
-
     setState(() {
       _isLoadingAI = true;
     });
 
     try {
-      final model = GenerativeModel(model: 'gemini-1.5-flash', apiKey: apiKey);
+      final model = FirebaseAI.googleAI().generativeModel(
+        model: 'gemini-3.1-flash-lite',
+      );
 
       final prompt =
           'Break down the task: "$taskTitle" into 3 to 5 brief, actionable subtasks. '
           'Output a JSON list of strings only. Example: ["Subtask 1", "Subtask 2"]. Do not include markdown code block formatting.';
 
-      final content = [Content.text(prompt)];
-      final response = await model.generateContent(content);
+      final response = await model.generateContent([Content.text(prompt)]);
 
       if (response.text != null) {
         String cleanJson = response.text!.trim();
@@ -310,649 +282,637 @@ class _HomepageState extends State<Homepage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: BgContainer(
-        child: Column(
-          children: [
-            // 1. Fixed Header Section (Does not scroll)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
-              child: Row(
-                children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        L10n.tr("Good Morning,", "Selamat Pagi,"),
-                        style: AppTextStyles.greeting,
-                      ),
-                      Transform.translate(
-                        offset: const Offset(0, -5),
-                        child: Text(
-                          _name,
-                          style: AppTextStyles.username.copyWith(
-                            fontWeight: FontWeight.bold,
-                            fontFamily: "Quicksand",
-                            color: AppColors.button,
-                          ),
-                        ),
-                      ),
-                      Transform.translate(
-                        offset: const Offset(0, -2),
-                        child: Text(
-                          L10n.tr(
-                            "You've done your best today!",
-                            "Kamu telah melakukan yang terbaik hari ini!",
-                          ),
-                          style: AppTextStyles.affirmation,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  Image.asset(AppImage.mascottask, height: 120),
-                ],
-              ),
-            ),
-            // 2. Wrap the content Column in Expanded to take up remaining height
-            Expanded(
-              child: SingleChildScrollView(
-                physics: const BouncingScrollPhysics(),
-                child: Column(
+        child: SingleChildScrollView(
+          physics: const BouncingScrollPhysics(),
+          child: Column(
+            children: [
+              // 1. Fixed Header Section (Does not scroll)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 60, 20, 20),
+                child: Row(
                   children: [
-                    Container3(
-                      width: double.infinity,
-                      child: Row(
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Image.asset(
-                            AppImage.iconenergy,
-                            height: 50,
-                            width: 50,
+                          Text(
+                            L10n.tr("Good Morning,", "Selamat Pagi,"),
+                            style: AppTextStyles.greeting,
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  L10n.tr("Current Energy", "Energi Saat Ini"),
-                                  style: TextStyle(
-                                    fontFamily: "Quicksand",
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
-                                    color: AppColors.button,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  _getEnergyLabel(_currentEnergyLvl),
-                                  style: TextStyle(
-                                    fontSize: 24,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.button,
-                                    fontFamily: "Quicksand",
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  _lastUpdated,
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    color: AppColors.button.withValues(
-                                      alpha: 0.7,
-                                    ),
-                                    fontFamily: "Nunito",
-                                  ),
-                                ),
-                              ],
+                          Transform.translate(
+                            offset: const Offset(0, -5),
+                            child: Text(
+                              _name,
+                              style: AppTextStyles.username.copyWith(
+                                fontWeight: FontWeight.bold,
+                                fontFamily: "Quicksand",
+                                color: AppColors.button,
+                              ),
                             ),
                           ),
-                          ElevatedButton(
-                            onPressed: () {
-                              int tempEnergyLvl = _currentEnergyLvl;
-                              showDialog(
-                                context: context,
-                                builder: (context) {
-                                  return AlertDialog(
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(24),
-                                    ),
-                                    title: Text(
-                                      L10n.tr(
-                                        "What's your energy level?",
-                                        "Berapa tingkat energimu?",
-                                      ),
-                                      style: TextStyle(
-                                        fontFamily: "Quicksand",
-                                        fontWeight: FontWeight.bold,
-                                        color: AppColors.button,
-                                      ),
-                                    ),
-                                    content: SingleChildScrollView(
-                                      child: StatefulBuilder(
-                                        builder: (context, setModalState) {
-                                          return Column(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Row(
-                                                mainAxisAlignment:
-                                                    MainAxisAlignment.center,
-                                                children: List.generate(5, (
-                                                  index,
-                                                ) {
-                                                  final lvl = index + 1;
-                                                  final isActive =
-                                                      tempEnergyLvl >= lvl;
-                                                  return IconButton(
-                                                    iconSize: 32,
-                                                    icon: Icon(
-                                                      Icons
-                                                          .energy_savings_leaf_rounded,
-                                                      color: isActive
-                                                          ? AppColors.button
-                                                          : Colors
-                                                                .grey
-                                                                .shade300,
-                                                    ),
-                                                    onPressed: () {
-                                                      setModalState(() {
-                                                        tempEnergyLvl = lvl;
-                                                      });
-                                                    },
-                                                  );
-                                                }),
-                                              ),
-                                            ],
-                                          );
-                                        },
-                                      ),
-                                    ),
-                                    actions: [
-                                      TextButton(
-                                        onPressed: () => Navigator.pop(context),
-                                        child: Text(
-                                          L10n.tr("Cancel", "Batal"),
-                                          style: const TextStyle(
-                                            color: Colors.grey,
-                                          ),
-                                        ),
-                                      ),
-                                      ElevatedButton(
-                                        onPressed: () async {
-                                          if (_userId != null) {
-                                            await DBHelper().insertEnergyLog(
-                                              _userId!,
-                                              tempEnergyLvl,
-                                              DateTime.now().toIso8601String(),
-                                            );
-                                            await _loadHomepageData();
-                                          }
-                                          if (context.mounted) {
-                                            Navigator.pop(context);
-                                          }
-                                        },
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: AppColors.button,
-                                          elevation: 0,
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              20,
-                                            ),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          L10n.tr("Save", "Simpan"),
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.button,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
+                          Transform.translate(
+                            offset: const Offset(0, -2),
+                            child: Text(
+                              L10n.tr(
+                                "You've done your best today!",
+                                "Kamu telah melakukan yang terbaik hari ini!",
                               ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
+                              style: AppTextStyles.affirmation,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Image.asset(AppImage.mascottask, height: 120),
+                  ],
+                ),
+              ),
+              // 2. Wrap the content Column in Expanded to take up remaining height
+              Column(
+                children: [
+                  Container3(
+                    width: double.infinity,
+                    child: Row(
+                      children: [
+                        Image.asset(AppImage.iconenergy, height: 50, width: 50),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                L10n.tr("Current Energy", "Energi Saat Ini"),
+                                style: TextStyle(
+                                  fontFamily: "Quicksand",
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                  color: AppColors.button,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _getEnergyLabel(_currentEnergyLvl),
+                                style: TextStyle(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.button,
+                                  fontFamily: "Quicksand",
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                _lastUpdated,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: AppColors.button.withValues(
+                                    alpha: 0.7,
+                                  ),
+                                  fontFamily: "Nunito",
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        ElevatedButton(
+                          onPressed: () {
+                            int tempEnergyLvl = _currentEnergyLvl;
+                            showDialog(
+                              context: context,
+                              builder: (context) {
+                                return AlertDialog(
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(24),
+                                  ),
+                                  title: Text(
+                                    L10n.tr(
+                                      "What's your energy level?",
+                                      "Berapa tingkat energimu?",
+                                    ),
+                                    style: TextStyle(
+                                      fontFamily: "Quicksand",
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.button,
+                                    ),
+                                  ),
+                                  content: SingleChildScrollView(
+                                    child: StatefulBuilder(
+                                      builder: (context, setModalState) {
+                                        return Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Row(
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: List.generate(5, (
+                                                index,
+                                              ) {
+                                                final lvl = index + 1;
+                                                final isActive =
+                                                    tempEnergyLvl >= lvl;
+                                                return IconButton(
+                                                  iconSize: 32,
+                                                  icon: Icon(
+                                                    Icons
+                                                        .energy_savings_leaf_rounded,
+                                                    color: isActive
+                                                        ? AppColors.button
+                                                        : Colors.grey.shade300,
+                                                  ),
+                                                  onPressed: () {
+                                                    setModalState(() {
+                                                      tempEnergyLvl = lvl;
+                                                    });
+                                                  },
+                                                );
+                                              }),
+                                            ),
+                                          ],
+                                        );
+                                      },
+                                    ),
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(context),
+                                      child: Text(
+                                        L10n.tr("Cancel", "Batal"),
+                                        style: const TextStyle(
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () async {
+                                        if (_userId != null) {
+                                          await DBHelper().insertEnergyLog(
+                                            _userId!,
+                                            tempEnergyLvl,
+                                            DateTime.now().toIso8601String(),
+                                          );
+                                          await _loadHomepageData();
+                                        }
+                                        if (context.mounted) {
+                                          Navigator.pop(context);
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.button,
+                                        elevation: 0,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                        ),
+                                      ),
+                                      child: Text(
+                                        L10n.tr("Save", "Simpan"),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.button,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                L10n.tr("Log Energy", "Catat"),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              const Icon(Icons.arrow_forward_rounded, size: 16),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container1(
+                    width: double.infinity,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 6,
+                            ),
+                            decoration: BoxDecoration(
+                              color: AppColors.container2.withValues(
+                                alpha: 0.8,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                width: 1,
+                                color: AppColors.containerline2,
                               ),
                             ),
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Text(
-                                  L10n.tr("Log Energy", "Catat"),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(width: 4),
-                                const Icon(
-                                  Icons.arrow_forward_rounded,
+                                Icon(
+                                  Icons.star_rounded,
                                   size: 16,
+                                  color: AppColors.normaltext,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  L10n.tr(
+                                    "Suggested for now",
+                                    "Disarankan saat ini",
+                                  ),
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.normaltext,
+                                    fontFamily: "Quicksand",
+                                  ),
                                 ),
                               ],
                             ),
                           ),
-                        ],
-                      ),
-                    ),
-                    Container1(
-                      width: double.infinity,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Align(
-                            alignment: Alignment.centerLeft,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 12,
-                                vertical: 6,
-                              ),
+                        ),
+                        const SizedBox(height: 16),
+
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
-                                color: AppColors.container2.withValues(
-                                  alpha: 0.8,
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(16),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.04),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: Image.asset(
+                                AppImage.icontask,
+                                height: 64,
+                                width: 64,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _suggestedTask?.title ??
+                                        L10n.tr(
+                                          "No Suggested Task",
+                                          "Tidak Ada Tugas Disarankan",
+                                        ),
+                                    style: TextStyle(
+                                      fontFamily: "Quicksand",
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 18,
+                                      color: AppColors.button,
+                                    ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    _suggestedTask?.description ??
+                                        L10n.tr(
+                                          "No description",
+                                          "Tidak ada deskripsi",
+                                        ),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.normaltext.withValues(
+                                        alpha: 0.8,
+                                      ),
+                                      fontFamily: "Nunito",
+                                    ),
+                                  ),
+                                  if (_suggestedTask != null) ...[
+                                    const SizedBox(height: 8),
+                                    if (_suggestedTask!.dueDate != null) ...[
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.calendar_today_rounded,
+                                            size: 13,
+                                            color: AppColors.button,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              _suggestedTask!.dueTime != null &&
+                                                      _suggestedTask!
+                                                          .dueTime!
+                                                          .isNotEmpty
+                                                  ? "${_suggestedTask!.dueDate!.day}/${_suggestedTask!.dueDate!.month}/${_suggestedTask!.dueDate!.year}  ${_suggestedTask!.dueTime}"
+                                                  : "${_suggestedTask!.dueDate!.day}/${_suggestedTask!.dueDate!.month}/${_suggestedTask!.dueDate!.year}",
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.button,
+                                                fontFamily: "Nunito",
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                    ],
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.energy_savings_leaf_rounded,
+                                          size: 15,
+                                          color: AppColors.button,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          _getEnergyLabel(
+                                            _suggestedTask!.energylvl,
+                                          ),
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppColors.normaltext,
+                                            fontFamily: "Nunito",
+                                          ),
+                                        ),
+                                        const SizedBox(width: 16),
+                                        PriorityIndicator(
+                                          priority:
+                                              _suggestedTask!.prioritytask,
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
+
+                        ElevatedButton(
+                          onPressed: () {
+                            if (_suggestedTask != null) {
+                              TaskCard.activePomodoroTask = _suggestedTask;
+                              final mainState = context
+                                  .findAncestorStateOfType<MainpageState>();
+                              if (mainState != null) {
+                                mainState.changeTab(2);
+                              } else {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        Pomodoropage(task: _suggestedTask),
+                                  ),
+                                ).then((_) {
+                                  _loadHomepageData();
+                                });
+                              }
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    L10n.tr(
+                                      "No suggested task available.",
+                                      "Tidak ada tugas yang disarankan.",
+                                    ),
+                                    style: TextStyle(color: AppColors.button),
+                                  ),
                                 ),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  width: 1,
-                                  color: AppColors.containerline2,
+                              );
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.button,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            minimumSize: const Size(double.infinity, 50),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(25),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.timer_outlined, size: 20),
+                              const SizedBox(width: 8),
+                              Text(
+                                L10n.tr(
+                                  "Start Focus Session",
+                                  "Mulai Sesi Fokus",
+                                ),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
                                 ),
                               ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container2(
+                    width: double.infinity,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Image.asset(
+                              AppImage.iconprogress,
+                              height: 50,
+                              width: 50,
+                            ),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Icon(
-                                    Icons.star_rounded,
-                                    size: 16,
-                                    color: AppColors.normaltext,
-                                  ),
-                                  const SizedBox(width: 6),
                                   Text(
                                     L10n.tr(
-                                      "Suggested for now",
-                                      "Disarankan saat ini",
+                                      "Today's Progress",
+                                      "Kemajuan Hari Ini",
                                     ),
                                     style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.normaltext,
                                       fontFamily: "Quicksand",
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: AppColors.button,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    L10n.tr(
+                                      "$_completedTasksCount out of $_totalTasks tasks completed",
+                                      "$_completedTasksCount dari $_totalTasks tugas selesai",
+                                    ),
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.normaltext,
+                                      fontFamily: "Nunito",
                                     ),
                                   ),
                                 ],
                               ),
                             ),
-                          ),
-                          const SizedBox(height: 16),
-
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black.withValues(
-                                        alpha: 0.04,
-                                      ),
-                                      blurRadius: 8,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: Image.asset(
-                                  AppImage.icontask,
-                                  height: 64,
-                                  width: 64,
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      _suggestedTask?.title ??
-                                          L10n.tr(
-                                            "No Suggested Task",
-                                            "Tidak Ada Tugas Disarankan",
-                                          ),
-                                      style: TextStyle(
-                                        fontFamily: "Quicksand",
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 18,
-                                        color: AppColors.button,
-                                      ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      _suggestedTask?.description ??
-                                          L10n.tr(
-                                            "No description",
-                                            "Tidak ada deskripsi",
-                                          ),
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: AppColors.normaltext.withValues(
-                                          alpha: 0.8,
-                                        ),
-                                        fontFamily: "Nunito",
-                                      ),
-                                    ),
-                                    if (_suggestedTask != null) ...[
-                                      const SizedBox(height: 8),
-                                      if (_suggestedTask!.dueDate != null) ...[
-                                        Row(
-                                          children: [
-                                            Icon(
-                                              Icons.calendar_today_rounded,
-                                              size: 13,
-                                              color: AppColors.button,
-                                            ),
-                                            const SizedBox(width: 6),
-                                            Expanded(
-                                              child: Text(
-                                                _suggestedTask!.dueTime !=
-                                                            null &&
-                                                        _suggestedTask!
-                                                            .dueTime!
-                                                            .isNotEmpty
-                                                    ? "${_suggestedTask!.dueDate!.day}/${_suggestedTask!.dueDate!.month}/${_suggestedTask!.dueDate!.year}  ${_suggestedTask!.dueTime}"
-                                                    : "${_suggestedTask!.dueDate!.day}/${_suggestedTask!.dueDate!.month}/${_suggestedTask!.dueDate!.year}",
-                                                style: TextStyle(
-                                                  fontSize: 12,
-                                                  fontWeight: FontWeight.bold,
-                                                  color: AppColors.button,
-                                                  fontFamily: "Nunito",
-                                                ),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 6),
-                                      ],
-                                      Row(
-                                        children: [
-                                          Icon(
-                                            Icons.energy_savings_leaf_rounded,
-                                            size: 15,
-                                            color: AppColors.button,
-                                          ),
-                                          const SizedBox(width: 6),
-                                          Text(
-                                            _getEnergyLabel(
-                                              _suggestedTask!.energylvl,
-                                            ),
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                              color: AppColors.normaltext,
-                                              fontFamily: "Nunito",
-                                            ),
-                                          ),
-                                          const SizedBox(width: 16),
-                                          PriorityIndicator(
-                                            priority:
-                                                _suggestedTask!.prioritytask,
-                                          ),
-                                        ],
-                                      ),
-                                    ],
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-
-                          const SizedBox(height: 16),
-
-                          ElevatedButton(
-                            onPressed: () {
-                              if (_suggestedTask != null) {
-                                TaskCard.activePomodoroTask = _suggestedTask;
-                                final mainState = context
-                                    .findAncestorStateOfType<MainpageState>();
-                                if (mainState != null) {
-                                  mainState.changeTab(2);
-                                } else {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          Pomodoropage(task: _suggestedTask),
-                                    ),
-                                  ).then((_) {
-                                    _loadHomepageData();
-                                  });
-                                }
-                              } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      L10n.tr(
-                                        "No suggested task available.",
-                                        "Tidak ada tugas yang disarankan.",
-                                      ),
-                                      style: TextStyle(color: AppColors.button),
-                                    ),
-                                  ),
-                                );
-                              }
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.button,
-                              foregroundColor: Colors.white,
-                              elevation: 0,
-                              minimumSize: const Size(double.infinity, 50),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(25),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.timer_outlined, size: 20),
-                                const SizedBox(width: 8),
-                                Text(
-                                  L10n.tr(
-                                    "Start Focus Session",
-                                    "Mulai Sesi Fokus",
-                                  ),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Container2(
-                      width: double.infinity,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Image.asset(
-                                AppImage.iconprogress,
-                                height: 50,
-                                width: 50,
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      L10n.tr(
-                                        "Today's Progress",
-                                        "Kemajuan Hari Ini",
-                                      ),
-                                      style: TextStyle(
-                                        fontFamily: "Quicksand",
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 16,
-                                        color: AppColors.button,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Text(
-                                      L10n.tr(
-                                        "$_completedTasksCount out of $_totalTasks tasks completed",
-                                        "$_completedTasksCount dari $_totalTasks tugas selesai",
-                                      ),
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: AppColors.normaltext,
-                                        fontFamily: "Nunito",
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          if (_totalTasks > 0) ...[
-                            const SizedBox(height: 16),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(10),
-                              child: LinearProgressIndicator(
-                                value: _completedTasksCount / _totalTasks,
-                                backgroundColor: Colors.white.withValues(
-                                  alpha: 0.3,
-                                ),
-                                valueColor: AlwaysStoppedAnimation<Color>(
-                                  AppColors.button,
-                                ),
-                                minHeight: 8,
-                              ),
-                            ),
                           ],
-                        ],
-                      ),
-                    ),
-                    Container3(
-                      width: double.infinity,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            L10n.tr(
-                              "Turn big tasks into small, doable steps",
-                              "Ubah tugas besar menjadi langkah kecil yang bisa dilakukan",
-                            ),
-                            style: TextStyle(
-                              fontFamily: "Quicksand",
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: AppColors.button,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          TextFormField(
-                            controller: breakdowncontroller,
-                            maxLines: 2,
-                            style: TextStyle(
-                              color: AppColors.button,
-                              fontFamily: "Nunito",
-                              fontSize: 14,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: L10n.tr(
-                                "Let AI break down your task...",
-                                "Biar AI memecah tugas Anda...",
-                              ),
-                              hintStyle: TextStyle(
-                                color: AppColors.button.withValues(alpha: 0.4),
-                              ),
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
-                              ),
-                              enabledBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide.none,
-                              ),
-                              focusedBorder: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                borderSide: BorderSide(
-                                  color: AppColors.button,
-                                  width: 1.5,
-                                ),
-                              ),
-                              filled: true,
-                              fillColor: Colors.white.withValues(alpha: 0.6),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                            ),
-                          ),
+                        ),
+                        if (_totalTasks > 0) ...[
                           const SizedBox(height: 16),
-                          Center(
-                            child: _isLoadingAI
-                                ? SizedBox(
-                                    height: 36,
-                                    width: 36,
-                                    child: CircularProgressIndicator(
-                                      color: AppColors.button,
-                                      strokeWidth: 3,
+                          ClipRRect(
+                            borderRadius: BorderRadius.circular(10),
+                            child: LinearProgressIndicator(
+                              value: _completedTasksCount / _totalTasks,
+                              backgroundColor: Colors.white.withValues(
+                                alpha: 0.3,
+                              ),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                AppColors.button,
+                              ),
+                              minHeight: 8,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                  Container3(
+                    width: double.infinity,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          L10n.tr(
+                            "Turn big tasks into small, doable steps",
+                            "Ubah tugas besar menjadi langkah kecil yang bisa dilakukan",
+                          ),
+                          style: TextStyle(
+                            fontFamily: "Quicksand",
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                            color: AppColors.button,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: breakdowncontroller,
+                          maxLines: 2,
+                          style: TextStyle(
+                            color: AppColors.button,
+                            fontFamily: "Nunito",
+                            fontSize: 14,
+                          ),
+                          decoration: InputDecoration(
+                            hintText: L10n.tr(
+                              "Let AI break down your task...",
+                              "Biar AI memecah tugas Anda...",
+                            ),
+                            hintStyle: TextStyle(
+                              color: AppColors.button.withValues(alpha: 0.4),
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                            enabledBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide.none,
+                            ),
+                            focusedBorder: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(16),
+                              borderSide: BorderSide(
+                                color: AppColors.button,
+                                width: 1.5,
+                              ),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white.withValues(alpha: 0.6),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Center(
+                          child: _isLoadingAI
+                              ? SizedBox(
+                                  height: 36,
+                                  width: 36,
+                                  child: CircularProgressIndicator(
+                                    color: AppColors.button,
+                                    strokeWidth: 3,
+                                  ),
+                                )
+                              : ElevatedButton.icon(
+                                  onPressed: _breakDownTaskWithAI,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.button,
+                                    foregroundColor: Colors.white,
+                                    elevation: 0,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24,
+                                      vertical: 12,
                                     ),
-                                  )
-                                : ElevatedButton.icon(
-                                    onPressed: _breakDownTaskWithAI,
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: AppColors.button,
-                                      foregroundColor: Colors.white,
-                                      elevation: 0,
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 24,
-                                        vertical: 12,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                    ),
-                                    icon: Image.asset(
-                                      AppImage.iconsubtask,
-                                      width: 18,
-                                      height: 18,
-                                      color: Colors.white,
-                                    ),
-                                    label: Text(
-                                      L10n.tr("Break down task", "Pecah Tugas"),
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 14,
-                                      ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(20),
                                     ),
                                   ),
-                          ),
-                        ],
-                      ),
+                                  icon: Image.asset(
+                                    AppImage.iconsubtask,
+                                    width: 18,
+                                    height: 18,
+                                    color: Colors.white,
+                                  ),
+                                  label: Text(
+                                    L10n.tr("Break down task", "Pecah Tugas"),
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

@@ -80,6 +80,7 @@ class AccButton extends StatelessWidget {
                 alignment: AlignmentGeometry.center,
               ),
             ],
+            SizedBox(width: leadImage != null ? 10 : 0),
             Text(
               sign,
               style: TextStyle(color: textbuttoncolor, fontSize: buttonSize),
@@ -117,7 +118,8 @@ class SmallButton extends StatelessWidget {
     return SizedBox(
       // width: double.infinity,
       child: ElevatedButton(
-        onPressed: onPressed ??
+        onPressed:
+            onPressed ??
             () {
               if (destination != null) {
                 Navigator.push(

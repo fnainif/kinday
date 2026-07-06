@@ -9,6 +9,8 @@ import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/constant/task_notifier.dart';
 import 'package:kinday/database/db_helper.dart';
+import 'package:kinday/database/firebase_auth_service.dart';
+import 'package:kinday/database/firebase_backup_service.dart';
 import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/models/user_model_sql.dart';
@@ -37,7 +39,7 @@ class _SettingProfileState extends State<SettingProfile> {
   bool _notificationsEnabled = true;
   String _currentTheme = "Lavender Dreams";
   String _aiBreakdownLevel = "Balanced";
-  final String _lastBackupTime = "Never";
+  String _lastBackupTime = "Never";
 
   // Statistics states
   int _completedTasksCount = 0;
@@ -63,6 +65,85 @@ class _SettingProfileState extends State<SettingProfile> {
 
   void _clickBackupText() {
     // DIUBAH
+  }
+
+  Future<void> _handleBackup() async {
+    setState(() {
+      _isLoading = true;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('user_id') ?? 1;
+    final success = await FirebaseBackupService().backupData(userId);
+    if (success) {
+      await _loadSettings();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              L10n.tr("Successfully backed up!", "Berhasil di backup!"),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              L10n.tr(
+                "Backup failed! Make sure you are logged in to Firebase.",
+                "Gagal mencadangkan! Pastikan Anda masuk ke Firebase.",
+              ),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+    setState(() {
+      _isLoading = false;
+    });
+  }
+
+  Future<void> _handleRestore() async {
+    setState(() {
+      _isLoading = true;
+    });
+    final prefs = await SharedPreferences.getInstance();
+    final userId = prefs.getInt('user_id') ?? 1;
+    final success = await FirebaseBackupService().restoreData(userId);
+    if (success) {
+      await _loadSettings();
+      TaskNotifier.taskUpdated.value = !TaskNotifier.taskUpdated.value;
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              L10n.tr("Successfully restored!", "Berhasil di restore!"),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              L10n.tr(
+                "Restore failed! No backup found or not logged in.",
+                "Gagal memulihkan! Pencadangan tidak ditemukan atau belum masuk.",
+              ),
+            ),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    }
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   String _getAvatarAssetPath(String key) {
@@ -108,6 +189,17 @@ class _SettingProfileState extends State<SettingProfile> {
         _completedTasksCount = completedCount;
         _streakDays = streak;
         _totalFocusMinutes = totalFocus;
+
+        final lastBackupStr = prefs.getString('last_backup_time');
+        String lastBackupTimeStr = "Never";
+        if (lastBackupStr != null) {
+          try {
+            final dt = DateTime.parse(lastBackupStr);
+            lastBackupTimeStr =
+                "${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+          } catch (_) {}
+        }
+        _lastBackupTime = lastBackupTimeStr;
 
         _isLoading = false;
       });
@@ -613,6 +705,161 @@ class _SettingProfileState extends State<SettingProfile> {
     );
   }
 
+  void _showDeleteAccountDialog() {
+    final controller = TextEditingController();
+    bool isDeleteEnabled = false;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Text(
+                L10n.tr("Delete Account?", "Hapus Akun?"),
+                style: const TextStyle(
+                  fontFamily: "Quicksand",
+                  fontWeight: FontWeight.bold,
+                  color: Colors.redAccent,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    L10n.tr(
+                      "This action is permanent and cannot be undone. To confirm, please type \"DELETE\" below:",
+                      "Tindakan ini permanen dan tidak dapat dibatalkan. Untuk mengonfirmasi, silakan ketik \"DELETE\" di bawah:",
+                    ),
+                    style: const TextStyle(fontFamily: "Nunito"),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: controller,
+                    decoration: InputDecoration(
+                      hintText: "DELETE",
+                      hintStyle: TextStyle(color: Colors.grey.shade400),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: const BorderSide(color: Colors.redAccent),
+                      ),
+                    ),
+                    onChanged: (val) {
+                      setDialogState(() {
+                        isDeleteEnabled = val == "DELETE";
+                      });
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    L10n.tr("Cancel", "Batal"),
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: isDeleteEnabled
+                      ? () async {
+                          Navigator.pop(context);
+                          await _handleDeleteAccount();
+                        }
+                      : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.redAccent,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: Text(
+                    L10n.tr("Delete Permanently", "Hapus Permanen"),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _handleDeleteAccount() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final userId = prefs.getInt('user_id') ?? 1;
+      final firebaseUid = prefs.getString('user_id_firebase');
+
+      // 1. Delete from Firebase
+      if (firebaseUid != null) {
+        final authService = FirebaseAuthService();
+        await authService.deleteUser(firebaseUid);
+      }
+
+      // 2. Delete from SQLite
+      final dbHelper = DBHelper();
+      await dbHelper.deleteUser(userId);
+
+      // 3. Clear preferences & log out
+      await PreferenceHandler.logOut();
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              L10n.tr(
+                "Account deleted successfully.",
+                "Akun berhasil dihapus.",
+              ),
+            ),
+          ),
+        );
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const LoginPage()),
+          (route) => false,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        String errorMsg = e.toString().replaceAll(RegExp(r'\[.*?\]'), '');
+        if (e.toString().contains("requires-recent-login")) {
+          errorMsg = L10n.tr(
+            "This action is sensitive and requires recent authentication. Please log out, log back in, and try again.",
+            "Tindakan ini sensitif dan memerlukan autentikasi baru. Silakan keluar, masuk kembali, dan coba lagi.",
+          );
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              L10n.tr("Delete failed: $errorMsg", "Gagal menghapus: $errorMsg"),
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
@@ -668,6 +915,16 @@ class _SettingProfileState extends State<SettingProfile> {
                         ),
                       ),
                     ],
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    onPressed: _showLogoutDialog,
+                    icon: Icon(
+                      Icons.logout_rounded,
+                      color: AppColors.button,
+                      size: 24,
+                    ),
+                    tooltip: L10n.tr("Log Out", "Keluar"),
                   ),
                 ],
               ),
@@ -1045,105 +1302,7 @@ class _SettingProfileState extends State<SettingProfile> {
                             ),
                           ),
                           const SizedBox(height: 12),
-                          // AI Breakdown Detail
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Expanded(
-                                child: Row(
-                                  children: [
-                                    Icon(
-                                      Icons.psychology_rounded,
-                                      color: AppColors.button,
-                                      size: 20,
-                                    ),
-                                    const SizedBox(width: 8),
-                                    Expanded(
-                                      child: Text(
-                                        L10n.tr(
-                                          "AI Breakdown Level",
-                                          "Tingkat Detail AI",
-                                        ),
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.button,
-                                          fontFamily: "Quicksand",
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Flexible(
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white.withValues(alpha: 0.6),
-                                    borderRadius: BorderRadius.circular(12),
-                                    border: Border.all(
-                                      color: AppColors.containerline1
-                                          .withValues(alpha: 0.3),
-                                    ),
-                                  ),
-                                  child: DropdownButtonHideUnderline(
-                                    child: DropdownButton<String>(
-                                      isExpanded: true,
-                                      value: _aiBreakdownLevel,
-                                      dropdownColor: Colors.white,
-                                      iconEnabledColor: AppColors.button,
-                                      style: TextStyle(
-                                        color: AppColors.button,
-                                        fontWeight: FontWeight.bold,
-                                        fontFamily: "Quicksand",
-                                        fontSize: 13,
-                                      ),
-                                      items:
-                                          const [
-                                                "Simple",
-                                                "Balanced",
-                                                "Detailed",
-                                              ]
-                                              .map(
-                                                (val) => DropdownMenuItem(
-                                                  value: val,
-                                                  child: Text(
-                                                    val,
-                                                    overflow:
-                                                        TextOverflow.ellipsis,
-                                                  ),
-                                                ),
-                                              )
-                                              .toList(),
-                                      onChanged: (value) {
-                                        if (value != null) {
-                                          setState(() {
-                                            _aiBreakdownLevel = value;
-                                          });
-                                          _saveSetting(
-                                            'ai_breakdown_level',
-                                            value,
-                                          );
-                                        }
-                                      },
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          Divider(
-                            height: 1,
-                            color: AppColors.containerline1.withValues(
-                              alpha: 0.3,
-                            ),
-                          ),
-                          const SizedBox(height: 12),
+
                           // App Language selector
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1339,22 +1498,7 @@ class _SettingProfileState extends State<SettingProfile> {
                             children: [
                               Expanded(
                                 child: ElevatedButton.icon(
-                                  onPressed: () {
-                                    // ignore: avoid_print
-                                    print("successfully backed up");
-                                    _clickBackupText();
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          L10n.tr(
-                                            "Successfully backed up!",
-                                            "Berhasil di backup!",
-                                          ),
-                                        ),
-                                        duration: const Duration(seconds: 1),
-                                      ),
-                                    );
-                                  },
+                                  onPressed: _handleBackup,
                                   icon: const Icon(
                                     Icons.cloud_upload_rounded,
                                     color: Colors.white,
@@ -1382,21 +1526,7 @@ class _SettingProfileState extends State<SettingProfile> {
                               const SizedBox(width: 12),
                               Expanded(
                                 child: OutlinedButton.icon(
-                                  onPressed: () {
-                                    // ignore: avoid_print
-                                    print("successfully restored");
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          L10n.tr(
-                                            "Successfully restored!",
-                                            "Berhasil di restore!",
-                                          ),
-                                        ),
-                                        duration: const Duration(seconds: 1),
-                                      ),
-                                    );
-                                  },
+                                  onPressed: _handleRestore,
                                   icon: Icon(
                                     Icons.cloud_download_rounded,
                                     color: AppColors.button,
@@ -1426,36 +1556,35 @@ class _SettingProfileState extends State<SettingProfile> {
                       ),
                     ),
 
-                    // Logout Button Section
+                    // Delete Account Button Section
                     Padding(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 20,
-                        vertical: 24,
+                        vertical: 8,
                       ),
                       child: SizedBox(
                         width: double.infinity,
-                        child: ElevatedButton.icon(
-                          onPressed: _showLogoutDialog,
+                        child: OutlinedButton.icon(
+                          onPressed: _showDeleteAccountDialog,
                           icon: const Icon(
-                            Icons.logout_rounded,
-                            color: Colors.white,
+                            Icons.delete_forever_rounded,
+                            color: Colors.redAccent,
                           ),
                           label: Text(
-                            L10n.tr("Log Out", "Keluar"),
+                            L10n.tr("Delete Account", "Hapus Akun"),
                             style: const TextStyle(
-                              color: Colors.white,
+                              color: Colors.redAccent,
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                               fontFamily: "Quicksand",
                             ),
                           ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.redAccent,
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Colors.redAccent),
                             padding: const EdgeInsets.symmetric(vertical: 16),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(24),
                             ),
-                            elevation: 0,
                           ),
                         ),
                       ),

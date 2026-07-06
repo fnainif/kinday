@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:kinday/models/user_model_firebase.dart';
 
 class FirebaseAuthService {
@@ -69,6 +70,53 @@ class FirebaseAuthService {
       return null;
     } catch (e) {
       debugPrint("Error logging in user: $e");
+      rethrow;
+    }
+  }
+
+  // Sign In with Google
+  Future<UserModelFirebase?> signInWithGoogle() async {
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        // User cancelled the sign-in
+        return null;
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      final User? user = userCredential.user;
+
+      if (user != null) {
+        final email = user.email ?? '';
+        final username = user.displayName ?? (email.isNotEmpty ? email.split('@').first : 'Google User');
+        
+        final profile = await getUserById(user.uid);
+        if (profile == null) {
+          debugPrint("Firestore profile document not found for UID: ${user.uid}. Creating new profile.");
+          final newProfile = UserModelFirebase(
+            uid: user.uid,
+            username: username,
+            email: email,
+            password: '', // Google authentication does not use passwords
+          );
+          await _firestore
+              .collection('users')
+              .doc(user.uid)
+              .set(newProfile.toFirestore());
+          return newProfile;
+        }
+        return profile;
+      }
+      return null;
+    } catch (e) {
+      debugPrint("Error signing in with Google: $e");
       rethrow;
     }
   }
@@ -181,6 +229,35 @@ class FirebaseAuthService {
     } catch (e) {
       debugPrint("Error sending password reset email: $e");
       return false;
+    }
+  }
+
+  // Change Password
+  Future<bool> changePassword(String currentPassword, String newPassword) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null || user.email == null) return false;
+
+      // 1. Reauthenticate the user
+      final credential = EmailAuthProvider.credential(
+        email: user.email!,
+        password: currentPassword,
+      );
+      await user.reauthenticateWithCredential(credential);
+
+      // 2. Update password in Firebase Auth
+      await user.updatePassword(newPassword);
+
+      // 3. Update password in Firestore
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .update({'password': newPassword});
+
+      return true;
+    } catch (e) {
+      debugPrint("Error changing password in Firebase: $e");
+      rethrow;
     }
   }
 }

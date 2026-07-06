@@ -5,7 +5,7 @@ import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/firebase_options.dart';
-import 'package:kinday/pages/splash_screen.dart';
+import 'package:kinday/pages/additional/splash_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

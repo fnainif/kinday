@@ -7,11 +7,11 @@ import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/firebase_auth_service.dart';
 import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/database/preference_handler.dart';
-import 'package:kinday/models/user_model_firebase.dart';
 import 'package:kinday/pages/auth/forgotpass.dart';
 import 'package:kinday/pages/auth/register.dart';
 import 'package:kinday/pages/dummy/pleaceholderpage.dart';
 import 'package:kinday/pages/mainpage.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginPage extends StatefulWidget {
@@ -25,6 +25,7 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -46,6 +47,10 @@ class _LoginPageState extends State<LoginPage> {
       return;
     }
 
+    setState(() {
+      _isLoading = true;
+    });
+
     final email = _emailController.text.trim();
     final password = _passwordController.text.trim();
 
@@ -61,7 +66,9 @@ class _LoginPageState extends State<LoginPage> {
         var localUser = await dbHelper.getUserByEmail(email);
         if (localUser == null) {
           // If not, register locally to generate an integer ID
-          final successRegisterLocal = await dbHelper.registerUser(firebaseUser.toSql());
+          final successRegisterLocal = await dbHelper.registerUser(
+            firebaseUser.toSql(),
+          );
           if (successRegisterLocal) {
             localUser = await dbHelper.getUserByEmail(email);
           }
@@ -72,7 +79,7 @@ class _LoginPageState extends State<LoginPage> {
           await prefs.setInt('user_id', localUser.id!);
           await prefs.setString('user_name', localUser.username);
           await prefs.setString('user_email', localUser.email);
-          
+
           if (firebaseUser.uid != null) {
             await prefs.setString('user_id_firebase', firebaseUser.uid!);
           }
@@ -89,10 +96,13 @@ class _LoginPageState extends State<LoginPage> {
               (route) => false,
             );
           }
+          return;
         } else {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text("Error setting up local profile session.")),
+              const SnackBar(
+                content: Text("Error setting up local profile session."),
+              ),
             );
           }
         }
@@ -107,16 +117,120 @@ class _LoginPageState extends State<LoginPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Login failed: ${e.toString().replaceAll(RegExp(r'\[.*?\]'), '')}"),
+            content: Text(
+              "Login failed: ${e.toString().replaceAll(RegExp(r'\[.*?\]'), '')}",
+            ),
             backgroundColor: Colors.redAccent,
           ),
         );
       }
     }
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    final dbHelper = DBHelper();
+    final authService = FirebaseAuthService();
+
+    try {
+      final firebaseUser = await authService.signInWithGoogle();
+
+      if (firebaseUser != null) {
+        // Check if user exists in local SQLite database by email
+        var localUser = await dbHelper.getUserByEmail(firebaseUser.email);
+        if (localUser == null) {
+          // If not, register locally to generate an integer ID
+          final successRegisterLocal = await dbHelper.registerUser(
+            firebaseUser.toSql(),
+          );
+          if (successRegisterLocal) {
+            localUser = await dbHelper.getUserByEmail(firebaseUser.email);
+          }
+        }
+
+        if (localUser != null && localUser.id != null) {
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setInt('user_id', localUser.id!);
+          await prefs.setString('user_name', localUser.username);
+          await prefs.setString('user_email', localUser.email);
+
+          if (firebaseUser.uid != null) {
+            await prefs.setString('user_id_firebase', firebaseUser.uid!);
+          }
+
+          await PreferenceHandler.setLogin(true);
+
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text("Login successful!")));
+            Navigator.pushAndRemoveUntil(
+              context,
+              MaterialPageRoute(builder: (context) => const Mainpage()),
+              (route) => false,
+            );
+          }
+          return;
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Error setting up local profile session."),
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              "Google Sign-In failed: ${e.toString().replaceAll(RegExp(r'\[.*?\]'), '')}",
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return Scaffold(
+        body: BgContainer(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Image.asset(AppImage.logoSplashscreen, height: 150, width: 150),
+                const SizedBox(height: 24),
+                CircularProgressIndicator(
+                  color: AppColors.button,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return Scaffold(
       body: BgContainer(
         child: SingleChildScrollView(
@@ -276,12 +390,8 @@ class _LoginPageState extends State<LoginPage> {
                                 destination: const Pleaceholderpage(),
                                 textbuttoncolor: AppColors.button,
                                 leadImage: AppImage.icongoogle,
-                              ),
-                              AccButton(
-                                warnaBox: AppColors.background,
-                                destination: const Pleaceholderpage(),
-                                textbuttoncolor: AppColors.button,
-                                leadImage: AppImage.iconfacebook,
+                                sign: "sign in with google",
+                                onPressed: _handleGoogleSignIn,
                               ),
                             ],
                           ),

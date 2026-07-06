@@ -39,7 +39,7 @@ dependencies:
   intl: ^0.20.2
   calendar_date_picker2: ^3.0.0
   shared_preferences: ^2.5.5
-  lottie: ^2.4.0
+  lottie: ^3.1.2
   sqflite: ^2.4.0
   path: ^1.9.1
   sqlite_viewer2: ^2.0.0
@@ -60,10 +60,11 @@ dependencies:
   slang_flutter: ^4.16.0
   dio: ^5.9.2
   retrofit: ^4.9.2
-  google_generative_ai: ^0.4.0
   firebase_core: ^3.6.0
   firebase_auth: ^5.3.0
   cloud_firestore: ^5.4.0
+  firebase_ai: ^2.3.0
+  google_sign_in: ^6.2.1
 
 
 
@@ -117,6 +118,7 @@ flutter:
 
   assets:
   - assets/images/
+  - assets/images/lavender_bunny/
   - assets/audio/
   - assets/fonts/
 
