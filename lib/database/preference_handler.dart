@@ -9,6 +9,7 @@ class PreferenceHandler {
   static const _keyIsLogin = "isLogin";
   static const _keyLanguage = "language";
   static const _keyTheme = "app_theme";
+  static const _keyHasSeenOnboarding = "has_seen_onboarding";
 
   static Future<void> setLogin(bool isLogin) async {
     await _prefs.setBool(_keyIsLogin, isLogin);
@@ -16,6 +17,14 @@ class PreferenceHandler {
 
   static bool get isLogin {
     return _prefs.getBool(_keyIsLogin) ?? false;
+  }
+
+  static Future<void> setHasSeenOnboarding(bool hasSeen) async {
+    await _prefs.setBool(_keyHasSeenOnboarding, hasSeen);
+  }
+
+  static bool get hasSeenOnboarding {
+    return _prefs.getBool(_keyHasSeenOnboarding) ?? false;
   }
 
   static Future<void> logOut() async {

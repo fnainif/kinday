@@ -7,6 +7,7 @@ import 'package:kinday/constant/app_widget.dart';
 import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/pages/auth/login.dart';
+import 'package:kinday/pages/auth/onboarding.dart';
 import 'package:kinday/pages/mainpage.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -99,11 +100,12 @@ class _SplashScreenState extends State<SplashScreen>
         ),
       );
     } else {
+      final hasSeenOnboarding = PreferenceHandler.hasSeenOnboarding;
       Navigator.pushReplacement(
         context,
         PageRouteBuilder(
           pageBuilder: (context, animation, secondaryAnimation) =>
-              const LoginPage(),
+              hasSeenOnboarding ? const LoginPage() : const OnboardingPage(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return FadeTransition(opacity: animation, child: child);
           },
