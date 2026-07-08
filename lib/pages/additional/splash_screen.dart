@@ -281,7 +281,7 @@ class _SplashScreenState extends State<SplashScreen>
                       Opacity(
                         opacity: 0.5,
                         child: Text(
-                          "Version 1.0.0",
+                          "Version 1.0.3",
                           style: AppTextStyles.bodytext.copyWith(
                             fontSize: 12,
                             color: textColor,

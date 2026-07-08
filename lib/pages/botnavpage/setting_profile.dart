@@ -18,6 +18,7 @@ import 'package:kinday/pages/additional/about.dart';
 import 'package:kinday/pages/additional/changepass.dart';
 import 'package:kinday/pages/additional/faq.dart';
 import 'package:kinday/pages/auth/login.dart';
+import 'package:kinday/pages/auth/terms_conditions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class SettingProfile extends StatefulWidget {
@@ -1912,6 +1913,19 @@ class _SettingProfileState extends State<SettingProfile> {
                                 context,
                                 MaterialPageRoute(
                                   builder: (context) => const AboutPage(),
+                                ),
+                              );
+                            },
+                          ),
+                          const Divider(height: 1),
+                          _buildListTile(
+                            icon: Icons.description_outlined,
+                            title: L10n.tr("Terms & Conditions", "Syarat & Ketentuan"),
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) => const TermsConditionsPage(),
                                 ),
                               );
                             },

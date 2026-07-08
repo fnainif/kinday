@@ -184,7 +184,20 @@ class _TasklistpageState extends State<Tasklistpage> {
           baseText += ' ';
         }
 
+        String localeId;
+        switch (L10n.lang) {
+          case 'id':
+            localeId = 'id_ID';
+            break;
+          case 'ja':
+            localeId = 'ja_JP';
+            break;
+          default:
+            localeId = 'en_US';
+        }
+
         speech.listen(
+          listenOptions: stt.SpeechListenOptions(localeId: localeId),
           onResult: (val) {
             setModalState(() {
               if (val.recognizedWords.isNotEmpty) {

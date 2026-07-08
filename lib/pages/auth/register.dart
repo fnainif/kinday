@@ -8,6 +8,7 @@ import 'package:kinday/database/firebase_auth_service.dart';
 import 'package:kinday/models/user_model_firebase.dart';
 import 'package:kinday/models/user_model_sql.dart';
 import 'package:kinday/pages/auth/login.dart';
+import 'package:kinday/pages/auth/terms_conditions.dart';
 import 'package:kinday/pages/auth/verify_email.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -316,6 +317,48 @@ class _RegisterPageState extends State<RegisterPage> {
                             destination: const SizedBox(),
                             textbuttoncolor: Colors.white,
                             onPressed: _handleRegister,
+                          ),
+
+                          SizedBox(height: 20),
+
+                          Text.rich(
+                            textAlign: TextAlign.center,
+                            TextSpan(
+                              text: "Dengan mendaftar, Anda menyetujui\n",
+                              style: TextStyle(
+                                color: AppColors.button,
+                                fontFamily: "Nunito",
+                                fontSize: 12,
+                              ),
+                              children: [
+                                TextSpan(
+                                  recognizer: TapGestureRecognizer()
+                                    ..onTap = () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const TermsConditionsPage(),
+                                        ),
+                                      );
+                                    },
+                                  style: const TextStyle(
+                                    color: Colors.blue,
+                                    fontWeight: FontWeight.bold,
+                                    decoration: TextDecoration.underline,
+                                  ),
+                                  text: "Syarat & Ketentuan",
+                                ),
+                                TextSpan(
+                                  text: " kami",
+                                  style: TextStyle(
+                                    color: AppColors.button,
+                                    fontFamily: "Nunito",
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
 
                           SizedBox(height: 20),

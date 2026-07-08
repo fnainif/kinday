@@ -343,7 +343,20 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         baseText += ' ';
       }
 
+      String localeId;
+      switch (L10n.lang) {
+        case 'id':
+          localeId = 'id_ID';
+          break;
+        case 'ja':
+          localeId = 'ja_JP';
+          break;
+        default:
+          localeId = 'en_US';
+      }
+
       _speech.listen(
+        listenOptions: stt.SpeechListenOptions(localeId: localeId),
         onResult: (val) {
           setState(() {
             if (val.recognizedWords.isNotEmpty) {
