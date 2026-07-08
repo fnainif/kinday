@@ -74,15 +74,26 @@ class _HomepageState extends State<Homepage> {
     final activeTasks = userTasks.where((t) => !t.isCompleted).toList();
     TaskCard? suggested;
     final userEnergy = latestEnergy ?? 3;
-    final filteredTasks = activeTasks
-        .where((t) => t.energylvl <= userEnergy)
-        .toList();
+    final filteredTasks = activeTasks.where((t) {
+      final isUrgent = _isTaskUrgent(t);
+      final isEnergyMatch = t.energylvl <= userEnergy;
+      return isEnergyMatch || isUrgent;
+    }).toList();
 
     if (filteredTasks.isNotEmpty) {
       filteredTasks.sort((a, b) {
-        // 1. Closest due date first (ascending)
+        final aUrgent = _isTaskUrgent(a);
+        final bUrgent = _isTaskUrgent(b);
+
+        // 1. Urgent tasks first
+        if (aUrgent && !bUrgent) return -1;
+        if (!aUrgent && bUrgent) return 1;
+
+        // 2. Closest due date first (ascending)
         if (a.dueDate != null && b.dueDate != null) {
-          final dateCompare = a.dueDate!.compareTo(b.dueDate!);
+          final dateA = DateTime(a.dueDate!.year, a.dueDate!.month, a.dueDate!.day);
+          final dateB = DateTime(b.dueDate!.year, b.dueDate!.month, b.dueDate!.day);
+          final dateCompare = dateA.compareTo(dateB);
           if (dateCompare != 0) {
             return dateCompare;
           }
@@ -92,7 +103,7 @@ class _HomepageState extends State<Homepage> {
           return 1;
         }
 
-        // 2. Closest due time first (ascending)
+        // 3. Closest due time first (ascending)
         final timeA = _parseTimeOfDay(a.dueTime);
         final timeB = _parseTimeOfDay(b.dueTime);
         if (timeA != null && timeB != null) {
@@ -108,7 +119,7 @@ class _HomepageState extends State<Homepage> {
           return 1;
         }
 
-        // 3. Highest priority first (descending)
+        // 4. Highest priority first (descending)
         return b.prioritytask.compareTo(a.prioritytask);
       });
       suggested = filteredTasks.first;
@@ -131,7 +142,7 @@ class _HomepageState extends State<Homepage> {
   TimeOfDay? _parseTimeOfDay(String? timeStr) {
     if (timeStr == null || timeStr.isEmpty) return null;
     try {
-      final parts = timeStr.split(':');
+      final parts = timeStr.split(RegExp(r'[:.]'));
       if (parts.length >= 2) {
         final hourPart = parts[0].trim();
         final minutePart = parts[1].trim();
@@ -148,6 +159,23 @@ class _HomepageState extends State<Homepage> {
       // ignore
     }
     return null;
+  }
+
+  DateTime? _getTaskDueDateTime(TaskCard t) {
+    if (t.dueDate == null) return null;
+    final timeOfDay = _parseTimeOfDay(t.dueTime);
+    if (timeOfDay == null) {
+      return DateTime(t.dueDate!.year, t.dueDate!.month, t.dueDate!.day, 23, 59, 59);
+    }
+    return DateTime(t.dueDate!.year, t.dueDate!.month, t.dueDate!.day, timeOfDay.hour, timeOfDay.minute);
+  }
+
+  bool _isTaskUrgent(TaskCard t) {
+    final dueDateTime = _getTaskDueDateTime(t);
+    if (dueDateTime == null) return false;
+    final now = DateTime.now();
+    final difference = dueDateTime.difference(now);
+    return difference.inMinutes <= 180;
   }
 
   String _getEnergyLabel(int level) {
@@ -181,7 +209,7 @@ class _HomepageState extends State<Homepage> {
       return;
     }
 
-    if (!PreferenceHandler.checkAndIncrementAiUsage()) {
+    if (!PreferenceHandler.isPremium && !PreferenceHandler.checkAndIncrementAiUsage()) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
@@ -631,6 +659,41 @@ class _HomepageState extends State<Homepage> {
                                   ),
                                   if (_suggestedTask != null) ...[
                                     const SizedBox(height: 8),
+                                    if (_suggestedTask!.energylvl > _currentEnergyLvl) ...[
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                        margin: const EdgeInsets.only(bottom: 8),
+                                        decoration: BoxDecoration(
+                                          color: Colors.amber.shade50,
+                                          borderRadius: BorderRadius.circular(8),
+                                          border: Border.all(color: Colors.amber.shade300),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.warning_amber_rounded,
+                                              size: 14,
+                                              color: Colors.amber.shade800,
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Expanded(
+                                              child: Text(
+                                                L10n.tr(
+                                                  "Your energy is low, but this task is urgent!",
+                                                  "Energi Anda rendah, tetapi tugas ini sangat mendesak!",
+                                                ),
+                                                style: TextStyle(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Colors.amber.shade900,
+                                                  fontFamily: "Nunito",
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
                                     if (_suggestedTask!.dueDate != null) ...[
                                       Row(
                                         children: [

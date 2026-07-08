@@ -448,7 +448,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       return;
     }
 
-    if (!PreferenceHandler.checkAndIncrementAiUsage()) {
+    if (!PreferenceHandler.isPremium && !PreferenceHandler.checkAndIncrementAiUsage()) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

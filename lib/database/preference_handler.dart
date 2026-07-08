@@ -84,5 +84,15 @@ class PreferenceHandler {
     final remaining = maxAiUsagePerDay - currentCount;
     return remaining < 0 ? 0 : remaining;
   }
+
+  static const _keyIsPremium = "is_premium";
+
+  static bool get isPremium {
+    return _prefs.getBool(_keyIsPremium) ?? false;
+  }
+
+  static Future<void> setPremium(bool value) async {
+    await _prefs.setBool(_keyIsPremium, value);
+  }
 }
 

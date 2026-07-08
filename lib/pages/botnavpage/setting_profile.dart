@@ -55,6 +55,7 @@ class _SettingProfileState extends State<SettingProfile> {
 
   // Loading state
   bool _isLoading = true;
+  bool _isPremium = false;
 
   @override
   void initState() {
@@ -192,6 +193,7 @@ class _SettingProfileState extends State<SettingProfile> {
         _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
         _currentTheme = prefs.getString('app_theme') ?? "Lavender Dreams";
         _aiBreakdownLevel = prefs.getString('ai_breakdown_level') ?? "Balanced";
+        _isPremium = PreferenceHandler.isPremium;
 
         _completedTasksCount = completedCount;
         _streakDays = streak;
@@ -1697,58 +1699,64 @@ class _SettingProfileState extends State<SettingProfile> {
                                         fontFamily: "Quicksand",
                                         fontSize: 13,
                                       ),
-                                      items:
-                                          const [
-                                            "Lavender Dreams",
-                                            "Sakura Bloom",
-                                            "Matcha Garden",
-                                            "Sky Blue",
-                                            "Peach Cream",
-                                            "Moonlight Lavender",
-                                            "Twilight Blue",
-                                            "Midnight Forest",
-                                          ].map((String name) {
-                                            String emoji = "";
-                                            switch (name) {
-                                              case "Lavender Dreams":
-                                                emoji = "💜";
-                                                break;
-                                              case "Sakura Bloom":
-                                                emoji = "🌸";
-                                                break;
-                                              case "Matcha Garden":
-                                                emoji = "🌿";
-                                                break;
-                                              case "Sky Blue":
-                                                emoji = "☁️";
-                                                break;
-                                              case "Peach Cream":
-                                                emoji = "🍑";
-                                                break;
-                                              case "Moonlight Lavender":
-                                                emoji = "🌙";
-                                                break;
-                                              case "Twilight Blue":
-                                                emoji = "🌌";
-                                                break;
-                                              case "Midnight Forest":
-                                                emoji = "🌲";
-                                                break;
-                                            }
-                                            return DropdownMenuItem<String>(
-                                              value: name,
-                                              child: Text(
-                                                "$emoji $name",
-                                                overflow: TextOverflow.ellipsis,
-                                              ),
-                                            );
-                                          }).toList(),
+                                      items: [
+                                        "Lavender Dreams",
+                                        "Sakura Bloom",
+                                        "Matcha Garden",
+                                        "Sky Blue",
+                                        "Peach Cream",
+                                        "Moonlight Lavender",
+                                        "Twilight Blue",
+                                        "Midnight Forest",
+                                      ].map((String name) {
+                                        String emoji = "";
+                                        switch (name) {
+                                          case "Lavender Dreams":
+                                            emoji = "💜";
+                                            break;
+                                          case "Sakura Bloom":
+                                            emoji = "🌸";
+                                            break;
+                                          case "Matcha Garden":
+                                            emoji = "🌿";
+                                            break;
+                                          case "Sky Blue":
+                                            emoji = "☁️";
+                                            break;
+                                          case "Peach Cream":
+                                            emoji = "🍑";
+                                            break;
+                                          case "Moonlight Lavender":
+                                            emoji = "🌙";
+                                            break;
+                                          case "Twilight Blue":
+                                            emoji = "🌌";
+                                            break;
+                                          case "Midnight Forest":
+                                            emoji = "🌲";
+                                            break;
+                                        }
+                                        final isPremiumTheme = name != "Lavender Dreams" && name != "Sakura Bloom";
+                                        final displayName = isPremiumTheme && !_isPremium ? "$name 👑" : name;
+                                        return DropdownMenuItem<String>(
+                                          value: name,
+                                          child: Text(
+                                            "$emoji $displayName",
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        );
+                                      }).toList(),
                                       onChanged: (value) {
                                         if (value != null) {
-                                          setState(() {
-                                            _currentTheme = value;
-                                          });
-                                          AppColors.setTheme(value);
+                                          final isPremiumTheme = value != "Lavender Dreams" && value != "Sakura Bloom";
+                                          if (isPremiumTheme && !_isPremium) {
+                                            _showPremiumPaywallSheet(context, value);
+                                          } else {
+                                            setState(() {
+                                              _currentTheme = value;
+                                            });
+                                            AppColors.setTheme(value);
+                                          }
                                         }
                                       },
                                     ),
@@ -2285,6 +2293,147 @@ class _SettingProfileState extends State<SettingProfile> {
         ),
       ),
       contentPadding: EdgeInsets.zero,
+    );
+  }
+
+  void _showPremiumPaywallSheet(BuildContext context, String requestedTheme) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: const BorderRadius.only(
+              topLeft: Radius.circular(24),
+              topRight: Radius.circular(24),
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.1),
+                blurRadius: 10,
+                spreadRadius: 5,
+              ),
+            ],
+          ),
+          padding: const EdgeInsets.only(
+            left: 24,
+            right: 24,
+            top: 32,
+            bottom: 40,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 60,
+                height: 60,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFFFFA500).withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: const Icon(
+                  Icons.star_rounded,
+                  color: Colors.white,
+                  size: 40,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                L10n.tr("Unlock Premium Themes 👑", "Buka Tema Eksklusif 👑"),
+                style: const TextStyle(
+                  fontFamily: "Quicksand",
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                L10n.tr(
+                  "The theme \"$requestedTheme\" is a premium feature. Unlock all exclusive themes and unlimited AI breakdowns!",
+                  "Tema \"$requestedTheme\" adalah fitur premium. Dapatkan akses penuh ke semua tema estetik dan pemecahan tugas AI tanpa batas!",
+                ),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontFamily: "Nunito",
+                  fontSize: 14,
+                  color: Colors.grey[700],
+                ),
+              ),
+              const SizedBox(height: 28),
+              ElevatedButton(
+                onPressed: () async {
+                  await PreferenceHandler.setPremium(true);
+                  if (mounted) {
+                    setState(() {
+                      _isPremium = true;
+                      _currentTheme = requestedTheme;
+                    });
+                    AppColors.setTheme(requestedTheme);
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          L10n.tr(
+                            "Premium trial activated! Enjoy unlimited themes and AI breakdowns.",
+                            "Uji coba Premium aktif! Nikmati semua tema dan pemecahan AI tanpa batas.",
+                          ),
+                        ),
+                      ),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.button,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(50),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  elevation: 0,
+                ),
+                child: Text(
+                  L10n.tr("Activate Free Premium Trial", "Aktifkan Uji Coba Premium (Gratis)"),
+                  style: const TextStyle(
+                    fontFamily: "Quicksand",
+                    fontWeight: FontWeight.bold,
+                    fontSize: 15,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                style: TextButton.styleFrom(
+                  minimumSize: const Size.fromHeight(40),
+                ),
+                child: Text(
+                  L10n.tr("Maybe Later", "Nanti Saja"),
+                  style: TextStyle(
+                    fontFamily: "Quicksand",
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

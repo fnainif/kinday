@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:kinday/constant/app_colors.dart';
@@ -312,19 +314,21 @@ class _RegisterPageState extends State<RegisterPage> {
             }
             return;
           } else {
+            await _rollbackFirebaseRegistration();
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text("Error fetching user after registration."),
+                  content: Text("Error fetching user after registration. Rolling back..."),
                 ),
               );
             }
           }
         } else {
+          await _rollbackFirebaseRegistration();
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text("Local database registration failed."),
+                content: Text("Local database registration failed. Rolling back..."),
               ),
             );
           }
@@ -620,5 +624,21 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _rollbackFirebaseRegistration() async {
+    try {
+      final currentUser = FirebaseAuth.instance.currentUser;
+      if (currentUser != null) {
+        final uid = currentUser.uid;
+        // 1. Delete Firestore document
+        await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+        // 2. Delete Firebase Auth user
+        await currentUser.delete();
+        debugPrint("Successfully rolled back Firebase user: $uid");
+      }
+    } catch (e) {
+      debugPrint("Failed to rollback Firebase registration: $e");
+    }
   }
 }
