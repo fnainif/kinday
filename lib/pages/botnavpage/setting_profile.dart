@@ -11,7 +11,7 @@ import 'package:kinday/constant/task_notifier.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/firebase_auth_service.dart';
 import 'package:kinday/database/firebase_backup_service.dart';
-import 'package:kinday/database/notification_helper.dart';
+
 import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/models/user_model_sql.dart';
 import 'package:kinday/pages/additional/about.dart';
@@ -109,6 +109,7 @@ class _SettingProfileState extends State<SettingProfile> {
         );
       }
     }
+    if (!mounted) return;
     setState(() {
       _isLoading = false;
     });
@@ -149,6 +150,7 @@ class _SettingProfileState extends State<SettingProfile> {
         );
       }
     }
+    if (!mounted) return;
     setState(() {
       _isLoading = false;
     });
@@ -184,6 +186,7 @@ class _SettingProfileState extends State<SettingProfile> {
       // Get focus time
       final totalFocus = await DBHelper().getTotalFocusMinutesForUser(userId);
 
+      if (!mounted) return;
       setState(() {
         _name = prefs.getString('user_name') ?? "User";
         _email = prefs.getString('user_email') ?? "user@kinday.com";
@@ -236,6 +239,7 @@ class _SettingProfileState extends State<SettingProfile> {
       });
     } catch (e) {
       debugPrint("Error loading settings: $e");
+      if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
@@ -1595,48 +1599,7 @@ class _SettingProfileState extends State<SettingProfile> {
                               ),
                             ],
                           ),
-                          if (_notificationsEnabled) ...[
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              width: double.infinity,
-                              child: OutlinedButton.icon(
-                                onPressed: () async {
-                                  await NotificationHelper()
-                                      .showInstantNotification(
-                                        id: 9999,
-                                        title: "Test Notification",
-                                        body:
-                                            "If you see this, notifications are working perfectly!",
-                                      );
-                                },
-                                icon: Icon(
-                                  Icons.notifications_active_outlined,
-                                  size: 16,
-                                  color: AppColors.button,
-                                ),
-                                label: Text(
-                                  L10n.tr(
-                                    "Send Test Notification",
-                                    "Kirim Notifikasi Uji",
-                                  ),
-                                  style: TextStyle(
-                                    color: AppColors.button,
-                                    fontWeight: FontWeight.bold,
-                                    fontFamily: "Quicksand",
-                                  ),
-                                ),
-                                style: OutlinedButton.styleFrom(
-                                  side: BorderSide(color: AppColors.button),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
+
                           const SizedBox(height: 12),
                           Divider(
                             height: 1,

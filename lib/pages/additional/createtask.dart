@@ -322,6 +322,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       onStatus: (status) {
         debugPrint('STT status: $status');
         if (status == 'done' || status == 'notListening') {
+          if (!mounted) return;
           setState(() {
             if (isTitle) {
               _isListeningTitle = false;

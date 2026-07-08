@@ -230,6 +230,7 @@ class _EnergyPageState extends State<EnergyPage> {
       );
     }
 
+    if (!mounted) return;
     setState(() {
       _userId = userId;
       if (latestEnergy != null) {

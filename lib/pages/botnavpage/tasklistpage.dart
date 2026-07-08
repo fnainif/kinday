@@ -81,6 +81,7 @@ class _TasklistpageState extends State<Tasklistpage> {
     }
 
     final latestEnergy = await DBHelper().getLatestEnergyForUser(userId);
+    if (!mounted) return;
     setState(() {
       _tasks = dbTasks;
       if (latestEnergy != null) {

@@ -125,6 +125,7 @@ class _HomepageState extends State<Homepage> {
       suggested = filteredTasks.first;
     }
 
+    if (!mounted) return;
     setState(() {
       _userId = userId;
       _name = name;

@@ -104,7 +104,7 @@ class _PomodoropageState extends State<Pomodoropage> {
   }
 
   Future<void> _playBackgroundSound() async {
-    if (_selectedSound == "None") {
+    if (_selectedSound == "None" || !isRunning) {
       try {
         await player.stop();
       } catch (e) {
@@ -944,14 +944,16 @@ class _PomodoropageState extends State<Pomodoropage> {
     setState(() {
       isRunning = false;
     });
+    _playBackgroundSound();
   }
 
   void resumeTimer() {
-    startTimer();
-    _schedulePomodoroNotifications();
     setState(() {
       isRunning = true;
     });
+    startTimer();
+    _schedulePomodoroNotifications();
+    _playBackgroundSound();
   }
 
   void toggleTimer() {
@@ -1003,5 +1005,6 @@ class _PomodoropageState extends State<Pomodoropage> {
       totalSeconds = focusDuration;
       secondsRemaining = focusDuration;
     });
+    _playBackgroundSound();
   }
 }

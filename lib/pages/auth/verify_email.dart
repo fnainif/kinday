@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
@@ -41,11 +41,15 @@ class _EmailVerificationPageState extends State<EmailVerificationPage> {
   /// Polls Firebase every 3 seconds to see if the user has verified their email.
   void _startVerificationCheck() {
     _checkTimer = Timer.periodic(const Duration(seconds: 3), (timer) async {
-      final verified = await _authService.isEmailVerified();
-      if (verified && mounted) {
-        timer.cancel();
-        _cooldownTimer?.cancel();
-        await _onEmailVerified();
+      try {
+        final verified = await _authService.isEmailVerified();
+        if (verified && mounted) {
+          timer.cancel();
+          _cooldownTimer?.cancel();
+          await _onEmailVerified();
+        }
+      } catch (e) {
+        debugPrint("Error checking email verification: $e");
       }
     });
   }
