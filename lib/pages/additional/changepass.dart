@@ -26,6 +26,43 @@ class _ChangePassPageState extends State<ChangePassPage> {
   bool _obscureConfirm = true;
   bool _isLoading = false;
 
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return L10n.tr("Please enter a new password", "Silakan masukkan kata sandi baru");
+    }
+    if (value.length < 8) {
+      return L10n.tr(
+        "Password must be at least 8 characters",
+        "Kata sandi harus minimal 8 karakter",
+      );
+    }
+    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+      return L10n.tr(
+        "Password must contain at least one uppercase letter",
+        "Kata sandi harus mengandung minimal satu huruf besar",
+      );
+    }
+    if (!RegExp(r'[a-z]').hasMatch(value)) {
+      return L10n.tr(
+        "Password must contain at least one lowercase letter",
+        "Kata sandi harus mengandung minimal satu huruf kecil",
+      );
+    }
+    if (!RegExp(r'[0-9]').hasMatch(value)) {
+      return L10n.tr(
+        "Password must contain at least one number",
+        "Kata sandi harus mengandung minimal satu angka",
+      );
+    }
+    if (!RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
+      return L10n.tr(
+        "Password must contain at least one special character",
+        "Kata sandi harus mengandung minimal satu karakter spesial",
+      );
+    }
+    return null;
+  }
+
   @override
   void dispose() {
     _currentPasswordController.dispose();
@@ -284,9 +321,9 @@ class _ChangePassPageState extends State<ChangePassPage> {
                             },
                           ),
                           const SizedBox(height: 20),
-                          _buildPasswordField(
+                           _buildPasswordField(
                             label: L10n.tr("New Password", "Kata Sandi Baru"),
-                            hint: L10n.tr("Minimum 6 characters", "Minimal 6 karakter"),
+                            hint: L10n.tr("Minimum 8 characters", "Minimal 8 karakter"),
                             prefixIcon: Icons.lock_outline,
                             controller: _newPasswordController,
                             isObscured: _obscureNew,
@@ -295,15 +332,7 @@ class _ChangePassPageState extends State<ChangePassPage> {
                                 _obscureNew = !_obscureNew;
                               });
                             },
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return L10n.tr("Please enter a new password", "Silakan masukkan kata sandi baru");
-                              }
-                              if (value.length < 6) {
-                                return L10n.tr("Password must be at least 6 characters", "Kata sandi harus minimal 6 karakter");
-                              }
-                              return null;
-                            },
+                            validator: _validatePassword,
                           ),
                           const SizedBox(height: 20),
                           _buildPasswordField(

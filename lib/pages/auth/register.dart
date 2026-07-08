@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:kinday/constant/app_colors.dart';
 import 'package:kinday/constant/app_image.dart';
 import 'package:kinday/constant/app_widget.dart';
+import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/firebase_auth_service.dart';
 import 'package:kinday/models/user_model_firebase.dart';
@@ -27,6 +28,96 @@ class _RegisterPageState extends State<RegisterPage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
+  bool _isAgreeTnc = false;
+
+  String? _validatePassword(String? value) {
+    if (value == null || value.isEmpty) {
+      return L10n.tr("Please enter a password", "Silakan masukkan kata sandi");
+    }
+    if (value.length < 8) {
+      return L10n.tr(
+        "Password must be at least 8 characters",
+        "Kata sandi harus minimal 8 karakter",
+      );
+    }
+    if (!RegExp(r'[A-Z]').hasMatch(value)) {
+      return L10n.tr(
+        "Password must contain at least one uppercase letter",
+        "Kata sandi harus mengandung minimal satu huruf besar",
+      );
+    }
+    if (!RegExp(r'[a-z]').hasMatch(value)) {
+      return L10n.tr(
+        "Password must contain at least one lowercase letter",
+        "Kata sandi harus mengandung minimal satu huruf kecil",
+      );
+    }
+    if (!RegExp(r'[0-9]').hasMatch(value)) {
+      return L10n.tr(
+        "Password must contain at least one number",
+        "Kata sandi harus mengandung minimal satu angka",
+      );
+    }
+    if (!RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(value)) {
+      return L10n.tr(
+        "Password must contain at least one special character",
+        "Kata sandi harus mengandung minimal satu karakter spesial",
+      );
+    }
+    return null;
+  }
+
+  void _showTncDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            "Syarat & Ketentuan",
+            style: TextStyle(
+              fontFamily: "Quicksand",
+              fontWeight: FontWeight.bold,
+              color: AppColors.button,
+            ),
+          ),
+          content: const Text(
+            "Silakan membaca dan menyetujui Syarat & Ketentuan sebelum mendaftar akun Kinday.",
+            style: TextStyle(fontFamily: "Nunito"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text("Tutup", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const TermsConditionsPage(),
+                  ),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.button,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              child: const Text(
+                "Baca T&C",
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   void dispose() {
@@ -39,6 +130,11 @@ class _RegisterPageState extends State<RegisterPage> {
 
   Future<void> _handleRegister() async {
     if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    if (!_isAgreeTnc) {
+      _showTncDialog();
       return;
     }
 
@@ -270,15 +366,7 @@ class _RegisterPageState extends State<RegisterPage> {
                             icon: Icons.key,
                             pwhide: true,
                             controller: _passwordController,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) {
-                                return "Please enter your password";
-                              }
-                              if (value.length < 6) {
-                                return "Password must be at least 6 characters";
-                              }
-                              return null;
-                            },
+                            validator: _validatePassword,
                           ),
 
                           SizedBox(height: 20),
@@ -321,44 +409,59 @@ class _RegisterPageState extends State<RegisterPage> {
 
                           SizedBox(height: 20),
 
-                          Text.rich(
-                            textAlign: TextAlign.center,
-                            TextSpan(
-                              text: "Dengan mendaftar, Anda menyetujui\n",
-                              style: TextStyle(
-                                color: AppColors.button,
-                                fontFamily: "Nunito",
-                                fontSize: 12,
+                          Row(
+                            children: [
+                              Checkbox(
+                                activeColor: AppColors.button,
+                                checkColor: Colors.white,
+                                value: _isAgreeTnc,
+                                onChanged: (value) {
+                                  setState(() {
+                                    _isAgreeTnc = value ?? false;
+                                  });
+                                },
                               ),
-                              children: [
-                                TextSpan(
-                                  recognizer: TapGestureRecognizer()
-                                    ..onTap = () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const TermsConditionsPage(),
+                              Expanded(
+                                child: Text.rich(
+                                  TextSpan(
+                                    text: "Saya menyetujui ",
+                                    style: TextStyle(
+                                      color: AppColors.button,
+                                      fontFamily: "Nunito",
+                                      fontSize: 12,
+                                    ),
+                                    children: [
+                                      TextSpan(
+                                        recognizer: TapGestureRecognizer()
+                                          ..onTap = () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const TermsConditionsPage(),
+                                              ),
+                                            );
+                                          },
+                                        style: const TextStyle(
+                                          color: Colors.blue,
+                                          fontWeight: FontWeight.bold,
+                                          decoration: TextDecoration.underline,
                                         ),
-                                      );
-                                    },
-                                  style: const TextStyle(
-                                    color: Colors.blue,
-                                    fontWeight: FontWeight.bold,
-                                    decoration: TextDecoration.underline,
-                                  ),
-                                  text: "Syarat & Ketentuan",
-                                ),
-                                TextSpan(
-                                  text: " kami",
-                                  style: TextStyle(
-                                    color: AppColors.button,
-                                    fontFamily: "Nunito",
-                                    fontSize: 12,
+                                        text: "Syarat & Ketentuan",
+                                      ),
+                                      TextSpan(
+                                        text: " yang berlaku.",
+                                        style: TextStyle(
+                                          color: AppColors.button,
+                                          fontFamily: "Nunito",
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
 
                           SizedBox(height: 20),
