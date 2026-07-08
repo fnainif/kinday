@@ -163,6 +163,7 @@ class InputField extends StatefulWidget {
     this.pwhide = false,
     this.controller,
     this.validator,
+    this.focusNode,
   });
 
   final String hint;
@@ -170,6 +171,7 @@ class InputField extends StatefulWidget {
   final bool pwhide;
   final TextEditingController? controller;
   final String? Function(String?)? validator;
+  final FocusNode? focusNode;
 
   @override
   State<InputField> createState() => _InputFieldState();
@@ -188,6 +190,7 @@ class _InputFieldState extends State<InputField> {
   Widget build(BuildContext context) {
     return TextFormField(
       controller: widget.controller,
+      focusNode: widget.focusNode,
       style: const TextStyle(color: Color(0xFF5852A0)),
       decoration: InputDecoration(
         prefixIcon: Padding(

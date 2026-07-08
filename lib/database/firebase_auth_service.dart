@@ -212,7 +212,17 @@ class FirebaseAuthService {
   // Delete User
   Future<void> deleteUser(String uid) async {
     try {
+      // 1. Delete backup documents first (subcollection)
+      await _firestore
+          .collection('users')
+          .doc(uid)
+          .collection('backups')
+          .doc('latest')
+          .delete();
+
+      // 2. Delete parent user document
       await _firestore.collection('users').doc(uid).delete();
+
       final user = _auth.currentUser;
       if (user != null && user.uid == uid) {
         await user.delete();

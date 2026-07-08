@@ -35,6 +35,10 @@ class _EnergyPageState extends State<EnergyPage> {
   double _avgEnergyThisWeek = 3.6;
   double _avgEnergyLastWeek = 3.2;
   String _energyComparisonStr = "stable";
+  bool _hasHourlyEnergyData = false;
+  bool _hasProductivityData = false;
+  bool _hasWeeklyEnergyData = false;
+
 
   @override
   void initState() {
@@ -123,6 +127,7 @@ class _EnergyPageState extends State<EnergyPage> {
     // --- 2. Productivity drop day calculation ---
     final dbTasks = await dbHelper.getTasksForUser(userId);
     String worstProductivityDay = L10n.tr("Friday", "Jumat");
+    bool hasProductivityData = false;
     if (dbTasks.isNotEmpty) {
       final Map<int, List<TaskCard>> tasksByDay = {};
       for (var task in dbTasks) {
@@ -157,6 +162,7 @@ class _EnergyPageState extends State<EnergyPage> {
           };
           worstProductivityDay =
               dayNames[worstDay] ?? L10n.tr("Friday", "Jumat");
+          hasProductivityData = true;
         }
       }
     }
@@ -237,6 +243,9 @@ class _EnergyPageState extends State<EnergyPage> {
       _avgEnergyThisWeek = thisWeekAvg;
       _avgEnergyLastWeek = lastWeekAvg;
       _energyComparisonStr = comparisonStr;
+      _hasHourlyEnergyData = dbLogs.isNotEmpty;
+      _hasProductivityData = hasProductivityData;
+      _hasWeeklyEnergyData = energyThisWeekList.isNotEmpty && energyLastWeekList.isNotEmpty;
     });
   }
 
@@ -703,10 +712,12 @@ class _EnergyPageState extends State<EnergyPage> {
                         "Highest & Lowest Energy Hours",
                         "Jam Energi Tertinggi & Terendah",
                       ),
-                      description: L10n.tr(
-                        "Your energy tends to peak at $_highestEnergyHourStr and reach its lowest point at $_lowestEnergyHourStr.",
-                        "Energi Anda cenderung berada di puncak pada pukul $_highestEnergyHourStr dan di titik terendah pada pukul $_lowestEnergyHourStr.",
-                      ),
+                      description: _hasHourlyEnergyData
+                          ? L10n.tr(
+                              "Your energy tends to peak at $_highestEnergyHourStr and reach its lowest point at $_lowestEnergyHourStr.",
+                              "Energi Anda cenderung berada di puncak pada pukul $_highestEnergyHourStr dan di titik terendah pada pukul $_lowestEnergyHourStr.",
+                            )
+                          : L10n.tr("No data yet", "Belum ada data"),
                     ),
                     _buildInsightRow(
                       icon: Icons.trending_down_rounded,
@@ -715,10 +726,12 @@ class _EnergyPageState extends State<EnergyPage> {
                         "Productivity Drop",
                         "Penurunan Produktivitas",
                       ),
-                      description: L10n.tr(
-                        "Based on your daily task completion rate, your productivity tends to drop on $_productivityDropDay.",
-                        "Berdasarkan tingkat penyelesaian tugas harian, produktivitas Anda cenderung menurun pada hari $_productivityDropDay.",
-                      ),
+                      description: _hasProductivityData
+                          ? L10n.tr(
+                              "Based on your daily task completion rate, your productivity tends to drop on $_productivityDropDay.",
+                              "Berdasarkan tingkat penyelesaian tugas harian, produktivitas Anda cenderung menurun pada hari $_productivityDropDay.",
+                            )
+                          : L10n.tr("No data yet", "Belum ada data"),
                     ),
                     _buildInsightRow(
                       icon: Icons.compare_arrows_rounded,
@@ -727,10 +740,12 @@ class _EnergyPageState extends State<EnergyPage> {
                         "Weekly Energy Trend",
                         "Tren Energi Mingguan",
                       ),
-                      description: L10n.tr(
-                        "Your average energy level this week (${_avgEnergyThisWeek.toStringAsFixed(1)}) is $_energyComparisonStr compared to last week (${_avgEnergyLastWeek.toStringAsFixed(1)}).",
-                        "Rata-rata level energi Anda minggu ini (${_avgEnergyThisWeek.toStringAsFixed(1)}) $_energyComparisonStr dibanding minggu lalu (${_avgEnergyLastWeek.toStringAsFixed(1)}).",
-                      ),
+                      description: _hasWeeklyEnergyData
+                          ? L10n.tr(
+                              "Your average energy level this week (${_avgEnergyThisWeek.toStringAsFixed(1)}) is $_energyComparisonStr compared to last week (${_avgEnergyLastWeek.toStringAsFixed(1)}).",
+                              "Rata-rata level energi Anda minggu ini (${_avgEnergyThisWeek.toStringAsFixed(1)}) $_energyComparisonStr dibanding minggu lalu (${_avgEnergyLastWeek.toStringAsFixed(1)}).",
+                            )
+                          : L10n.tr("No data yet", "Belum ada data"),
                     ),
                   ],
                 ),

@@ -16,7 +16,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
 class CreateTaskPage extends StatefulWidget {
-  const CreateTaskPage({super.key});
+  final String? initialTitle;
+  final List<Map<String, dynamic>>? initialSubtasks;
+
+  const CreateTaskPage({
+    super.key,
+    this.initialTitle,
+    this.initialSubtasks,
+  });
 
   @override
   State<CreateTaskPage> createState() => _CreateTaskPageState();
@@ -49,9 +56,21 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     super.initState();
     titleController.addListener(_autosaveDraft);
     descController.addListener(_autosaveDraft);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _checkAndRestoreDraft();
-    });
+    if (widget.initialTitle != null || widget.initialSubtasks != null) {
+      _isRestoring = true;
+      if (widget.initialTitle != null) {
+        titleController.text = widget.initialTitle!;
+      }
+      if (widget.initialSubtasks != null) {
+        subtasks = List.from(widget.initialSubtasks!);
+      }
+      _isRestoring = false;
+      _autosaveDraft();
+    } else {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _checkAndRestoreDraft();
+      });
+    }
   }
 
   Future<void> _autosaveDraft() async {

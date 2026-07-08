@@ -10,6 +10,7 @@ import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/constant/task_notifier.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/firebase_backup_service.dart';
+import 'package:kinday/pages/additional/createtask.dart';
 import 'package:kinday/pages/botnavpage/pomodoropage.dart';
 import 'package:kinday/pages/mainpage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -224,30 +225,15 @@ class _HomepageState extends State<Homepage> {
           }
         }
 
-        final newTask = TaskCard(
-          title: taskTitle,
-          description: "AI Generated Breakdown",
-          energylvl: 3, // medium energy
-          prioritytask: 2, // medium priority
-          subtasks: subtaskMaps,
-          createdAt: DateTime.now(),
-        );
-
-        final dbHelper = DBHelper();
-        final insertedId = await dbHelper.insertTask(newTask, _userId ?? 1);
-        newTask.id = insertedId;
-
         breakdowncontroller.clear();
-        TaskNotifier.notify();
 
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                L10n.tr(
-                  "AI broke down and created your task successfully!",
-                  "AI berhasil memecah dan membuat tugas Anda!",
-                ),
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => CreateTaskPage(
+                initialTitle: taskTitle,
+                initialSubtasks: subtaskMaps,
               ),
             ),
           );

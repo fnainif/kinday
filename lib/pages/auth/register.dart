@@ -13,7 +13,6 @@ import 'package:kinday/pages/auth/terms_conditions.dart';
 import 'package:kinday/pages/auth/verify_email.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-
 class RegisterPage extends StatefulWidget {
   const RegisterPage({super.key});
 
@@ -29,6 +28,116 @@ class _RegisterPageState extends State<RegisterPage> {
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
   bool _isAgreeTnc = false;
+  final _passwordFocusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _passwordFocusNode.addListener(_onFocusOrPasswordChange);
+    _passwordController.addListener(_onFocusOrPasswordChange);
+  }
+
+  void _onFocusOrPasswordChange() {
+    setState(() {});
+  }
+
+  bool _hasLength(String text) => text.length >= 8;
+  bool _hasUppercase(String text) => RegExp(r'[A-Z]').hasMatch(text);
+  bool _hasLowercase(String text) => RegExp(r'[a-z]').hasMatch(text);
+  bool _hasNumber(String text) => RegExp(r'[0-9]').hasMatch(text);
+  bool _hasSpecial(String text) =>
+      RegExp(r'[!@#\$%^&*(),.?":{}|<>]').hasMatch(text);
+
+  Widget _buildPasswordRequirements(String text) {
+    if (!_passwordFocusNode.hasFocus) {
+      return const SizedBox.shrink();
+    }
+
+    final hasLen = _hasLength(text);
+    final hasUpper = _hasUppercase(text);
+    final hasLower = _hasLowercase(text);
+    final hasNum = _hasNumber(text);
+    final hasSpec = _hasSpecial(text);
+
+    Widget requirementRow(String label, bool isMet) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 2.0),
+        child: Row(
+          children: [
+            Icon(
+              isMet ? Icons.check_circle : Icons.cancel,
+              color: isMet ? Colors.green : Colors.redAccent,
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontFamily: "Nunito",
+                fontSize: 12,
+                color: isMet ? Colors.green : Colors.redAccent,
+                fontWeight: isMet ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white.withAlpha(200),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.background.withAlpha(100)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            L10n.tr("Password Requirements:", "Syarat Kata Sandi:"),
+            style: TextStyle(
+              fontFamily: "Nunito",
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
+              color: AppColors.button,
+            ),
+          ),
+          const SizedBox(height: 6),
+          requirementRow(
+            L10n.tr("Minimum 8 characters", "Minimal 8 karakter"),
+            hasLen,
+          ),
+          requirementRow(
+            L10n.tr(
+              "At least one uppercase letter",
+              "Minimal satu huruf besar",
+            ),
+            hasUpper,
+          ),
+          requirementRow(
+            L10n.tr(
+              "At least one lowercase letter",
+              "Minimal satu huruf kecil",
+            ),
+            hasLower,
+          ),
+          requirementRow(
+            L10n.tr("At least one number", "Minimal satu angka"),
+            hasNum,
+          ),
+          requirementRow(
+            L10n.tr(
+              "At least one special character",
+              "Minimal satu karakter spesial",
+            ),
+            hasSpec,
+          ),
+        ],
+      ),
+    );
+  }
 
   String? _validatePassword(String? value) {
     if (value == null || value.isEmpty) {
@@ -121,6 +230,9 @@ class _RegisterPageState extends State<RegisterPage> {
 
   @override
   void dispose() {
+    _passwordFocusNode.removeListener(_onFocusOrPasswordChange);
+    _passwordFocusNode.dispose();
+    _passwordController.removeListener(_onFocusOrPasswordChange);
     _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -169,24 +281,32 @@ class _RegisterPageState extends State<RegisterPage> {
 
         if (sqlSuccess) {
           final registeredUser = await dbHelper.getUserByEmail(email);
-          final registeredFirebaseUser = await authService.getUserByEmail(email);
+          final registeredFirebaseUser = await authService.getUserByEmail(
+            email,
+          );
 
           if (registeredUser != null && registeredUser.id != null) {
             final prefs = await SharedPreferences.getInstance();
             await prefs.setInt('user_id', registeredUser.id!);
             await prefs.setString('user_name', registeredUser.username);
             await prefs.setString('user_email', registeredUser.email);
-            
-            if (registeredFirebaseUser != null && registeredFirebaseUser.uid != null) {
-              await prefs.setString('user_id_firebase', registeredFirebaseUser.uid!);
+
+            if (registeredFirebaseUser != null &&
+                registeredFirebaseUser.uid != null) {
+              await prefs.setString(
+                'user_id_firebase',
+                registeredFirebaseUser.uid!,
+              );
             }
-            
+
             // Do NOT set login = true yet — the user must verify their email first.
 
             if (mounted) {
               Navigator.pushAndRemoveUntil(
                 context,
-                MaterialPageRoute(builder: (context) => const EmailVerificationPage()),
+                MaterialPageRoute(
+                  builder: (context) => const EmailVerificationPage(),
+                ),
                 (route) => false,
               );
             }
@@ -222,7 +342,9 @@ class _RegisterPageState extends State<RegisterPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text("Registration failed: ${e.toString().replaceAll(RegExp(r'\[.*?\]'), '')}"),
+            content: Text(
+              "Registration failed: ${e.toString().replaceAll(RegExp(r'\[.*?\]'), '')}",
+            ),
             backgroundColor: Colors.redAccent,
           ),
         );
@@ -245,15 +367,9 @@ class _RegisterPageState extends State<RegisterPage> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Image.asset(
-                  AppImage.logoSplashscreen,
-                  height: 150,
-                  width: 150,
-                ),
+                Image.asset(AppImage.logoSplashscreen, height: 150, width: 150),
                 const SizedBox(height: 24),
-                CircularProgressIndicator(
-                  color: AppColors.button,
-                ),
+                CircularProgressIndicator(color: AppColors.button),
               ],
             ),
           ),
@@ -367,7 +483,9 @@ class _RegisterPageState extends State<RegisterPage> {
                             pwhide: true,
                             controller: _passwordController,
                             validator: _validatePassword,
+                            focusNode: _passwordFocusNode,
                           ),
+                          _buildPasswordRequirements(_passwordController.text),
 
                           SizedBox(height: 20),
                           Row(
