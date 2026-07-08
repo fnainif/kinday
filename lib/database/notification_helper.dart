@@ -257,6 +257,53 @@ class NotificationHelper {
     debugPrint("Showed instant notification $id");
   }
 
+  Future<void> showInstantPomodoroNotification({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    // Check if notifications are enabled in settings
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final enabled = prefs.getBool('notifications_enabled') ?? true;
+      if (!enabled) {
+        debugPrint("Notifications are disabled in settings. Skipping instant Pomodoro notification.");
+        return;
+      }
+    } catch (e) {
+      debugPrint("Error reading notification preferences: $e");
+    }
+
+    final androidNotificationDetails = AndroidNotificationDetails(
+      'kinday_pomodoro_reminders',
+      'Pomodoro Reminders',
+      channelDescription: 'This channel is used for Pomodoro focus and break reminders.',
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+    );
+
+    const darwinNotificationDetails = DarwinNotificationDetails(
+      presentAlert: true,
+      presentBadge: true,
+      presentSound: true,
+    );
+
+    final notificationDetails = NotificationDetails(
+      android: androidNotificationDetails,
+      iOS: darwinNotificationDetails,
+    );
+
+    await flutterLocalNotificationsPlugin.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: notificationDetails,
+    );
+    debugPrint("Showed instant Pomodoro notification $id");
+  }
+
   Future<void> schedulePomodoroNotification({
     required int id,
     required String title,

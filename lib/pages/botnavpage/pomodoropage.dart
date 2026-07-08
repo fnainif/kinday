@@ -981,6 +981,23 @@ class _PomodoropageState extends State<Pomodoropage> {
 
     if (completedFocus) {
       _saveFocusSession(focusDuration ~/ 60);
+      NotificationHelper().showInstantPomodoroNotification(
+        id: 9994,
+        title: L10n.tr("Focus Time Ended", "Waktu Fokus Selesai"),
+        body: L10n.tr(
+          "Great job! Now take a break.",
+          "Kerja bagus! Sekarang waktunya istirahat.",
+        ),
+      );
+    } else {
+      NotificationHelper().showInstantPomodoroNotification(
+        id: 9995,
+        title: L10n.tr("Break Time Ended", "Waktu Istirahat Selesai"),
+        body: L10n.tr(
+          "Time to focus again! Let's get back to work.",
+          "Waktunya fokus kembali! Mari kembali bekerja.",
+        ),
+      );
     }
   }
 
