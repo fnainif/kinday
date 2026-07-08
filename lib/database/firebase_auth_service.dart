@@ -281,4 +281,97 @@ class FirebaseAuthService {
       rethrow;
     }
   }
+
+  // Link Google credential to current Firebase user
+  Future<UserCredential?> linkGoogle() async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw FirebaseAuthException(
+          code: 'no-current-user',
+          message: 'No user is currently signed in.',
+        );
+      }
+
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      if (googleUser == null) {
+        return null; // Cancelled by user
+      }
+
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      final userCredential = await user.linkWithCredential(credential);
+      
+      // Sync email in Firestore
+      final email = userCredential.user?.email;
+      if (email != null && email.isNotEmpty) {
+        await _firestore
+            .collection('users')
+            .doc(user.uid)
+            .update({'email': email});
+      }
+      return userCredential;
+    } catch (e) {
+      debugPrint("Error linking Google: $e");
+      rethrow;
+    }
+  }
+
+  // Link Email/Password credential to current Firebase user
+  Future<UserCredential?> linkEmail(String email, String password) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw FirebaseAuthException(
+          code: 'no-current-user',
+          message: 'No user is currently signed in.',
+        );
+      }
+
+      final AuthCredential credential = EmailAuthProvider.credential(
+        email: email,
+        password: password,
+      );
+
+      final userCredential = await user.linkWithCredential(credential);
+      
+      // Sync email & password in Firestore
+      await _firestore
+          .collection('users')
+          .doc(user.uid)
+          .update({
+            'email': email,
+            'password': password,
+          });
+
+      return userCredential;
+    } catch (e) {
+      debugPrint("Error linking Email: $e");
+      rethrow;
+    }
+  }
+
+  // Unlink provider from current Firebase user
+  Future<User?> unlinkProvider(String providerId) async {
+    try {
+      final user = _auth.currentUser;
+      if (user == null) {
+        throw FirebaseAuthException(
+          code: 'no-current-user',
+          message: 'No user is currently signed in.',
+        );
+      }
+
+      final updatedUser = await user.unlink(providerId);
+      return updatedUser;
+    } catch (e) {
+      debugPrint("Error unlinking provider: $e");
+      rethrow;
+    }
+  }
 }

@@ -34,6 +34,13 @@ class _SettingProfileState extends State<SettingProfile> {
   String _avatarKey = "letter";
   String? _avatarPath;
 
+  // Linked accounts state
+  bool _isFirebaseLoggedIn = false;
+  bool _isGmailLinked = false;
+  bool _isEmailLinked = false;
+  String _gmailEmail = "";
+  String _passwordEmail = "";
+
   // Setting states
   bool _notificationsEnabled = true;
   String _currentTheme = "Lavender Dreams";
@@ -199,6 +206,28 @@ class _SettingProfileState extends State<SettingProfile> {
           } catch (_) {}
         }
         _lastBackupTime = lastBackupTimeStr;
+
+        // Firebase Auth linking status
+        final currentUser = FirebaseAuthService().currentUser;
+        _isFirebaseLoggedIn = currentUser != null;
+        _isGmailLinked = currentUser != null &&
+            currentUser.providerData.any((p) => p.providerId == 'google.com');
+        _isEmailLinked = currentUser != null &&
+            currentUser.providerData.any((p) => p.providerId == 'password');
+        
+        String gmailEmail = "";
+        String passwordEmail = "";
+        if (currentUser != null) {
+          for (final p in currentUser.providerData) {
+            if (p.providerId == 'google.com') {
+              gmailEmail = p.email ?? "";
+            } else if (p.providerId == 'password') {
+              passwordEmail = p.email ?? "";
+            }
+          }
+        }
+        _gmailEmail = gmailEmail;
+        _passwordEmail = passwordEmail;
 
         _isLoading = false;
       });
@@ -859,6 +888,440 @@ class _SettingProfileState extends State<SettingProfile> {
     }
   }
 
+  Future<void> _handleBindGmail() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = FirebaseAuthService();
+      final credential = await authService.linkGoogle();
+      if (credential != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                L10n.tr(
+                  "Google account successfully linked!",
+                  "Akun Google berhasil dihubungkan!",
+                ),
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        await _loadSettings();
+      }
+    } catch (e) {
+      if (mounted) {
+        String errorMsg = e.toString().replaceAll(RegExp(r'\[.*?\]'), '');
+        if (e.toString().contains("credential-already-in-use") || 
+            e.toString().contains("email-already-in-use")) {
+          errorMsg = L10n.tr(
+            "This Google account is already linked to another Kinday account.",
+            "Akun Google ini sudah terhubung dengan akun Kinday lain.",
+          );
+        } else if (e.toString().contains("provider-already-linked")) {
+          errorMsg = L10n.tr(
+            "This account is already linked.",
+            "Akun ini sudah terhubung.",
+          );
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              L10n.tr(
+                "Failed to link Google: $errorMsg",
+                "Gagal menghubungkan Google: $errorMsg",
+              ),
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleBindEmail(String email, String password) async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = FirebaseAuthService();
+      final credential = await authService.linkEmail(email, password);
+      
+      if (credential != null) {
+        // Also update local SQLite database user to sync this email and password
+        final prefs = await SharedPreferences.getInstance();
+        final userId = prefs.getInt('user_id') ?? 1;
+        
+        final dbHelper = DBHelper();
+        final localUser = await dbHelper.getUserById(userId);
+        
+        if (localUser != null) {
+          final updatedUser = UserModelSql(
+            id: userId,
+            username: localUser.username,
+            email: email,
+            password: password,
+          );
+          await dbHelper.updateUser(updatedUser);
+        }
+        
+        await prefs.setString('user_email', email);
+        
+        setState(() {
+          _email = email;
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                L10n.tr(
+                  "Email successfully linked!",
+                  "Email berhasil dihubungkan!",
+                ),
+              ),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+        await _loadSettings();
+      }
+    } catch (e) {
+      if (mounted) {
+        String errorMsg = e.toString().replaceAll(RegExp(r'\[.*?\]'), '');
+        if (e.toString().contains("credential-already-in-use") || 
+            e.toString().contains("email-already-in-use")) {
+          errorMsg = L10n.tr(
+            "This email is already in use by another Kinday account.",
+            "Email ini sudah digunakan oleh akun Kinday lain.",
+          );
+        } else if (e.toString().contains("provider-already-linked")) {
+          errorMsg = L10n.tr(
+            "This account is already linked.",
+            "Akun ini sudah terhubung.",
+          );
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              L10n.tr(
+                "Failed to link Email: $errorMsg",
+                "Gagal menghubungkan Email: $errorMsg",
+              ),
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _handleUnbindProvider(String providerId) async {
+    final currentUser = FirebaseAuthService().currentUser;
+    if (currentUser == null) return;
+
+    if (currentUser.providerData.length <= 1) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            L10n.tr("Cannot Disconnect", "Tidak Dapat Memutuskan"),
+            style: TextStyle(
+              fontFamily: "Quicksand",
+              fontWeight: FontWeight.bold,
+              color: AppColors.button,
+            ),
+          ),
+          content: Text(
+            L10n.tr(
+              "You cannot disconnect this account because it is your only way to log in. Please connect another method first.",
+              "Anda tidak dapat memutuskan akun ini karena ini adalah satu-satunya metode login Anda. Harap hubungkan metode lain terlebih dahulu.",
+            ),
+            style: const TextStyle(fontFamily: "Nunito"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                L10n.tr("OK", "OK"),
+                style: TextStyle(color: AppColors.button),
+              ),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        title: Text(
+          L10n.tr("Disconnect Account", "Putuskan Hubungan Akun"),
+          style: TextStyle(
+            fontFamily: "Quicksand",
+            fontWeight: FontWeight.bold,
+            color: AppColors.button,
+          ),
+        ),
+        content: Text(
+          providerId == 'google.com'
+              ? L10n.tr(
+                  "Are you sure you want to disconnect your Google account?",
+                  "Apakah Anda yakin ingin memutuskan hubungan akun Google Anda?",
+                )
+              : L10n.tr(
+                  "Are you sure you want to disconnect your Email/Password?",
+                  "Apakah Anda yakin ingin memutuskan hubungan Email/Password Anda?",
+                ),
+          style: const TextStyle(fontFamily: "Nunito"),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              L10n.tr("Cancel", "Batal"),
+              style: const TextStyle(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            child: Text(
+              L10n.tr("Disconnect", "Putuskan"),
+              style: const TextStyle(color: Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final authService = FirebaseAuthService();
+      await authService.unlinkProvider(providerId);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              L10n.tr(
+                "Account disconnected successfully!",
+                "Hubungan akun berhasil diputuskan!",
+              ),
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+      await _loadSettings();
+    } catch (e) {
+      if (mounted) {
+        String errorMsg = e.toString().replaceAll(RegExp(r'\[.*?\]'), '');
+        if (e.toString().contains("requires-recent-login")) {
+          errorMsg = L10n.tr(
+            "This action is sensitive and requires recent authentication. Please log out, log back in, and try again.",
+            "Tindakan ini sensitif dan memerlukan autentikasi baru. Silakan keluar, masuk kembali, dan coba lagi.",
+          );
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              L10n.tr(
+                "Failed to disconnect: $errorMsg",
+                "Gagal memutuskan hubungan: $errorMsg",
+              ),
+            ),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _showBindEmailDialog() async {
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+    bool obscureText = true;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              backgroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              title: Text(
+                L10n.tr("Bind Email Account", "Hubungkan Akun Email"),
+                style: TextStyle(
+                  fontFamily: "Quicksand",
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.button,
+                ),
+              ),
+              content: Form(
+                key: formKey,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        L10n.tr(
+                          "Link an email and password to log in using this method in the future.",
+                          "Hubungkan email dan kata sandi untuk masuk menggunakan metode ini di masa mendatang.",
+                        ),
+                        style: const TextStyle(
+                          fontFamily: "Nunito",
+                          fontSize: 13,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: InputDecoration(
+                          prefixIcon: Icon(Icons.email_outlined, color: AppColors.button),
+                          labelText: L10n.tr("Email Address", "Alamat Email"),
+                          labelStyle: TextStyle(color: AppColors.button),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.button),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.button.withValues(alpha: 0.3)),
+                          ),
+                        ),
+                        validator: (val) {
+                          if (val == null || val.isEmpty) {
+                            return L10n.tr("Please enter email", "Harap masukkan email");
+                          }
+                          if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(val)) {
+                            return L10n.tr("Invalid email format", "Format email tidak valid");
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: passwordController,
+                        obscureText: obscureText,
+                        decoration: InputDecoration(
+                          prefixIcon: Icon(Icons.lock_outline, color: AppColors.button),
+                          labelText: L10n.tr("Password", "Kata Sandi"),
+                          labelStyle: TextStyle(color: AppColors.button),
+                          suffixIcon: IconButton(
+                            icon: Icon(
+                              obscureText ? Icons.visibility_off : Icons.visibility,
+                              color: AppColors.button,
+                            ),
+                            onPressed: () {
+                              setDialogState(() {
+                                obscureText = !obscureText;
+                              });
+                            },
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.button),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(color: AppColors.button.withValues(alpha: 0.3)),
+                          ),
+                        ),
+                        validator: (val) {
+                          if (val == null || val.isEmpty) {
+                            return L10n.tr("Please enter password", "Harap masukkan kata sandi");
+                          }
+                          if (val.length < 6) {
+                            return L10n.tr("Password must be at least 6 characters", "Kata sandi minimal 6 karakter");
+                          }
+                          return null;
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    L10n.tr("Cancel", "Batal"),
+                    style: const TextStyle(color: Colors.grey),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (formKey.currentState!.validate()) {
+                      Navigator.pop(context);
+                      await _handleBindEmail(emailController.text.trim(), passwordController.text);
+                    }
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.button,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
+                  child: Text(
+                    L10n.tr("Connect", "Hubungkan"),
+                    style: const TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0),
@@ -1458,6 +1921,35 @@ class _SettingProfileState extends State<SettingProfile> {
                     ),
 
                     _buildSectionHeader(
+                      L10n.tr("Linked Accounts", "Akun Terhubung"),
+                    ),
+
+                    Container1(
+                      width: double.infinity,
+                      child: Column(
+                        children: [
+                          _buildLinkedAccountTile(
+                            providerName: "Gmail (Google)",
+                            isLinked: _isGmailLinked,
+                            linkedEmail: _gmailEmail,
+                            onBind: _handleBindGmail,
+                            onUnbind: () => _handleUnbindProvider('google.com'),
+                            icon: Icons.mail_outline_rounded,
+                          ),
+                          const Divider(height: 1),
+                          _buildLinkedAccountTile(
+                            providerName: "Email",
+                            isLinked: _isEmailLinked,
+                            linkedEmail: _passwordEmail,
+                            onBind: _showBindEmailDialog,
+                            onUnbind: () => _handleUnbindProvider('password'),
+                            icon: Icons.alternate_email_rounded,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    _buildSectionHeader(
                       L10n.tr(
                         "Data Backup & Restore",
                         "Cadangkan & Pulihkan Data",
@@ -1690,6 +2182,95 @@ class _SettingProfileState extends State<SettingProfile> {
       trailing: Icon(Icons.chevron_right, color: AppColors.button),
       contentPadding: EdgeInsets.zero,
       onTap: onTap,
+    );
+  }
+
+  Widget _buildLinkedAccountTile({
+    required String providerName,
+    required bool isLinked,
+    required String linkedEmail,
+    required VoidCallback onBind,
+    required VoidCallback onUnbind,
+    required IconData icon,
+  }) {
+    final bool canInteract = _isFirebaseLoggedIn;
+    
+    return ListTile(
+      leading: Icon(
+        icon,
+        color: canInteract 
+            ? AppColors.button 
+            : AppColors.button.withValues(alpha: 0.4),
+      ),
+      title: Text(
+        providerName,
+        style: TextStyle(
+          fontFamily: "Quicksand",
+          fontWeight: FontWeight.bold,
+          color: canInteract 
+              ? AppColors.button 
+              : AppColors.button.withValues(alpha: 0.4),
+        ),
+      ),
+      subtitle: Text(
+        !_isFirebaseLoggedIn
+            ? L10n.tr("Cloud account not active", "Akun Cloud tidak aktif")
+            : isLinked
+                ? (linkedEmail.isNotEmpty ? linkedEmail : L10n.tr("Connected", "Terhubung"))
+                : L10n.tr("Not Connected", "Belum Terhubung"),
+        style: TextStyle(
+          fontFamily: "Nunito",
+          color: !_isFirebaseLoggedIn
+              ? Colors.grey
+              : isLinked
+                  ? Colors.green
+                  : Colors.grey,
+          fontSize: 12,
+        ),
+      ),
+      trailing: ElevatedButton(
+        onPressed: canInteract 
+            ? (isLinked ? onUnbind : onBind) 
+            : () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      L10n.tr(
+                        "Please log in with a cloud account first.",
+                        "Silakan masuk dengan akun cloud terlebih dahulu.",
+                      ),
+                    ),
+                    backgroundColor: Colors.orangeAccent,
+                  ),
+                );
+              },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: canInteract 
+              ? (isLinked 
+                  ? Colors.red.shade50 
+                  : AppColors.button.withValues(alpha: 0.1))
+              : Colors.grey.shade100,
+          foregroundColor: canInteract 
+              ? (isLinked ? Colors.red : AppColors.button)
+              : Colors.grey,
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        ),
+        child: Text(
+          isLinked
+              ? L10n.tr("Disconnect", "Putuskan")
+              : L10n.tr("Connect", "Hubungkan"),
+          style: const TextStyle(
+            fontFamily: "Quicksand",
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+      ),
+      contentPadding: EdgeInsets.zero,
     );
   }
 }
