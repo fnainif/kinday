@@ -1353,8 +1353,8 @@ class _SettingProfileState extends State<SettingProfile> {
                                       value: L10n.lang == "en"
                                           ? "English"
                                           : L10n.lang == "id"
-                                              ? "Bahasa Indonesia"
-                                              : "Japanese",
+                                          ? "Bahasa Indonesia"
+                                          : "Japanese",
                                       dropdownColor: Colors.white,
                                       iconEnabledColor: AppColors.button,
                                       style: TextStyle(
@@ -1364,7 +1364,11 @@ class _SettingProfileState extends State<SettingProfile> {
                                         fontSize: 13,
                                       ),
                                       items:
-                                          const ["English", "Bahasa Indonesia", "Japanese"]
+                                          const [
+                                                "English",
+                                                "Bahasa Indonesia",
+                                                "Japanese",
+                                              ]
                                               .map(
                                                 (val) => DropdownMenuItem(
                                                   value: val,
@@ -1383,8 +1387,8 @@ class _SettingProfileState extends State<SettingProfile> {
                                               value == "English"
                                                   ? "en"
                                                   : value == "Bahasa Indonesia"
-                                                      ? "id"
-                                                      : "ja",
+                                                  ? "id"
+                                                  : "ja",
                                             );
                                           });
                                         }
@@ -1596,7 +1600,6 @@ class _SettingProfileState extends State<SettingProfile> {
                         ),
                       ),
                     ),
-
 
                     const SizedBox(height: 40),
                   ],
