@@ -430,8 +430,8 @@ class _RegisterPageState extends State<RegisterPage> {
                               if (value == null || value.trim().isEmpty) {
                                 return "Please enter your name";
                               }
-                              if (value.length > 10 || value.trim().isEmpty) {
-                                return "Name has to be up to 10 letters";
+                              if (value.length > 30 || value.trim().isEmpty) {
+                                return "Name has to be up to 30 letters";
                               }
                               return null;
                             },

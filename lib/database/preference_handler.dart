@@ -46,4 +46,43 @@ class PreferenceHandler {
   static String get theme {
     return _prefs.getString(_keyTheme) ?? "Lavender Dreams";
   }
+
+  static const _keyAiBreakdownCount = "ai_breakdown_count";
+  static const _keyAiBreakdownLastDate = "ai_breakdown_last_date";
+  static const int maxAiUsagePerDay = 5;
+
+  static bool checkAndIncrementAiUsage() {
+    final now = DateTime.now();
+    final todayStr = "${now.year}-${now.month}-${now.day}";
+    final lastDate = _prefs.getString(_keyAiBreakdownLastDate) ?? "";
+
+    if (lastDate != todayStr) {
+      _prefs.setString(_keyAiBreakdownLastDate, todayStr);
+      _prefs.setInt(_keyAiBreakdownCount, 1);
+      return true;
+    }
+
+    final currentCount = _prefs.getInt(_keyAiBreakdownCount) ?? 0;
+    if (currentCount >= maxAiUsagePerDay) {
+      return false;
+    }
+
+    _prefs.setInt(_keyAiBreakdownCount, currentCount + 1);
+    return true;
+  }
+
+  static int getRemainingAiUsage() {
+    final now = DateTime.now();
+    final todayStr = "${now.year}-${now.month}-${now.day}";
+    final lastDate = _prefs.getString(_keyAiBreakdownLastDate) ?? "";
+
+    if (lastDate != todayStr) {
+      return maxAiUsagePerDay;
+    }
+
+    final currentCount = _prefs.getInt(_keyAiBreakdownCount) ?? 0;
+    final remaining = maxAiUsagePerDay - currentCount;
+    return remaining < 0 ? 0 : remaining;
+  }
 }
+

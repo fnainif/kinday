@@ -12,6 +12,7 @@ import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/notification_helper.dart';
 import 'package:kinday/widgets/speech_mic_button.dart';
+import 'package:kinday/database/preference_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
@@ -440,6 +441,20 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
             L10n.tr(
               "Please write what you want to do today first!",
               "Silakan tulis apa yang ingin Anda lakukan hari ini terlebih dahulu!",
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (!PreferenceHandler.checkAndIncrementAiUsage()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            L10n.tr(
+              "Your daily AI limit of ${PreferenceHandler.maxAiUsagePerDay} breakdowns has been reached! Try again tomorrow.",
+              "Batas harian ${PreferenceHandler.maxAiUsagePerDay} kali pemecahan AI Anda telah tercapai! Coba lagi besok.",
             ),
           ),
         ),

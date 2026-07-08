@@ -10,6 +10,7 @@ import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/constant/task_notifier.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/firebase_backup_service.dart';
+import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/pages/additional/createtask.dart';
 import 'package:kinday/pages/botnavpage/pomodoropage.dart';
 import 'package:kinday/pages/mainpage.dart';
@@ -173,6 +174,20 @@ class _HomepageState extends State<Homepage> {
             L10n.tr(
               "Please write what you want to do today first!",
               "Silakan tulis apa yang ingin Anda lakukan hari ini terlebih dahulu!",
+            ),
+          ),
+        ),
+      );
+      return;
+    }
+
+    if (!PreferenceHandler.checkAndIncrementAiUsage()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            L10n.tr(
+              "Your daily AI limit of ${PreferenceHandler.maxAiUsagePerDay} breakdowns has been reached! Try again tomorrow.",
+              "Batas harian ${PreferenceHandler.maxAiUsagePerDay} kali pemecahan AI Anda telah tercapai! Coba lagi besok.",
             ),
           ),
         ),
