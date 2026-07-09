@@ -347,9 +347,65 @@ class _SettingProfileState extends State<SettingProfile> {
               return GestureDetector(
                 onTap: () async {
                   try {
+                    final ImageSource? source = await showModalBottomSheet<ImageSource>(
+                      context: context,
+                      backgroundColor: Colors.white,
+                      shape: const RoundedRectangleBorder(
+                        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+                      ),
+                      builder: (BuildContext context) {
+                        return SafeArea(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 16.0),
+                                child: Text(
+                                  L10n.tr("Select Image Source", "Pilih Sumber Gambar"),
+                                  style: TextStyle(
+                                    fontFamily: "Quicksand",
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                    color: AppColors.button,
+                                  ),
+                                ),
+                              ),
+                              const Divider(height: 1),
+                              ListTile(
+                                leading: Icon(Icons.camera_alt_rounded, color: AppColors.button),
+                                title: Text(
+                                  L10n.tr("Take Photo", "Ambil Foto"),
+                                  style: TextStyle(
+                                    fontFamily: "Quicksand",
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.button,
+                                  ),
+                                ),
+                                onTap: () => Navigator.pop(context, ImageSource.camera),
+                              ),
+                              ListTile(
+                                leading: Icon(Icons.photo_library_rounded, color: AppColors.button),
+                                title: Text(
+                                  L10n.tr("Choose from Gallery", "Pilih dari Galeri"),
+                                  style: TextStyle(
+                                    fontFamily: "Quicksand",
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.button,
+                                  ),
+                                ),
+                                onTap: () => Navigator.pop(context, ImageSource.gallery),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+
+                    if (source == null) return;
+
                     final picker = ImagePicker();
                     final image = await picker.pickImage(
-                      source: ImageSource.gallery,
+                      source: source,
                       maxWidth: 512,
                       maxHeight: 512,
                       imageQuality: 85,
@@ -933,6 +989,11 @@ class _SettingProfileState extends State<SettingProfile> {
             "This account is already linked.",
             "Akun ini sudah terhubung.",
           );
+        } else if (e.toString().contains("requires-recent-login")) {
+          errorMsg = L10n.tr(
+            "This action is sensitive and requires recent authentication. Please log out, log back in, and try again.",
+            "Tindakan ini sensitif dan memerlukan autentikasi baru. Silakan keluar, masuk kembali, dan coba lagi.",
+          );
         }
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -1016,6 +1077,11 @@ class _SettingProfileState extends State<SettingProfile> {
           errorMsg = L10n.tr(
             "This account is already linked.",
             "Akun ini sudah terhubung.",
+          );
+        } else if (e.toString().contains("requires-recent-login")) {
+          errorMsg = L10n.tr(
+            "This action is sensitive and requires recent authentication. Please log out, log back in, and try again.",
+            "Tindakan ini sensitif dan memerlukan autentikasi baru. Silakan keluar, masuk kembali, dan coba lagi.",
           );
         }
         ScaffoldMessenger.of(context).showSnackBar(

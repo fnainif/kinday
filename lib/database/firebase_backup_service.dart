@@ -34,6 +34,13 @@ class FirebaseBackupService {
       final energyLogs = await _dbHelper.getEnergyLogsForUser(localUserId);
       final focusSessions = await _dbHelper.getFocusSessionsForUser(localUserId);
 
+      if (!silent) {
+        debugPrint("SQLite Data Found for Backup: "
+            "Tasks: ${tasks.length}, "
+            "Energy Logs: ${energyLogs.length}, "
+            "Focus Sessions: ${focusSessions.length}");
+      }
+
       // 2. Prepare backup structure
       final backupData = {
         'backup_timestamp': FieldValue.serverTimestamp(),
@@ -91,6 +98,7 @@ class FirebaseBackupService {
 
       // 2. Restore Tasks
       final List<dynamic> backupTasks = data['tasks'] as List<dynamic>? ?? [];
+      debugPrint("Found ${backupTasks.length} tasks in backup. Restoring...");
       for (var taskData in backupTasks) {
         final Map<String, dynamic> task = Map<String, dynamic>.from(taskData as Map);
         final title = task['title'] as String? ?? '';
@@ -98,42 +106,56 @@ class FirebaseBackupService {
 
         // Check if task already exists locally
         final exists = await _dbHelper.taskExists(localUserId, title, createdAt);
+        debugPrint("Task '$title' (createdAt: '$createdAt'): exists locally = $exists");
         if (!exists) {
           // Remove local autoincrement ID to let SQLite generate a new one
           task.remove('id');
           // Ensure correct local user ID mapping
           task['userId'] = localUserId;
-          await db.insert('tasks', task);
+          final newId = await db.insert('tasks', task);
+          debugPrint("Inserted task '$title' with new ID $newId");
+        } else {
+          debugPrint("Skipped task '$title' (already exists)");
         }
       }
 
       // 3. Restore Energy Logs
       final List<dynamic> backupLogs = data['energy_logs'] as List<dynamic>? ?? [];
+      debugPrint("Found ${backupLogs.length} energy logs in backup. Restoring...");
       for (var logData in backupLogs) {
         final Map<String, dynamic> log = Map<String, dynamic>.from(logData as Map);
         final timestamp = log['timestamp'] as String? ?? '';
 
         // Check if log already exists locally
         final exists = await _dbHelper.energyLogExists(localUserId, timestamp);
+        debugPrint("Energy Log at '$timestamp': exists locally = $exists");
         if (!exists) {
           log.remove('id');
           log['userId'] = localUserId;
-          await db.insert('energy_logs', log);
+          final newId = await db.insert('energy_logs', log);
+          debugPrint("Inserted energy log with new ID $newId");
+        } else {
+          debugPrint("Skipped energy log at '$timestamp'");
         }
       }
 
       // 4. Restore Focus Sessions
       final List<dynamic> backupSessions = data['focus_sessions'] as List<dynamic>? ?? [];
+      debugPrint("Found ${backupSessions.length} focus sessions in backup. Restoring...");
       for (var sessionData in backupSessions) {
         final Map<String, dynamic> session = Map<String, dynamic>.from(sessionData as Map);
         final timestamp = session['timestamp'] as String? ?? '';
 
         // Check if session already exists locally
         final exists = await _dbHelper.focusSessionExists(localUserId, timestamp);
+        debugPrint("Focus Session at '$timestamp': exists locally = $exists");
         if (!exists) {
           session.remove('id');
           session['userId'] = localUserId;
-          await db.insert('focus_sessions', session);
+          final newId = await db.insert('focus_sessions', session);
+          debugPrint("Inserted focus session with new ID $newId");
+        } else {
+          debugPrint("Skipped focus session at '$timestamp'");
         }
       }
 

@@ -476,7 +476,10 @@ class _PomodoropageState extends State<Pomodoropage> {
                         fontFamily: "Nunito",
                       ),
                       decoration: InputDecoration(
-                        hintText: L10n.tr("Add quick subtask...", "Tambah tugas cepat..."),
+                        hintText: L10n.tr(
+                          "Add quick subtask...",
+                          "Tambah tugas cepat...",
+                        ),
                         hintStyle: TextStyle(
                           color: AppColors.button.withValues(alpha: 0.4),
                         ),
@@ -487,12 +490,16 @@ class _PomodoropageState extends State<Pomodoropage> {
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: AppColors.containerline1),
+                          borderSide: BorderSide(
+                            color: AppColors.containerline1,
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(12),
                           borderSide: BorderSide(
-                            color: AppColors.containerline1.withValues(alpha: 0.5),
+                            color: AppColors.containerline1.withValues(
+                              alpha: 0.5,
+                            ),
                           ),
                         ),
                         focusedBorder: OutlineInputBorder(
@@ -563,7 +570,10 @@ class _PomodoropageState extends State<Pomodoropage> {
             ],
           ),
           const SizedBox(height: 15),
-          Divider(height: 1, color: AppColors.containerline2.withValues(alpha: 0.3)),
+          Divider(
+            height: 1,
+            color: AppColors.containerline2.withValues(alpha: 0.3),
+          ),
           const SizedBox(height: 15),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -577,7 +587,10 @@ class _PomodoropageState extends State<Pomodoropage> {
                 ),
               ),
               Text(
-                L10n.tr("${focusDuration ~/ 60} mins", "${focusDuration ~/ 60} menit"),
+                L10n.tr(
+                  "${focusDuration ~/ 60} mins",
+                  "${focusDuration ~/ 60} menit",
+                ),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.button,
@@ -613,7 +626,10 @@ class _PomodoropageState extends State<Pomodoropage> {
             ),
           ),
           const SizedBox(height: 10),
-          Divider(height: 1, color: AppColors.containerline2.withValues(alpha: 0.3)),
+          Divider(
+            height: 1,
+            color: AppColors.containerline2.withValues(alpha: 0.3),
+          ),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -627,7 +643,10 @@ class _PomodoropageState extends State<Pomodoropage> {
                 ),
               ),
               Text(
-                L10n.tr("${breakDuration ~/ 60} mins", "${breakDuration ~/ 60} menit"),
+                L10n.tr(
+                  "${breakDuration ~/ 60} mins",
+                  "${breakDuration ~/ 60} menit",
+                ),
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   color: AppColors.button,
@@ -663,7 +682,10 @@ class _PomodoropageState extends State<Pomodoropage> {
             ),
           ),
           const SizedBox(height: 10),
-          Divider(height: 1, color: AppColors.containerline2.withValues(alpha: 0.3)),
+          Divider(
+            height: 1,
+            color: AppColors.containerline2.withValues(alpha: 0.3),
+          ),
           const SizedBox(height: 10),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -691,16 +713,16 @@ class _PomodoropageState extends State<Pomodoropage> {
                 underline: const SizedBox(),
                 items:
                     const [
-                           "None",
-                           "Fireplace",
-                           "Forest",
-                           "Gentle Rain",
-                           "Heavy Rain",
-                           "Night Ambience",
-                           "Ocean Waves",
-                           "Stream",
-                           "Underwater Ambience",
-                         ]
+                          "None",
+                          "Fireplace",
+                          "Forest",
+                          "Gentle Rain",
+                          "Heavy Rain",
+                          "Night Ambience",
+                          "Ocean Waves",
+                          "Stream",
+                          "Underwater Ambience",
+                        ]
                         .map(
                           (val) =>
                               DropdownMenuItem(value: val, child: Text(val)),
@@ -829,7 +851,9 @@ class _PomodoropageState extends State<Pomodoropage> {
                             ],
                           ),
                           child: Icon(
-                            isRunning ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                            isRunning
+                                ? Icons.pause_rounded
+                                : Icons.play_arrow_rounded,
                             color: Colors.white,
                             size: 36,
                           ),
@@ -843,7 +867,11 @@ class _PomodoropageState extends State<Pomodoropage> {
               Center(
                 child: TextButton.icon(
                   onPressed: resetTimer,
-                  icon: Icon(Icons.refresh_rounded, color: AppColors.button, size: 18),
+                  icon: Icon(
+                    Icons.refresh_rounded,
+                    color: AppColors.button,
+                    size: 18,
+                  ),
                   label: Text(
                     L10n.tr("Reset Timer", "Atur Ulang Timer"),
                     style: TextStyle(
@@ -853,7 +881,10 @@ class _PomodoropageState extends State<Pomodoropage> {
                     ),
                   ),
                   style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
+                    ),
                   ),
                 ),
               ),

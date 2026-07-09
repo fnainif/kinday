@@ -72,5 +72,7 @@
 	<string>This app needs access to the microphone for recording task titles and descriptions.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>This app needs access to the photo library to let you select a custom profile picture.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>This app needs access to the camera to let you take a custom profile picture.</string>
 </dict>
 </plist>
