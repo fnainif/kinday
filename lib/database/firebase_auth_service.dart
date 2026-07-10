@@ -216,22 +216,31 @@ class FirebaseAuthService {
   Future<void> deleteUser(String uid) async {
     try {
       // 1. Delete backup documents first (subcollection)
-      await _firestore
-          .collection('users')
-          .doc(uid)
-          .collection('backups')
-          .doc('latest')
-          .delete();
+      try {
+        await _firestore
+            .collection('users')
+            .doc(uid)
+            .collection('backups')
+            .doc('latest')
+            .delete();
+      } catch (e) {
+        debugPrint("Error deleting backups in Firestore: $e");
+      }
 
       // 2. Delete parent user document
-      await _firestore.collection('users').doc(uid).delete();
+      try {
+        await _firestore.collection('users').doc(uid).delete();
+      } catch (e) {
+        debugPrint("Error deleting user document in Firestore: $e");
+      }
 
+      // 3. Delete from Firebase Auth
       final user = _auth.currentUser;
       if (user != null && user.uid == uid) {
         await user.delete();
       }
     } catch (e) {
-      debugPrint("Error deleting user: $e");
+      debugPrint("Error deleting user from Firebase Auth: $e");
     }
   }
 

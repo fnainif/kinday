@@ -177,8 +177,28 @@ class FirebaseBackupService {
       final lastBackupStr = prefs.getString(_lastBackupKey);
 
       if (lastBackupStr == null) {
-        // First time backup, run it
-        await backupData(localUserId, silent: true);
+        // First time on this install. Check Firestore first to avoid overwriting existing backup.
+        final doc = await _firestore
+            .collection('users')
+            .doc(uid)
+            .collection('backups')
+            .doc('latest')
+            .get();
+
+        if (doc.exists && doc.data() != null) {
+          debugPrint("Existing backup found in Firestore. Skipping auto-backup to prevent overwriting.");
+          // Update local last backup timestamp to match Firestore's backup timestamp
+          final data = doc.data()!;
+          final timestamp = data['backup_timestamp'];
+          DateTime lastBackupTime = DateTime.now();
+          if (timestamp is Timestamp) {
+            lastBackupTime = timestamp.toDate();
+          }
+          await prefs.setString(_lastBackupKey, lastBackupTime.toIso8601String());
+        } else {
+          // No backup exists in Firestore, safe to perform the first backup
+          await backupData(localUserId, silent: true);
+        }
       } else {
         final lastBackupTime = DateTime.parse(lastBackupStr);
         final difference = DateTime.now().difference(lastBackupTime).inDays;

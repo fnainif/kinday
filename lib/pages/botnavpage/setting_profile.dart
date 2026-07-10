@@ -20,6 +20,7 @@ import 'package:kinday/pages/additional/faq.dart';
 import 'package:kinday/pages/auth/login.dart';
 import 'package:kinday/pages/auth/terms_conditions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class SettingProfile extends StatefulWidget {
   const SettingProfile({super.key});
@@ -1965,6 +1966,27 @@ class _SettingProfileState extends State<SettingProfile> {
                                   builder: (context) => const TermsConditionsPage(),
                                 ),
                               );
+                            },
+                          ),
+                          const Divider(height: 1),
+                          _buildListTile(
+                            icon: Icons.bug_report_outlined,
+                            title: L10n.tr("Report a Bug", "Laporkan Bug"),
+                            onTap: () async {
+                              final Uri url = Uri.parse('https://forms.gle/PWU1nEtCS4vM53aCA');
+                              if (await canLaunchUrl(url)) {
+                                await launchUrl(url, mode: LaunchMode.externalApplication);
+                              } else {
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        L10n.tr("Could not launch link", "Tidak dapat membuka tautan"),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              }
                             },
                           ),
                         ],
