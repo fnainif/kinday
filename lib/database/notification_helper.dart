@@ -5,6 +5,7 @@ import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:kinday/constant/app_widget.dart';
+import 'package:kinday/pages/service/repeat_task_service.dart';
 
 class NotificationHelper {
   static final NotificationHelper _instance = NotificationHelper._internal();
@@ -121,28 +122,13 @@ class NotificationHelper {
       debugPrint("Error reading notification preferences: $e");
     }
 
-    // If task has no due date, no reminder, or is completed, return
-    if (task.dueDate == null || task.reminderMinutes == null || task.isCompleted) {
+    // If task has no due date / start date, no reminder, or is completed, return
+    if ((task.dueDate == null && task.startDate == null) || task.reminderMinutes == null || task.isCompleted) {
       return;
     }
 
-    // Parse time
-    TimeOfDay time = const TimeOfDay(hour: 9, minute: 0); // Default to 9:00 AM
-    if (task.dueTime != null && task.dueTime!.isNotEmpty) {
-      final parsed = _parseTimeOfDay(task.dueTime!);
-      if (parsed != null) {
-        time = parsed;
-      }
-    }
-
-    // Combine due date and time
-    final dueDateTime = DateTime(
-      task.dueDate!.year,
-      task.dueDate!.month,
-      task.dueDate!.day,
-      time.hour,
-      time.minute,
-    );
+    // Effective due date and time
+    final dueDateTime = RepeatTaskService.getEffectiveDueDateTime(task);
 
     // Calculate reminder time
     final reminderDateTime = dueDateTime.subtract(Duration(minutes: task.reminderMinutes!));
@@ -379,26 +365,5 @@ class NotificationHelper {
     await flutterLocalNotificationsPlugin.cancel(id: 9992);
     await flutterLocalNotificationsPlugin.cancel(id: 9993);
     debugPrint("Cancelled all scheduled Pomodoro notifications");
-  }
-
-  TimeOfDay? _parseTimeOfDay(String timeStr) {
-    try {
-      final parts = timeStr.split(RegExp(r'[:.]'));
-      if (parts.length >= 2) {
-        final hourPart = parts[0].trim();
-        final minutePart = parts[1].trim();
-        int hour = int.parse(hourPart.replaceAll(RegExp(r'\D'), ''));
-        int minute = int.parse(minutePart.replaceAll(RegExp(r'\D'), ''));
-        if (timeStr.toLowerCase().contains('pm') && hour < 12) {
-          hour += 12;
-        } else if (timeStr.toLowerCase().contains('am') && hour == 12) {
-          hour = 0;
-        }
-        return TimeOfDay(hour: hour, minute: minute);
-      }
-    } catch (e) {
-      debugPrint("Error parsing TimeOfDay in NotificationHelper: $e");
-    }
-    return null;
   }
 }

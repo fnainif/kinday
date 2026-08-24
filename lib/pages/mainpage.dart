@@ -43,7 +43,7 @@ class MainpageState extends State<Mainpage> {
     return ValueListenableBuilder<String>(
       valueListenable: AppColors.themeNotifier,
       builder: (context, theme, child) {
-        final List<Widget> pages = [
+        final List<Widget> pages = const [
           Homepage(),
           Tasklistpage(),
           Pomodoropage(),
@@ -52,7 +52,10 @@ class MainpageState extends State<Mainpage> {
         ];
 
         return Scaffold(
-          body: pages[selectedIndex],
+          body: IndexedStack(
+            index: selectedIndex,
+            children: pages,
+          ),
           bottomNavigationBar: CurvedNavigationBar(
             color: AppColors.background2,
             key: _bottomNavigationKey,

@@ -14,6 +14,10 @@ import 'package:kinday/database/preference_handler.dart';
 import 'package:kinday/pages/additional/createtask.dart';
 import 'package:kinday/pages/botnavpage/pomodoropage.dart';
 import 'package:kinday/pages/mainpage.dart';
+import 'package:kinday/pages/service/google_calendar_service.dart';
+import 'package:kinday/pages/service/repeat_task_service.dart';
+import 'package:kinday/widgets/calendar_event_card.dart';
+import 'package:kinday/widgets/kinday_calendar_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class Homepage extends StatefulWidget {
@@ -35,6 +39,12 @@ class _HomepageState extends State<Homepage> {
   int _totalTasks = 0;
   int _completedTasksCount = 0;
   bool _isLoadingAI = false;
+
+  DateTime _dashboardSelectedDate = DateTime.now();
+  List<TaskCard> _allUserTasks = [];
+  List<CalendarEventItem> _gcalEvents = [];
+  bool _isGcalConnected = false;
+  bool _isCalendarMonthly = false;
 
   @override
   void initState() {
@@ -58,6 +68,9 @@ class _HomepageState extends State<Homepage> {
     // Trigger silent weekly auto-backup
     FirebaseBackupService().checkAndRunAutoBackup(userId);
 
+    // Reset daily recurring tasks if a new day has arrived
+    await RepeatTaskService.checkAndResetDailyRepeatTasks(userId);
+
     final dbHelper = DBHelper();
     final latestEnergy = await dbHelper.getLatestEnergyForUser(userId);
     final userTasks = await dbHelper.getTasksForUser(userId);
@@ -71,7 +84,14 @@ class _HomepageState extends State<Homepage> {
       } catch (_) {}
     }
 
-    final activeTasks = userTasks.where((t) => !t.isCompleted).toList();
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+
+    final activeTasks = userTasks.where((t) {
+      if (t.isCompleted) return false;
+      return RepeatTaskService.shouldShowTaskOnDate(t, today);
+    }).toList();
+
     TaskCard? suggested;
     final userEnergy = latestEnergy ?? 3;
     final filteredTasks = activeTasks.where((t) {
@@ -89,41 +109,28 @@ class _HomepageState extends State<Homepage> {
         if (aUrgent && !bUrgent) return -1;
         if (!aUrgent && bUrgent) return 1;
 
-        // 2. Closest due date first (ascending)
-        if (a.dueDate != null && b.dueDate != null) {
-          final dateA = DateTime(a.dueDate!.year, a.dueDate!.month, a.dueDate!.day);
-          final dateB = DateTime(b.dueDate!.year, b.dueDate!.month, b.dueDate!.day);
-          final dateCompare = dateA.compareTo(dateB);
-          if (dateCompare != 0) {
-            return dateCompare;
-          }
-        } else if (a.dueDate != null && b.dueDate == null) {
-          return -1;
-        } else if (a.dueDate == null && b.dueDate != null) {
-          return 1;
+        // 2. Closest effective due date and time first (ascending)
+        final dtA = RepeatTaskService.getEffectiveDueDateTime(a, referenceDate: today);
+        final dtB = RepeatTaskService.getEffectiveDueDateTime(b, referenceDate: today);
+        final dtCompare = dtA.compareTo(dtB);
+        if (dtCompare != 0) {
+          return dtCompare;
         }
 
-        // 3. Closest due time first (ascending)
-        final timeA = _parseTimeOfDay(a.dueTime);
-        final timeB = _parseTimeOfDay(b.dueTime);
-        if (timeA != null && timeB != null) {
-          final minA = timeA.hour * 60 + timeA.minute;
-          final minB = timeB.hour * 60 + timeB.minute;
-          final timeCompare = minA.compareTo(minB);
-          if (timeCompare != 0) {
-            return timeCompare;
-          }
-        } else if (timeA != null && timeB == null) {
-          return -1;
-        } else if (timeA == null && timeB != null) {
-          return 1;
-        }
-
-        // 4. Highest priority first (descending)
+        // 3. Highest priority first (descending)
         return b.prioritytask.compareTo(a.prioritytask);
       });
       suggested = filteredTasks.first;
     }
+
+    // Check Google Calendar connection and load events for selected date
+    final isGcal = await GoogleCalendarService().isConnected();
+    List<CalendarEventItem> gcalEvents = [];
+    if (isGcal) {
+      gcalEvents = await GoogleCalendarService().fetchEventsForDate(_dashboardSelectedDate);
+    }
+
+    final isCalendarMonthly = prefs.getBool('is_calendar_monthly') ?? false;
 
     if (!mounted) return;
     setState(() {
@@ -135,48 +142,35 @@ class _HomepageState extends State<Homepage> {
       _lastUpdatedTime = lastUpdatedTime;
       _hasLogs = hasLogs;
       _suggestedTask = suggested;
+      _allUserTasks = userTasks;
       _totalTasks = userTasks.length;
       _completedTasksCount = userTasks.where((t) => t.isCompleted).length;
+      _isGcalConnected = isGcal;
+      _gcalEvents = gcalEvents;
+      _isCalendarMonthly = isCalendarMonthly;
     });
   }
 
-  TimeOfDay? _parseTimeOfDay(String? timeStr) {
-    if (timeStr == null || timeStr.isEmpty) return null;
-    try {
-      final parts = timeStr.split(RegExp(r'[:.]'));
-      if (parts.length >= 2) {
-        final hourPart = parts[0].trim();
-        final minutePart = parts[1].trim();
-        int hour = int.parse(hourPart.replaceAll(RegExp(r'\D'), ''));
-        int minute = int.parse(minutePart.replaceAll(RegExp(r'\D'), ''));
-        if (timeStr.toLowerCase().contains('pm') && hour < 12) {
-          hour += 12;
-        } else if (timeStr.toLowerCase().contains('am') && hour == 12) {
-          hour = 0;
-        }
-        return TimeOfDay(hour: hour, minute: minute);
+  void _onDateSelected(DateTime date) async {
+    setState(() {
+      _dashboardSelectedDate = date;
+    });
+    if (_isGcalConnected) {
+      final events = await GoogleCalendarService().fetchEventsForDate(date);
+      if (mounted) {
+        setState(() {
+          _gcalEvents = events;
+        });
       }
-    } catch (e) {
-      // ignore
     }
-    return null;
-  }
-
-  DateTime? _getTaskDueDateTime(TaskCard t) {
-    if (t.dueDate == null) return null;
-    final timeOfDay = _parseTimeOfDay(t.dueTime);
-    if (timeOfDay == null) {
-      return DateTime(t.dueDate!.year, t.dueDate!.month, t.dueDate!.day, 23, 59, 59);
-    }
-    return DateTime(t.dueDate!.year, t.dueDate!.month, t.dueDate!.day, timeOfDay.hour, timeOfDay.minute);
   }
 
   bool _isTaskUrgent(TaskCard t) {
-    final dueDateTime = _getTaskDueDateTime(t);
-    if (dueDateTime == null) return false;
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final dueDateTime = RepeatTaskService.getEffectiveDueDateTime(t, referenceDate: today);
     final difference = dueDateTime.difference(now);
-    return difference.inMinutes <= 180;
+    return difference.inMinutes <= 180 && difference.inMinutes >= -720;
   }
 
   String _getEnergyLabel(int level) {
@@ -368,7 +362,7 @@ class _HomepageState extends State<Homepage> {
                   ],
                 ),
               ),
-              // 2. Wrap the content Column in Expanded to take up remaining height
+              // 2. Content Column
               Column(
                 children: [
                   Container3(
@@ -550,6 +544,7 @@ class _HomepageState extends State<Homepage> {
                       ],
                     ),
                   ),
+
                   Container1(
                     width: double.infinity,
                     child: Column(
@@ -695,7 +690,31 @@ class _HomepageState extends State<Homepage> {
                                         ),
                                       ),
                                     ],
-                                    if (_suggestedTask!.dueDate != null) ...[
+                                    if (_suggestedTask!.repeatType != RepeatType.none) ...[
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.repeat,
+                                            size: 14,
+                                            color: AppColors.button,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              RepeatTaskService.getRepeatSubtitle(_suggestedTask!),
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.button,
+                                                fontFamily: "Nunito",
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                    ] else if (_suggestedTask!.dueDate != null) ...[
                                       Row(
                                         children: [
                                           Icon(
@@ -712,6 +731,29 @@ class _HomepageState extends State<Homepage> {
                                                           .isNotEmpty
                                                   ? "${_suggestedTask!.dueDate!.day}/${_suggestedTask!.dueDate!.month}/${_suggestedTask!.dueDate!.year}  ${_suggestedTask!.dueTime}"
                                                   : "${_suggestedTask!.dueDate!.day}/${_suggestedTask!.dueDate!.month}/${_suggestedTask!.dueDate!.year}",
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.button,
+                                                fontFamily: "Nunito",
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 6),
+                                    ] else if (_suggestedTask!.startDate != null) ...[
+                                      Row(
+                                        children: [
+                                          Icon(
+                                            Icons.play_circle_outline,
+                                            size: 14,
+                                            color: AppColors.button,
+                                          ),
+                                          const SizedBox(width: 6),
+                                          Expanded(
+                                            child: Text(
+                                              "${_suggestedTask!.startDate!.day}/${_suggestedTask!.startDate!.month}/${_suggestedTask!.startDate!.year}",
                                               style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.bold,
@@ -987,11 +1029,317 @@ class _HomepageState extends State<Homepage> {
                       ],
                     ),
                   ),
+
+                  // 7. Schedule & Calendar Section at the very bottom
+                  () {
+                    final selectedDateTasks = _allUserTasks.where((t) {
+                      if (t.isCompleted) return false;
+                      return RepeatTaskService.shouldShowTaskOnDate(
+                        t,
+                        _dashboardSelectedDate,
+                      );
+                    }).toList();
+
+                    return Container1(
+                      width: double.infinity,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header with Title & Mode Toggle
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_month_rounded,
+                                size: 20,
+                                color: AppColors.button,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      L10n.tr(
+                                        "Schedule & Calendar",
+                                        "Jadwal & Kalender",
+                                      ),
+                                      style: TextStyle(
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                        color: AppColors.button,
+                                      ),
+                                    ),
+                                    Text(
+                                      L10n.tr(
+                                        "Plan your days gently",
+                                        "Rencanakan harimu dengan tenang",
+                                      ),
+                                      style: TextStyle(
+                                        fontFamily: "Nunito",
+                                        fontSize: 12,
+                                        color: AppColors.normaltext.withValues(
+                                          alpha: 0.7,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              IconButton(
+                                tooltip: _isCalendarMonthly
+                                    ? L10n.tr(
+                                        "Switch to Weekly View",
+                                        "Ubah ke Tampilan Mingguan",
+                                      )
+                                    : L10n.tr(
+                                        "Switch to Monthly View",
+                                        "Ubah ke Tampilan Bulanan",
+                                      ),
+                                icon: Icon(
+                                  _isCalendarMonthly
+                                      ? Icons.view_week_rounded
+                                      : Icons.calendar_month_rounded,
+                                  color: AppColors.button,
+                                  size: 20,
+                                ),
+                                onPressed: () async {
+                                  final newMode = !_isCalendarMonthly;
+                                  setState(() {
+                                    _isCalendarMonthly = newMode;
+                                  });
+                                  final prefs =
+                                      await SharedPreferences.getInstance();
+                                  await prefs.setBool(
+                                    'is_calendar_monthly',
+                                    newMode,
+                                  );
+                                },
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // The Calendar Widget
+                          KinDayCalendarWidget(
+                            selectedDate: _dashboardSelectedDate,
+                            onDateSelected: _onDateSelected,
+                            tasks: _allUserTasks,
+                            gcalEvents: _gcalEvents,
+                            isMonthlyMode: _isCalendarMonthly,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Selected Date Header
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.event_available_rounded,
+                                size: 16,
+                                color: AppColors.button,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  "${L10n.tr("Agenda for", "Agenda")} ${_dashboardSelectedDate.day}/${_dashboardSelectedDate.month}/${_dashboardSelectedDate.year}",
+                                  style: TextStyle(
+                                    fontFamily: "Quicksand",
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 14,
+                                    color: AppColors.button,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                "${selectedDateTasks.length + _gcalEvents.length} ${L10n.tr("items", "item")}",
+                                style: TextStyle(
+                                  fontFamily: "Nunito",
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 12,
+                                  color: AppColors.button.withValues(alpha: 0.7),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+
+                          // Google Calendar events for selected date
+                          if (_gcalEvents.isNotEmpty) ...[
+                            ..._gcalEvents.map(
+                              (e) => Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: CalendarEventCard(
+                                  event: e,
+                                  onConverted: _loadHomepageData,
+                                ),
+                              ),
+                            ),
+                          ],
+
+                          // Tasks for selected date
+                          if (selectedDateTasks.isNotEmpty) ...[
+                            ...selectedDateTasks.map(
+                              (t) => _buildDashboardTaskItem(t),
+                            ),
+                          ],
+
+                          // Empty State if no tasks and no gcal events
+                          if (selectedDateTasks.isEmpty && _gcalEvents.isEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.symmetric(vertical: 16.0),
+                              child: Center(
+                                child: Column(
+                                  children: [
+                                    Image.asset(
+                                      "assets/images/lavender_bunny/Tidakadatugas.gif",
+                                      height: 80,
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Text(
+                                      L10n.tr(
+                                        "No tasks or events on this date!",
+                                        "Tidak ada tugas atau agenda di tanggal ini!",
+                                      ),
+                                      style: TextStyle(
+                                        fontFamily: "Nunito",
+                                        fontSize: 12,
+                                        color: AppColors.normaltext.withValues(
+                                          alpha: 0.6,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    );
+                  }(),
+                  const SizedBox(height: 20),
                 ],
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardTaskItem(TaskCard task) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.9),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppColors.containerline1,
+          width: 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: task.prioritytask == 3
+                  ? Colors.redAccent
+                  : task.prioritytask == 2
+                      ? Colors.orangeAccent
+                      : Colors.green,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task.title,
+                  style: TextStyle(
+                    fontFamily: "Quicksand",
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: AppColors.button,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 2),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.energy_savings_leaf_rounded,
+                      size: 12,
+                      color: AppColors.button,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      _getEnergyLabel(task.energylvl),
+                      style: TextStyle(
+                        fontFamily: "Nunito",
+                        fontSize: 11,
+                        color: AppColors.normaltext.withValues(alpha: 0.75),
+                      ),
+                    ),
+                    if (task.dueTime != null && task.dueTime!.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.access_time_rounded,
+                        size: 11,
+                        color: AppColors.button,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        task.dueTime!,
+                        style: TextStyle(
+                          fontFamily: "Nunito",
+                          fontSize: 11,
+                          color: AppColors.normaltext.withValues(alpha: 0.75),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(
+              Icons.play_circle_fill_rounded,
+              color: AppColors.button,
+              size: 26,
+            ),
+            tooltip: L10n.tr("Start Focus", "Mulai Fokus"),
+            onPressed: () {
+              TaskCard.activePomodoroTask = task;
+              final mainState = context.findAncestorStateOfType<MainpageState>();
+              if (mainState != null) {
+                mainState.changeTab(2);
+              } else {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => Pomodoropage(task: task),
+                  ),
+                ).then((_) => _loadHomepageData());
+              }
+            },
+          ),
+        ],
       ),
     );
   }

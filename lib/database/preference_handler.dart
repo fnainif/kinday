@@ -10,6 +10,7 @@ class PreferenceHandler {
   static const _keyLanguage = "language";
   static const _keyTheme = "app_theme";
   static const _keyHasSeenOnboarding = "has_seen_onboarding";
+  static const _keyUnlockedThemes = "unlocked_themes";
 
   static Future<void> setLogin(bool isLogin) async {
     await _prefs.setBool(_keyIsLogin, isLogin);
@@ -94,5 +95,24 @@ class PreferenceHandler {
   static Future<void> setPremium(bool value) async {
     await _prefs.setBool(_keyIsPremium, value);
   }
+
+  static List<String> get unlockedThemes {
+    final list = _prefs.getStringList(_keyUnlockedThemes);
+    if (list != null && list.isNotEmpty) {
+      final Set<String> themes = Set.from(list);
+      themes.addAll(["Lavender Dreams", "Sakura Bloom"]);
+      return themes.toList();
+    }
+    return ["Lavender Dreams", "Sakura Bloom"];
+  }
+
+  static Future<void> unlockTheme(String themeName) async {
+    final list = unlockedThemes;
+    if (!list.contains(themeName)) {
+      list.add(themeName);
+      await _prefs.setStringList(_keyUnlockedThemes, list);
+    }
+  }
 }
+
 

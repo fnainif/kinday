@@ -12,7 +12,7 @@ class UserModelFirebase {
     this.uid,
     required this.username,
     required this.email,
-    required this.password,
+    this.password = '',
   });
 
   // Mengubah data object ke Map (untuk disimpan ke Firestore/Database)
@@ -21,7 +21,6 @@ class UserModelFirebase {
       'uid': uid,
       'username': username,
       'email': email,
-      'password': password,
     };
   }
 
@@ -51,7 +50,6 @@ class UserModelFirebase {
     return {
       'username': username,
       'email': email,
-      'password': password,
     };
   }
 

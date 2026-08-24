@@ -416,7 +416,9 @@ class _PomodoropageState extends State<Pomodoropage> {
                                             }
                                             setSubtaskState(() {});
                                           }
-                                          Navigator.pop(context);
+                                          if (context.mounted) {
+                                            Navigator.pop(context);
+                                          }
                                         },
                                         child: const Text("Save"),
                                       ),

@@ -291,12 +291,6 @@ class FirebaseAuthService {
       // 2. Update password in Firebase Auth
       await user.updatePassword(newPassword);
 
-      // 3. Update password in Firestore
-      await _firestore
-          .collection('users')
-          .doc(user.uid)
-          .update({'password': newPassword});
-
       return true;
     } catch (e) {
       debugPrint("Error changing password in Firebase: $e");
@@ -365,13 +359,12 @@ class FirebaseAuthService {
 
       final userCredential = await user.linkWithCredential(credential);
       
-      // Sync email & password in Firestore
+      // Sync email in Firestore
       await _firestore
           .collection('users')
           .doc(user.uid)
           .update({
             'email': email,
-            'password': password,
           });
 
       return userCredential;

@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:cool_dropdown/cool_dropdown.dart';
 import 'package:cool_dropdown/models/cool_dropdown_item.dart';
+import 'package:custom_sliding_segmented_control/custom_sliding_segmented_control.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_ai/firebase_ai.dart';
 import 'package:kinday/constant/app_colors.dart';
@@ -37,6 +38,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
   List<Map<String, dynamic>> subtasks = [];
 
   String? selectedDropdown = "Mid priority";
+  int _taskScheduleMode = 0; // 0 = Single Task, 1 = Repeated Task
+  DateTime? selectedStartDate = DateTime.now();
   DateTime? selectedDate = DateTime.now();
   TimeOfDay? selectedTime;
   int? selectedReminderMinutes;
@@ -86,11 +89,21 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       );
       await prefs.setString('draft_task_energy', selectedEnergy);
       await prefs.setString('draft_task_subtasks', jsonEncode(subtasks));
+      await prefs.setInt('draft_task_schedule_mode', _taskScheduleMode);
       await prefs.setString('draft_task_repeat_type', _repeatType.name);
       await prefs.setString(
         'draft_task_selected_weekdays',
         jsonEncode(_selectedWeekDays),
       );
+
+      if (selectedStartDate != null) {
+        await prefs.setString(
+          'draft_task_start_date',
+          selectedStartDate!.toIso8601String(),
+        );
+      } else {
+        await prefs.remove('draft_task_start_date');
+      }
 
       if (selectedDate != null) {
         await prefs.setString(
@@ -135,6 +148,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       await prefs.remove('draft_task_title');
       await prefs.remove('draft_task_desc');
       await prefs.remove('draft_task_priority');
+      await prefs.remove('draft_task_schedule_mode');
+      await prefs.remove('draft_task_start_date');
       await prefs.remove('draft_task_due_date');
       await prefs.remove('draft_task_finish_date');
       await prefs.remove('draft_task_due_time');
@@ -245,6 +260,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
         _repeatType = RepeatType.none;
       }
 
+      _taskScheduleMode = prefs.getInt('draft_task_schedule_mode') ?? (_repeatType != RepeatType.none ? 1 : 0);
+
+      final String? startDateStr = prefs.getString('draft_task_start_date');
+      if (startDateStr != null) {
+        selectedStartDate = DateTime.parse(startDateStr);
+      } else {
+        selectedStartDate = DateTime.now();
+      }
+
       final String? weekDaysJson = prefs.getString(
         'draft_task_selected_weekdays',
       );
@@ -270,7 +294,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
       if (dueDateStr != null) {
         selectedDate = DateTime.parse(dueDateStr);
       } else {
-        selectedDate = null;
+        selectedDate = DateTime.now();
       }
 
       final String? dueTimeStr = prefs.getString('draft_task_due_time');
@@ -574,7 +598,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: AppColors.button.withOpacity(0.1),
+                      color: AppColors.button.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
@@ -606,7 +630,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             fontFamily: "Nunito",
                             fontSize: 12,
                             color: (isDark ? Colors.white : AppColors.button)
-                                .withOpacity(0.6),
+                                .withValues(alpha: 0.6),
                           ),
                         ),
                       ],
@@ -620,7 +644,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Divider(
-                      color: AppColors.button.withOpacity(0.1),
+                      color: AppColors.button.withValues(alpha: 0.1),
                       thickness: 1,
                     ),
                     const SizedBox(height: 4),
@@ -644,14 +668,14 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                               ),
                               decoration: BoxDecoration(
                                 color: selected[index]
-                                    ? AppColors.button.withOpacity(0.08)
+                                    ? AppColors.button.withValues(alpha: 0.08)
                                     : (isDark
-                                        ? Colors.white.withOpacity(0.04)
-                                        : Colors.grey.withOpacity(0.06)),
+                                        ? Colors.white.withValues(alpha: 0.04)
+                                        : Colors.grey.withValues(alpha: 0.06)),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
                                   color: selected[index]
-                                      ? AppColors.button.withOpacity(0.3)
+                                      ? AppColors.button.withValues(alpha: 0.3)
                                       : Colors.transparent,
                                   width: 1.5,
                                 ),
@@ -712,7 +736,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         onPressed: () => Navigator.pop(context, false),
                         style: OutlinedButton.styleFrom(
                           side: BorderSide(
-                            color: AppColors.button.withOpacity(0.3),
+                            color: AppColors.button.withValues(alpha: 0.3),
                           ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
@@ -738,7 +762,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.button,
                           disabledBackgroundColor:
-                              AppColors.button.withOpacity(0.3),
+                              AppColors.button.withValues(alpha: 0.3),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(14),
                           ),
@@ -808,13 +832,13 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
     final isDark = AppColors.background2 == Colors.black87;
     final cardDecoration = BoxDecoration(
       color: isDark
-          ? Colors.black.withOpacity(0.2)
-          : Colors.white.withOpacity(0.55),
+          ? Colors.black.withValues(alpha: 0.2)
+          : Colors.white.withValues(alpha: 0.55),
       borderRadius: BorderRadius.circular(24),
-      border: Border.all(color: AppColors.button.withOpacity(0.12), width: 1.5),
+      border: Border.all(color: AppColors.button.withValues(alpha: 0.12), width: 1.5),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(0.03),
+          color: Colors.black.withValues(alpha: 0.03),
           blurRadius: 15,
           offset: const Offset(0, 8),
         ),
@@ -905,7 +929,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         decoration: InputDecoration(
                           hintText: L10n.tr("eg. Study for Exam", "misal: Belajar untuk Ujian"),
                           hintStyle: TextStyle(
-                            color: AppColors.button.withOpacity(0.5),
+                            color: AppColors.button.withValues(alpha: 0.5),
                             fontFamily: "Nunito",
                           ),
                           border: OutlineInputBorder(
@@ -915,7 +939,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
                             borderSide: BorderSide(
-                              color: AppColors.button.withOpacity(0.1),
+                              color: AppColors.button.withValues(alpha: 0.1),
                               width: 1.5,
                             ),
                           ),
@@ -928,8 +952,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           ),
                           filled: true,
                           fillColor: isDark
-                              ? Colors.black.withOpacity(0.25)
-                              : Colors.white.withOpacity(0.7),
+                              ? Colors.black.withValues(alpha: 0.25)
+                              : Colors.white.withValues(alpha: 0.7),
                           suffixIcon: Padding(
                             padding: const EdgeInsets.only(right: 8.0),
                             child: SpeechMicButton(
@@ -972,7 +996,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         decoration: InputDecoration(
                           hintText: L10n.tr("Add details about this task...", "Tambahkan detail tentang tugas ini..."),
                           hintStyle: TextStyle(
-                            color: AppColors.button.withOpacity(0.5),
+                            color: AppColors.button.withValues(alpha: 0.5),
                             fontFamily: "Nunito",
                           ),
                           border: OutlineInputBorder(
@@ -982,7 +1006,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           enabledBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(16),
                             borderSide: BorderSide(
-                              color: AppColors.button.withOpacity(0.1),
+                              color: AppColors.button.withValues(alpha: 0.1),
                               width: 1.5,
                             ),
                           ),
@@ -995,8 +1019,8 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           ),
                           filled: true,
                           fillColor: isDark
-                              ? Colors.black.withOpacity(0.25)
-                              : Colors.white.withOpacity(0.7),
+                              ? Colors.black.withValues(alpha: 0.25)
+                              : Colors.white.withValues(alpha: 0.7),
                           suffixIcon: Padding(
                             padding: const EdgeInsets.only(right: 8.0),
                             child: SpeechMicButton(
@@ -1042,108 +1066,754 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                   padding: const EdgeInsets.all(20.0),
                   child: Column(
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Image.asset(
-                                  AppImage.iconduedate,
-                                  height: 22,
-                                  width: 22,
-                                  color: AppColors.button,
+                      // Mode Selector: Single Task vs Repeated Task
+                      CustomSlidingSegmentedControl<int>(
+                        isStretch: true,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.black.withValues(alpha: 0.25)
+                              : AppColors.container2,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            width: 1,
+                            color: isDark
+                                ? AppColors.button.withValues(alpha: 0.15)
+                                : AppColors.containerline2,
+                          ),
+                        ),
+                        thumbDecoration: BoxDecoration(
+                          color: AppColors.button,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        initialValue: _taskScheduleMode,
+                        children: {
+                          0: Text(
+                            L10n.tr("Single Task", "Tugas Sekali"),
+                            style: TextStyle(
+                              fontFamily: "Quicksand",
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: _taskScheduleMode == 0
+                                  ? Colors.white
+                                  : AppColors.button,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          1: Text(
+                            L10n.tr("Repeated Task", "Tugas Berulang"),
+                            style: TextStyle(
+                              fontFamily: "Quicksand",
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: _taskScheduleMode == 1
+                                  ? Colors.white
+                                  : AppColors.button,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        },
+                        onValueChanged: (val) {
+                          setState(() {
+                            _taskScheduleMode = val;
+                            if (val == 0) {
+                              _repeatType = RepeatType.none;
+                              _finishDate = null;
+                              _selectedWeekDays = [];
+                            } else {
+                              if (_repeatType == RepeatType.none) {
+                                _repeatType = RepeatType.daily;
+                              }
+                            }
+                          });
+                          _autosaveDraft();
+                        },
+                      ),
+                      const SizedBox(height: 16),
+
+                      if (_taskScheduleMode == 0) ...[
+                        // --- SINGLE TASK FIELDS ---
+                        // 1. Start Date (Default: Today)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.play_circle_outline,
+                                    size: 22,
+                                    color: AppColors.button,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      L10n.tr("Start Date", "Tanggal Mulai"),
+                                      style: TextStyle(
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: AppColors.button,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              icon: Icon(
+                                Icons.calendar_today,
+                                size: 16,
+                                color: AppColors.button,
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: AppColors.button.withValues(alpha: 0.3),
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    L10n.tr("Due Date", "Batas Waktu"),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              onPressed: () async {
+                                final DateTime? picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: selectedStartDate ?? DateTime.now(),
+                                  firstDate: DateTime(1990),
+                                  lastDate: DateTime(2100),
+                                );
+                                if (picked != null) {
+                                  setState(() {
+                                    selectedStartDate = picked;
+                                  });
+                                  _autosaveDraft();
+                                }
+                              },
+                              label: Text(
+                                selectedStartDate == null
+                                    ? L10n.tr("Today", "Hari Ini")
+                                    : "${selectedStartDate!.day}/${selectedStartDate!.month}/${selectedStartDate!.year}",
+                                style: TextStyle(
+                                  color: AppColors.button,
+                                  fontFamily: "Quicksand",
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12.0),
+                          child: Divider(
+                            thickness: 1,
+                            color: AppColors.button.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        // 2. Due Date
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Image.asset(
+                                    AppImage.iconduedate,
+                                    height: 22,
+                                    width: 22,
+                                    color: AppColors.button,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      L10n.tr("Due Date", "Batas Waktu"),
+                                      style: TextStyle(
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: AppColors.button,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Row(
+                              children: [
+                                if (selectedDate != null)
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      color: Colors.redAccent,
+                                      size: 20,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        selectedDate = null;
+                                        selectedTime = null;
+                                        selectedReminderMinutes = null;
+                                      });
+                                      _autosaveDraft();
+                                    },
+                                  ),
+                                OutlinedButton.icon(
+                                  icon: Icon(
+                                    Icons.calendar_today,
+                                    size: 16,
+                                    color: AppColors.button,
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(
+                                      color: AppColors.button.withValues(alpha: 0.3),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    final DateTime? picked = await showDatePicker(
+                                      context: context,
+                                      initialDate: selectedDate ?? DateTime.now(),
+                                      firstDate: DateTime(1990),
+                                      lastDate: DateTime(2100),
+                                    );
+                                    if (picked != null) {
+                                      setState(() {
+                                        selectedDate = picked;
+                                      });
+                                      _autosaveDraft();
+                                    }
+                                  },
+                                  label: Text(
+                                    selectedDate == null
+                                        ? L10n.tr("Choose Date", "Pilih Tanggal")
+                                        : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
                                     style: TextStyle(
+                                      color: AppColors.button,
                                       fontFamily: "Quicksand",
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                      color: AppColors.button,
                                     ),
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
                             ),
+                          ],
+                        ),
+                        if (selectedDate != null) ...[
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12.0),
+                            child: Divider(
+                              thickness: 1,
+                              color: AppColors.button.withValues(alpha: 0.1),
+                            ),
                           ),
-                          const SizedBox(width: 8),
+                          // 3. Due Time
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              if (selectedDate != null)
-                                IconButton(
-                                  icon: const Icon(
-                                    Icons.clear,
-                                    color: Colors.redAccent,
-                                    size: 20,
-                                  ),
-                                  onPressed: () {
-                                    setState(() {
-                                      selectedDate = null;
-                                      selectedTime = null;
-                                      selectedReminderMinutes = null;
-                                    });
-                                    _autosaveDraft();
-                                  },
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Image.asset(
+                                      AppImage.iconduetime,
+                                      height: 22,
+                                      width: 22,
+                                      color: AppColors.button,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        L10n.tr("Due Time (Opt)", "Waktu Tenggat (Opsional)"),
+                                        style: TextStyle(
+                                          fontFamily: "Quicksand",
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          color: AppColors.button,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              OutlinedButton.icon(
-                                icon: Icon(
-                                  Icons.calendar_today,
-                                  size: 16,
-                                  color: AppColors.button,
+                              ),
+                              const SizedBox(width: 8),
+                              Row(
+                                children: [
+                                  if (selectedTime != null)
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.clear,
+                                        color: Colors.redAccent,
+                                        size: 20,
+                                      ),
+                                      onPressed: () {
+                                        setState(() {
+                                          selectedTime = null;
+                                        });
+                                        _autosaveDraft();
+                                      },
+                                    ),
+                                  OutlinedButton.icon(
+                                    icon: Icon(
+                                      Icons.access_time,
+                                      size: 16,
+                                      color: AppColors.button,
+                                    ),
+                                    style: OutlinedButton.styleFrom(
+                                      side: BorderSide(
+                                        color: AppColors.button.withValues(alpha: 0.3),
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 12,
+                                        vertical: 8,
+                                      ),
+                                    ),
+                                    onPressed: () async {
+                                      final TimeOfDay? picked =
+                                          await showTimePicker(
+                                            context: context,
+                                            initialTime:
+                                                selectedTime ?? TimeOfDay.now(),
+                                          );
+                                      if (picked != null) {
+                                        setState(() {
+                                          selectedTime = picked;
+                                        });
+                                        _autosaveDraft();
+                                      }
+                                    },
+                                    label: Text(
+                                      selectedTime == null
+                                          ? L10n.tr("Choose Time", "Pilih Jam")
+                                          : selectedTime!.format(context),
+                                      style: TextStyle(
+                                        color: AppColors.button,
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12.0),
+                            child: Divider(
+                              thickness: 1,
+                              color: AppColors.button.withValues(alpha: 0.1),
+                            ),
+                          ),
+                          // 4. Reminder
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.notifications_active_outlined,
+                                      size: 22,
+                                      color: AppColors.button,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Expanded(
+                                      child: Text(
+                                        L10n.tr("Reminder", "Pengingat"),
+                                        style: TextStyle(
+                                          fontFamily: "Quicksand",
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          color: AppColors.button,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                                style: OutlinedButton.styleFrom(
-                                  side: BorderSide(
-                                    color: AppColors.button.withOpacity(0.3),
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
+                                    horizontal: 8,
+                                    vertical: 2,
                                   ),
-                                ),
-                                onPressed: () async {
-                                  final DateTime? picked = await showDatePicker(
-                                    context: context,
-                                    initialDate: DateTime.now(),
-                                    firstDate: DateTime(1990),
-                                    lastDate: DateTime(2100),
-                                  );
-                                  if (picked != null) {
-                                    setState(() {
-                                      selectedDate = picked;
-                                    });
-                                    _autosaveDraft();
-                                  }
-                                },
-                                label: Text(
-                                  selectedDate == null
-                                      ? L10n.tr("Choose Date", "Pilih Tanggal")
-                                      : "${selectedDate!.day}/${selectedDate!.month}/${selectedDate!.year}",
-                                  style: TextStyle(
-                                    color: AppColors.button,
-                                    fontFamily: "Quicksand",
-                                    fontWeight: FontWeight.bold,
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.black.withValues(alpha: 0.25)
+                                        : Colors.white.withValues(alpha: 0.7),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: AppColors.button.withValues(alpha: 0.15),
+                                      width: 1.5,
+                                    ),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<int?>(
+                                      isExpanded: true,
+                                      value: selectedReminderMinutes,
+                                      dropdownColor: isDark
+                                          ? Colors.grey.shade900
+                                          : Colors.white,
+                                      style: TextStyle(
+                                        color: AppColors.button,
+                                        fontFamily: "Nunito",
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      icon: Icon(
+                                        Icons.arrow_drop_down,
+                                        color: AppColors.button,
+                                      ),
+                                      items: [
+                                        DropdownMenuItem(
+                                          value: null,
+                                          child: Text(
+                                            L10n.tr("No reminder", "Tanpa pengingat"),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 0,
+                                          child: Text(
+                                            L10n.tr("At due time", "Pada batas waktu"),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 5,
+                                          child: Text(
+                                            L10n.tr("5 minutes before", "5 menit sebelum"),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 10,
+                                          child: Text(
+                                            L10n.tr("10 minutes before", "10 menit sebelum"),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 15,
+                                          child: Text(
+                                            L10n.tr("15 minutes before", "15 menit sebelum"),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 30,
+                                          child: Text(
+                                            L10n.tr("30 minutes before", "30 menit sebelum"),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 60,
+                                          child: Text(
+                                            L10n.tr("1 hour before", "1 jam sebelum"),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                        DropdownMenuItem(
+                                          value: 1440,
+                                          child: Text(
+                                            L10n.tr("1 day before", "1 hari sebelum"),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                      onChanged: (int? value) {
+                                        setState(() {
+                                          selectedReminderMinutes = value;
+                                        });
+                                        _autosaveDraft();
+                                      },
+                                    ),
                                   ),
                                 ),
                               ),
                             ],
                           ),
                         ],
-                      ),
-                      if (selectedDate != null) ...[
+                      ] else ...[
+                        // --- REPEATED TASK FIELDS ---
+                        // 1. Repeat Frequency Dropdown
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.repeat,
+                                    color: AppColors.button,
+                                    size: 22,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      L10n.tr("Repeat", "Ulang"),
+                                      style: TextStyle(
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: AppColors.button,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 2,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.black.withValues(alpha: 0.25)
+                                      : Colors.white.withValues(alpha: 0.7),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppColors.button.withValues(alpha: 0.15),
+                                    width: 1.5,
+                                  ),
+                                ),
+                                child: DropdownButtonHideUnderline(
+                                  child: DropdownButton<RepeatType>(
+                                    isExpanded: true,
+                                    value: _repeatType == RepeatType.none
+                                        ? RepeatType.daily
+                                        : _repeatType,
+                                    dropdownColor: isDark
+                                        ? Colors.grey.shade900
+                                        : Colors.white,
+                                    style: TextStyle(
+                                      color: AppColors.button,
+                                      fontFamily: "Nunito",
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    icon: Icon(
+                                      Icons.arrow_drop_down,
+                                      color: AppColors.button,
+                                    ),
+                                    items: [
+                                      DropdownMenuItem(
+                                        value: RepeatType.daily,
+                                        child: Text(
+                                          L10n.tr("Every Day", "Setiap Hari"),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: RepeatType.selectedDays,
+                                        child: Text(
+                                          L10n.tr("Every Few Days", "Setiap Beberapa Hari"),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: RepeatType.weekly,
+                                        child: Text(
+                                          L10n.tr("Every Week", "Setiap Minggu"),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: RepeatType.monthly,
+                                        child: Text(
+                                          L10n.tr("Every Month", "Setiap Bulan"),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      DropdownMenuItem(
+                                        value: RepeatType.yearly,
+                                        child: Text(
+                                          L10n.tr("Every Year", "Setiap Tahun"),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                    onChanged: (RepeatType? value) {
+                                      setState(() {
+                                        _repeatType = value ?? RepeatType.daily;
+                                      });
+                                      _autosaveDraft();
+                                    },
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        if (_repeatType == RepeatType.selectedDays) ...[
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children:
+                                [
+                                  {"label": "Mon", "value": DateTime.monday},
+                                  {"label": "Tue", "value": DateTime.tuesday},
+                                  {"label": "Wed", "value": DateTime.wednesday},
+                                  {"label": "Thu", "value": DateTime.thursday},
+                                  {"label": "Fri", "value": DateTime.friday},
+                                  {"label": "Sat", "value": DateTime.saturday},
+                                  {"label": "Sun", "value": DateTime.sunday},
+                                ].map((day) {
+                                  final isSelected = _selectedWeekDays.contains(
+                                    day["value"],
+                                  );
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setState(() {
+                                        if (isSelected) {
+                                          _selectedWeekDays.remove(day["value"]);
+                                        } else {
+                                          _selectedWeekDays.add(
+                                            day["value"] as int,
+                                          );
+                                        }
+                                      });
+                                      _autosaveDraft();
+                                    },
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 200),
+                                      width: 38,
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? AppColors.button
+                                            : AppColors.button.withValues(alpha: 0.08),
+                                        shape: BoxShape.circle,
+                                        border: Border.all(
+                                          color: isSelected
+                                              ? AppColors.button
+                                              : AppColors.button.withValues(alpha: 0.15),
+                                          width: 1,
+                                        ),
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        L10n.tr(day["label"] as String),
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? Colors.white
+                                              : AppColors.button.withValues(alpha: 0.8),
+                                          fontSize: 12,
+                                          fontFamily: "Quicksand",
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                          ),
+                        ],
                         Padding(
                           padding: const EdgeInsets.symmetric(vertical: 12.0),
                           child: Divider(
                             thickness: 1,
-                            color: AppColors.button.withOpacity(0.1),
+                            color: AppColors.button.withValues(alpha: 0.1),
                           ),
                         ),
+                        // 2. Start Date (Tanggal Mulai)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.play_circle_outline,
+                                    size: 22,
+                                    color: AppColors.button,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      L10n.tr("Start Date", "Tanggal Mulai"),
+                                      style: TextStyle(
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: AppColors.button,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            OutlinedButton.icon(
+                              icon: Icon(
+                                Icons.calendar_today,
+                                size: 16,
+                                color: AppColors.button,
+                              ),
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: AppColors.button.withValues(alpha: 0.3),
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 8,
+                                ),
+                              ),
+                              onPressed: () async {
+                                final DateTime? picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: selectedStartDate ?? DateTime.now(),
+                                  firstDate: DateTime(1990),
+                                  lastDate: DateTime(2100),
+                                );
+                                if (picked != null) {
+                                  setState(() {
+                                    selectedStartDate = picked;
+                                  });
+                                  _autosaveDraft();
+                                }
+                              },
+                              label: Text(
+                                selectedStartDate == null
+                                    ? L10n.tr("Today", "Hari Ini")
+                                    : "${selectedStartDate!.day}/${selectedStartDate!.month}/${selectedStartDate!.year}",
+                                style: TextStyle(
+                                  color: AppColors.button,
+                                  fontFamily: "Quicksand",
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12.0),
+                          child: Divider(
+                            thickness: 1,
+                            color: AppColors.button.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        // 3. Time (Jam Pelaksanaan)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -1159,7 +1829,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
-                                      L10n.tr("Due Time (Opt)", "Waktu Tenggat (Opsional)"),
+                                      L10n.tr("Time (Opt)", "Jam Pelaksanaan (Opsional)"),
                                       style: TextStyle(
                                         fontFamily: "Quicksand",
                                         fontWeight: FontWeight.bold,
@@ -1197,7 +1867,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                   ),
                                   style: OutlinedButton.styleFrom(
                                     side: BorderSide(
-                                      color: AppColors.button.withOpacity(0.3),
+                                      color: AppColors.button.withValues(alpha: 0.3),
                                     ),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(12),
@@ -1240,9 +1910,114 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           padding: const EdgeInsets.symmetric(vertical: 12.0),
                           child: Divider(
                             thickness: 1,
-                            color: AppColors.button.withOpacity(0.1),
+                            color: AppColors.button.withValues(alpha: 0.1),
                           ),
                         ),
+                        // 4. Finish Date (Ulang Sampai)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.event_busy,
+                                    color: AppColors.button,
+                                    size: 22,
+                                  ),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Text(
+                                      L10n.tr("Finish Date (opt.)", "Ulang Sampai (opsional)"),
+                                      style: TextStyle(
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: AppColors.button,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Row(
+                              children: [
+                                if (_finishDate != null)
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      color: Colors.redAccent,
+                                      size: 20,
+                                    ),
+                                    onPressed: () {
+                                      setState(() {
+                                        _finishDate = null;
+                                      });
+                                      _autosaveDraft();
+                                    },
+                                  ),
+                                OutlinedButton.icon(
+                                  icon: Icon(
+                                    Icons.calendar_today,
+                                    size: 16,
+                                    color: AppColors.button,
+                                  ),
+                                  style: OutlinedButton.styleFrom(
+                                    side: BorderSide(
+                                      color: AppColors.button.withValues(alpha: 0.3),
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                  ),
+                                  onPressed: () async {
+                                    final DateTime? picked =
+                                        await showDatePicker(
+                                          context: context,
+                                          initialDate:
+                                              _finishDate ?? (selectedStartDate ?? DateTime.now()),
+                                          firstDate: DateTime.now(),
+                                          lastDate: DateTime(2100),
+                                        );
+                                    if (picked != null) {
+                                      setState(() {
+                                        _finishDate = picked;
+                                      });
+                                      _autosaveDraft();
+                                    }
+                                  },
+                                  label: Text(
+                                    _finishDate == null
+                                        ? L10n.tr(
+                                            "Choose Date",
+                                            "Pilih Tanggal",
+                                          )
+                                        : "${_finishDate!.day}/${_finishDate!.month}/${_finishDate!.year}",
+                                    style: TextStyle(
+                                      color: AppColors.button,
+                                      fontFamily: "Quicksand",
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 12.0),
+                          child: Divider(
+                            thickness: 1,
+                            color: AppColors.button.withValues(alpha: 0.1),
+                          ),
+                        ),
+                        // 5. Reminder
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
@@ -1279,11 +2054,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 ),
                                 decoration: BoxDecoration(
                                   color: isDark
-                                      ? Colors.black.withOpacity(0.25)
-                                      : Colors.white.withOpacity(0.7),
+                                      ? Colors.black.withValues(alpha: 0.25)
+                                      : Colors.white.withValues(alpha: 0.7),
                                   borderRadius: BorderRadius.circular(12),
                                   border: Border.all(
-                                    color: AppColors.button.withOpacity(0.15),
+                                    color: AppColors.button.withValues(alpha: 0.15),
                                     width: 1.5,
                                   ),
                                 ),
@@ -1314,7 +2089,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                       DropdownMenuItem(
                                         value: 0,
                                         child: Text(
-                                          L10n.tr("At due time", "Pada batas waktu"),
+                                          L10n.tr("At task time", "Pada jam tugas"),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
@@ -1374,299 +2149,6 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                           ],
                         ),
                       ],
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12.0),
-                        child: Divider(
-                          thickness: 1,
-                          color: AppColors.button.withOpacity(0.1),
-                        ),
-                      ),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Icon(
-                                  Icons.repeat,
-                                  color: AppColors.button,
-                                  size: 22,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Text(
-                                    L10n.tr("Repeat", "Ulang"),
-                                    style: TextStyle(
-                                      fontFamily: "Quicksand",
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 15,
-                                      color: AppColors.button,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 2,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? Colors.black.withOpacity(0.25)
-                                    : Colors.white.withOpacity(0.7),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: AppColors.button.withOpacity(0.15),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: DropdownButtonHideUnderline(
-                                child: DropdownButton<RepeatType>(
-                                  isExpanded: true,
-                                  value: _repeatType,
-                                  dropdownColor: isDark
-                                      ? Colors.grey.shade900
-                                      : Colors.white,
-                                  style: TextStyle(
-                                    color: AppColors.button,
-                                    fontFamily: "Nunito",
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                  icon: Icon(
-                                    Icons.arrow_drop_down,
-                                    color: AppColors.button,
-                                  ),
-                                  items: [
-                                    DropdownMenuItem(
-                                      value: RepeatType.none,
-                                      child: Text(
-                                        L10n.tr("None", "Tidak ada"),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: RepeatType.daily,
-                                      child: Text(
-                                        L10n.tr("Every Day", "Setiap Hari"),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: RepeatType.selectedDays,
-                                      child: Text(
-                                        L10n.tr("Every Few Days", "Setiap Beberapa Hari"),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: RepeatType.weekly,
-                                      child: Text(
-                                        L10n.tr("Every Week", "Setiap Minggu"),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: RepeatType.monthly,
-                                      child: Text(
-                                        L10n.tr("Every Month", "Setiap Bulan"),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                    DropdownMenuItem(
-                                      value: RepeatType.yearly,
-                                      child: Text(
-                                        L10n.tr("Every Year", "Setiap Tahun"),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
-                                  onChanged: (RepeatType? value) {
-                                    setState(() {
-                                      _repeatType = value ?? RepeatType.none;
-                                    });
-                                    _autosaveDraft();
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      if (_repeatType == RepeatType.selectedDays) ...[
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children:
-                              [
-                                {"label": "Mon", "value": DateTime.monday},
-                                {"label": "Tue", "value": DateTime.tuesday},
-                                {"label": "Wed", "value": DateTime.wednesday},
-                                {"label": "Thu", "value": DateTime.thursday},
-                                {"label": "Fri", "value": DateTime.friday},
-                                {"label": "Sat", "value": DateTime.saturday},
-                                {"label": "Sun", "value": DateTime.sunday},
-                              ].map((day) {
-                                final isSelected = _selectedWeekDays.contains(
-                                  day["value"],
-                                );
-                                return GestureDetector(
-                                  onTap: () {
-                                    setState(() {
-                                      if (isSelected) {
-                                        _selectedWeekDays.remove(day["value"]);
-                                      } else {
-                                        _selectedWeekDays.add(
-                                          day["value"] as int,
-                                        );
-                                      }
-                                    });
-                                    _autosaveDraft();
-                                  },
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
-                                    width: 38,
-                                    height: 38,
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? AppColors.button
-                                          : AppColors.button.withOpacity(0.08),
-                                      shape: BoxShape.circle,
-                                      border: Border.all(
-                                        color: isSelected
-                                            ? AppColors.button
-                                            : AppColors.button.withOpacity(
-                                                0.15,
-                                              ),
-                                        width: 1,
-                                      ),
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      L10n.tr(day["label"] as String),
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : AppColors.button.withOpacity(0.8),
-                                        fontSize: 12,
-                                        fontFamily: "Quicksand",
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                        ),
-                      ],
-                      if (_repeatType != RepeatType.none) ...[
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 12.0),
-                          child: Divider(
-                            thickness: 1,
-                            color: AppColors.button.withOpacity(0.1),
-                          ),
-                        ),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Expanded(
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.event_busy,
-                                    color: AppColors.button,
-                                    size: 22,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      L10n.tr("Finish Date (opt.)", "Tanggal Selesai (opsional)"),
-                                      style: TextStyle(
-                                        fontFamily: "Quicksand",
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 15,
-                                        color: AppColors.button,
-                                      ),
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Row(
-                              children: [
-                                if (_finishDate != null)
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.clear,
-                                      color: Colors.redAccent,
-                                      size: 20,
-                                    ),
-                                    onPressed: () {
-                                      setState(() {
-                                        _finishDate = null;
-                                      });
-                                      _autosaveDraft();
-                                    },
-                                  ),
-                                OutlinedButton.icon(
-                                  icon: Icon(
-                                    Icons.calendar_today,
-                                    size: 16,
-                                    color: AppColors.button,
-                                  ),
-                                  style: OutlinedButton.styleFrom(
-                                    side: BorderSide(
-                                      color: AppColors.button.withOpacity(0.3),
-                                    ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 8,
-                                    ),
-                                  ),
-                                  onPressed: () async {
-                                    final DateTime? picked =
-                                        await showDatePicker(
-                                          context: context,
-                                          initialDate:
-                                              _finishDate ?? DateTime.now(),
-                                          firstDate: DateTime.now(),
-                                          lastDate: DateTime(2100),
-                                        );
-                                    if (picked != null) {
-                                      setState(() {
-                                        _finishDate = picked;
-                                      });
-                                      _autosaveDraft();
-                                    }
-                                  },
-                                  label: Text(
-                                    _finishDate == null
-                                        ? L10n.tr(
-                                            "Choose Date",
-                                            "Pilih Tanggal",
-                                          )
-                                        : "${_finishDate!.day}/${_finishDate!.month}/${_finishDate!.year}",
-                                    style: TextStyle(
-                                      color: AppColors.button,
-                                      fontFamily: "Quicksand",
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ],
                     ],
                   ),
                 ),
@@ -1720,11 +2202,11 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                               ),
                               decoration: BoxDecoration(
                                 color: isDark
-                                    ? Colors.black.withOpacity(0.25)
-                                    : Colors.white.withOpacity(0.7),
+                                    ? Colors.black.withValues(alpha: 0.25)
+                                    : Colors.white.withValues(alpha: 0.7),
                                 borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
-                                  color: AppColors.button.withOpacity(0.15),
+                                  color: AppColors.button.withValues(alpha: 0.15),
                                   width: 1.5,
                                 ),
                               ),
@@ -1778,7 +2260,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                         padding: const EdgeInsets.symmetric(vertical: 12.0),
                         child: Divider(
                           thickness: 1,
-                          color: AppColors.button.withOpacity(0.1),
+                          color: AppColors.button.withValues(alpha: 0.1),
                         ),
                       ),
                       Row(
@@ -1862,8 +2344,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                       render: DropdownItemRender.reverse,
                                       alignment: Alignment.centerLeft,
                                       selectedBoxDecoration: BoxDecoration(
-                                        color: AppColors.button.withOpacity(
-                                          0.1,
+                                        color: AppColors.button.withValues(alpha: 0.1,
                                         ),
                                       ),
                                       textStyle: TextStyle(
@@ -1898,43 +2379,69 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Expanded(
-                            child: Row(
-                              children: [
-                                Image.asset(
-                                  AppImage.iconsubtask,
-                                  height: 22,
-                                  width: 22,
+                          Row(
+                            children: [
+                              Image.asset(
+                                AppImage.iconsubtask,
+                                height: 20,
+                                width: 20,
+                                color: AppColors.button,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                L10n.tr("Subtasks", "Sub-tugas"),
+                                style: TextStyle(
+                                  fontFamily: "Quicksand",
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
                                   color: AppColors.button,
                                 ),
-                                const SizedBox(width: 10),
-                                Expanded(
+                              ),
+                              if (subtasks.isNotEmpty) ...[
+                                const SizedBox(width: 6),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: AppColors.button.withValues(
+                                      alpha: 0.12,
+                                    ),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
                                   child: Text(
-                                    L10n.tr("Subtasks", "Sub-tugas"),
+                                    "${subtasks.where((s) => s['isDone'] == true).length}/${subtasks.length}",
                                     style: TextStyle(
                                       fontFamily: "Quicksand",
+                                      fontSize: 11,
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 15,
                                       color: AppColors.button,
                                     ),
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
-                            ),
+                            ],
                           ),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              if (subtasks.length > 1)
                                 PopupMenuButton<String>(
                                   icon: Icon(
-                                    Icons.sort,
-                                    size: 22,
+                                    Icons.sort_rounded,
+                                    size: 20,
                                     color: AppColors.button,
                                   ),
-                                  tooltip: L10n.tr("Sort subtasks", "Urutkan sub-tugas"),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(
+                                    minWidth: 32,
+                                    minHeight: 32,
+                                  ),
+                                  tooltip: L10n.tr(
+                                    "Sort subtasks",
+                                    "Urutkan sub-tugas",
+                                  ),
                                   onSelected: _sortSubtasks,
                                   color: isDark
                                       ? Colors.grey.shade900
@@ -1943,54 +2450,71 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                       <PopupMenuEntry<String>>[
                                         PopupMenuItem<String>(
                                           value: 'A-Z',
-                                          child: Text(L10n.tr('Alphabetical (A-Z)', 'Alfabetis (A-Z)')),
+                                          child: Text(
+                                            L10n.tr(
+                                              'Alphabetical (A-Z)',
+                                              'Alfabetis (A-Z)',
+                                            ),
+                                          ),
                                         ),
                                         PopupMenuItem<String>(
                                           value: 'Z-A',
-                                          child: Text(L10n.tr('Alphabetical (Z-A)', 'Alfabetis (Z-A)')),
+                                          child: Text(
+                                            L10n.tr(
+                                              'Alphabetical (Z-A)',
+                                              'Alfabetis (Z-A)',
+                                            ),
+                                          ),
                                         ),
                                         PopupMenuItem<String>(
                                           value: 'Incomplete first',
-                                          child: Text(L10n.tr('Incomplete first', 'Belum selesai dahulu')),
+                                          child: Text(
+                                            L10n.tr(
+                                              'Incomplete first',
+                                              'Belum selesai dahulu',
+                                            ),
+                                          ),
                                         ),
                                         PopupMenuItem<String>(
                                           value: 'Completed first',
-                                          child: Text(L10n.tr('Completed first', 'Selesai dahulu')),
-                                        ),
-                                      ],
-                                ),
-                                Flexible(
-                                  child: TextButton(
-                                    onPressed: _showAddSubtaskDialog,
-                                    style: TextButton.styleFrom(
-                                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          Icons.add,
-                                          color: AppColors.button,
-                                          size: 18,
-                                        ),
-                                        const SizedBox(width: 4),
-                                        Flexible(
                                           child: Text(
-                                            L10n.tr("Add subtask", "Tambah sub-tugas"),
-                                            style: TextStyle(
-                                              color: AppColors.button,
-                                              fontFamily: "Quicksand",
-                                              fontWeight: FontWeight.bold,
+                                            L10n.tr(
+                                              'Completed first',
+                                              'Selesai dahulu',
                                             ),
-                                            overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                       ],
-                                    ),
+                                ),
+                              const SizedBox(width: 4),
+                              ElevatedButton.icon(
+                                onPressed: _showAddSubtaskDialog,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.button,
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 6,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(10),
                                   ),
                                 ),
-                              ],
-                            ),
+                                icon: const Icon(Icons.add_rounded, size: 15),
+                                label: Text(
+                                  L10n.tr("Add", "Tambah"),
+                                  style: const TextStyle(
+                                    fontFamily: "Quicksand",
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
@@ -2003,15 +2527,15 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                 horizontal: 16,
                               )
                             : const EdgeInsets.symmetric(
-                                vertical: 8,
-                                horizontal: 8,
+                                vertical: 6,
+                                horizontal: 6,
                               ),
                         decoration: BoxDecoration(
                           color: isDark
-                              ? Colors.black.withOpacity(0.12)
-                              : Colors.white.withOpacity(0.35),
+                              ? Colors.black.withValues(alpha: 0.12)
+                              : Colors.white.withValues(alpha: 0.35),
                           border: Border.all(
-                            color: AppColors.button.withOpacity(0.15),
+                            color: AppColors.button.withValues(alpha: 0.15),
                             width: 1.5,
                           ),
                           borderRadius: BorderRadius.circular(16),
@@ -2022,24 +2546,36 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                   Icon(
                                     Icons.assignment_outlined,
                                     size: 48,
-                                    color: AppColors.button.withOpacity(0.5),
+                                    color: AppColors.button.withValues(
+                                      alpha: 0.5,
+                                    ),
                                   ),
                                   const SizedBox(height: 12),
                                   Text(
-                                    L10n.tr("No subtasks yet", "Belum ada sub-tugas"),
+                                    L10n.tr(
+                                      "No subtasks yet",
+                                      "Belum ada sub-tugas",
+                                    ),
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       fontFamily: "Quicksand",
-                                      color: AppColors.button.withOpacity(0.7),
+                                      color: AppColors.button.withValues(
+                                        alpha: 0.7,
+                                      ),
                                     ),
                                   ),
                                   const SizedBox(height: 6),
                                   Text(
-                                    L10n.tr("Break this task down or keep it simple!", "Pecah tugas ini atau biarkan sederhana!"),
+                                    L10n.tr(
+                                      "Break this task down or keep it simple!",
+                                      "Pecah tugas ini atau biarkan sederhana!",
+                                    ),
                                     textAlign: TextAlign.center,
                                     style: TextStyle(
                                       fontFamily: "Nunito",
-                                      color: AppColors.button.withOpacity(0.5),
+                                      color: AppColors.button.withValues(
+                                        alpha: 0.5,
+                                      ),
                                       fontSize: 12,
                                     ),
                                   ),
@@ -2070,208 +2606,145 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                                     margin: const EdgeInsets.symmetric(
                                       vertical: 4,
                                     ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 10,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: isDark
                                           ? (isDone
-                                                ? Colors.black.withOpacity(0.1)
-                                                : Colors.black.withOpacity(
-                                                    0.25,
+                                                ? Colors.black.withValues(
+                                                    alpha: 0.1,
+                                                  )
+                                                : Colors.black.withValues(
+                                                    alpha: 0.25,
                                                   ))
                                           : (isDone
-                                                ? Colors.white.withOpacity(0.4)
-                                                : Colors.white.withOpacity(
-                                                    0.8,
+                                                ? Colors.white.withValues(
+                                                    alpha: 0.45,
+                                                  )
+                                                : Colors.white.withValues(
+                                                    alpha: 0.9,
                                                   )),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
                                         color: isDone
-                                            ? AppColors.button.withOpacity(0.08)
-                                            : AppColors.button.withOpacity(
-                                                0.18,
+                                            ? AppColors.button.withValues(
+                                                alpha: 0.08,
+                                              )
+                                            : AppColors.button.withValues(
+                                                alpha: 0.18,
                                               ),
+                                        width: 1,
                                       ),
                                     ),
-                                    child: ListTile(
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 8.0,
-                                          ),
-                                      leading: Checkbox(
-                                        activeColor: AppColors.button,
-                                        checkColor: Colors.white,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            4,
-                                          ),
-                                        ),
-                                        value: isDone,
-                                        onChanged: (value) {
-                                          setState(() {
-                                            sub["isDone"] = value;
-                                          });
-                                          _autosaveDraft();
-                                        },
-                                      ),
-                                      title: Text(
-                                        sub["title"] ?? "",
-                                        style: TextStyle(
-                                          color: AppColors.button.withValues(
-                                            alpha: isDone ? 0.6 : 1.0,
-                                          ),
-                                          fontFamily: "Nunito",
-                                          fontWeight: FontWeight.bold,
-                                          decoration: isDone
-                                              ? TextDecoration.lineThrough
-                                              : TextDecoration.none,
-                                        ),
-                                      ),
-                                      trailing: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          IconButton(
-                                            icon: Icon(
-                                              Icons.edit_outlined,
+                                    child: Row(
+                                      children: [
+                                        // Drag Handle
+                                        ReorderableDragStartListener(
+                                          index: index,
+                                          child: Padding(
+                                            padding: const EdgeInsets.only(
+                                              right: 8.0,
+                                            ),
+                                            child: Icon(
+                                              Icons.drag_indicator_rounded,
+                                              size: 20,
                                               color: AppColors.button
-                                                  .withOpacity(0.8),
-                                              size: 20,
+                                                  .withValues(alpha: 0.4),
                                             ),
-                                            onPressed: () {
-                                              final editController =
-                                                  TextEditingController(
-                                                    text: sub["title"],
-                                                  );
-                                              showDialog(
-                                                context: context,
-                                                builder: (context) => AlertDialog(
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          20,
-                                                        ),
-                                                  ),
-                                                   title: Text(
-                                                    L10n.tr("Edit Subtask", "Ubah Sub-tugas"),
-                                                    style: TextStyle(
-                                                      fontFamily: "Quicksand",
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      color: AppColors.button,
-                                                    ),
-                                                  ),
-                                                  content: TextField(
-                                                    controller: editController,
-                                                    style: TextStyle(
-                                                      color: AppColors.button,
-                                                      fontFamily: "Nunito",
-                                                    ),
-                                                    decoration: InputDecoration(
-                                                      hintText:
-                                                          L10n.tr("Edit subtask title", "Ubah judul sub-tugas"),
-                                                      hintStyle: TextStyle(
-                                                        color: AppColors.button
-                                                            .withOpacity(0.5),
-                                                      ),
-                                                      border: OutlineInputBorder(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              12,
-                                                            ),
-                                                      ),
-                                                      focusedBorder:
-                                                          OutlineInputBorder(
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  12,
-                                                                ),
-                                                            borderSide:
-                                                                BorderSide(
-                                                                  color: AppColors
-                                                                      .button,
-                                                                  width: 2,
-                                                                ),
-                                                          ),
-                                                    ),
-                                                    autofocus: true,
-                                                  ),
-                                                  actions: [
-                                                    TextButton(
-                                                      onPressed: () =>
-                                                          Navigator.pop(
-                                                            context,
-                                                          ),
-                                                      child: Text(
-                                                        L10n.tr("Cancel", "Batal"),
-                                                        style: TextStyle(
-                                                          color: AppColors
-                                                              .button
-                                                              .withOpacity(0.7),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                    ElevatedButton(
-                                                      onPressed: () {
-                                                        final text =
-                                                            editController.text
-                                                                .trim();
-                                                        if (text.isNotEmpty) {
-                                                          setState(() {
-                                                            sub["title"] = text;
-                                                          });
-                                                          _autosaveDraft();
-                                                        }
-                                                        Navigator.pop(context);
-                                                      },
-                                                      style: ElevatedButton.styleFrom(
-                                                        backgroundColor:
-                                                            AppColors.button,
-                                                        shape: RoundedRectangleBorder(
-                                                          borderRadius:
-                                                              BorderRadius.circular(
-                                                                12,
-                                                              ),
-                                                        ),
-                                                      ),
-                                                      child: Text(
-                                                        L10n.tr("Save", "Simpan"),
-                                                        style: const TextStyle(
-                                                          color: Colors.white,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              );
-                                            },
                                           ),
-                                          IconButton(
-                                            icon: const Icon(
-                                              Icons.delete_outline,
-                                              color: Colors.redAccent,
-                                              size: 20,
+                                        ),
+                                        // Checkbox
+                                        SizedBox(
+                                          width: 22,
+                                          height: 22,
+                                          child: Checkbox(
+                                            materialTapTargetSize:
+                                                MaterialTapTargetSize
+                                                    .shrinkWrap,
+                                            visualDensity:
+                                                VisualDensity.compact,
+                                            activeColor: AppColors.button,
+                                            checkColor: Colors.white,
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(5),
                                             ),
-                                            onPressed: () {
+                                            value: isDone,
+                                            onChanged: (value) {
                                               setState(() {
-                                                subtasks.removeAt(index);
+                                                sub["isDone"] = value;
                                               });
                                               _autosaveDraft();
                                             },
                                           ),
-                                          ReorderableDragStartListener(
-                                            index: index,
-                                            child: Padding(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8.0,
+                                        ),
+                                        const SizedBox(width: 10),
+                                        // Subtask Title - takes ALL available remaining width
+                                        Expanded(
+                                          child: Text(
+                                            sub["title"] ?? "",
+                                            style: TextStyle(
+                                              color: AppColors.button
+                                                  .withValues(
+                                                    alpha: isDone ? 0.5 : 1.0,
                                                   ),
-                                              child: Icon(
-                                                Icons.drag_handle,
-                                                color: AppColors.button
-                                                    .withOpacity(0.5),
-                                              ),
+                                              fontFamily: "Nunito",
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              decoration: isDone
+                                                  ? TextDecoration.lineThrough
+                                                  : TextDecoration.none,
                                             ),
                                           ),
-                                        ],
-                                      ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        // Action: Edit
+                                        IconButton(
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 28,
+                                            minHeight: 28,
+                                          ),
+                                          icon: Icon(
+                                            Icons.edit_outlined,
+                                            color: AppColors.button
+                                                .withValues(alpha: 0.7),
+                                            size: 18,
+                                          ),
+                                          tooltip: L10n.tr(
+                                            "Edit",
+                                            "Ubah",
+                                          ),
+                                          onPressed: () =>
+                                              _showEditSubtaskDialog(index),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        // Action: Delete
+                                        IconButton(
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(
+                                            minWidth: 28,
+                                            minHeight: 28,
+                                          ),
+                                          icon: const Icon(
+                                            Icons.delete_outline_rounded,
+                                            color: Colors.redAccent,
+                                            size: 18,
+                                          ),
+                                          tooltip: L10n.tr(
+                                            "Delete",
+                                            "Hapus",
+                                          ),
+                                          onPressed: () {
+                                            setState(() {
+                                              subtasks.removeAt(index);
+                                            });
+                                            _autosaveDraft();
+                                          },
+                                        ),
+                                      ],
                                     ),
                                   );
                                 },
@@ -2331,13 +2804,22 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                             : descController.text.trim(),
                         energylvl: energyVal,
                         prioritytask: priorityVal,
-                        dueDate: selectedDate,
+                        startDate: selectedStartDate ?? DateTime.now(),
+                        dueDate: _taskScheduleMode == 0
+                            ? selectedDate
+                            : (selectedStartDate ?? DateTime.now()),
                         dueTime: selectedTime?.format(context),
                         subtasks: subtasks,
                         reminderMinutes: selectedReminderMinutes,
-                        repeatType: _repeatType,
-                        selectedWeekDays: _selectedWeekDays,
-                        finishDate: _finishDate,
+                        repeatType: _taskScheduleMode == 0
+                            ? RepeatType.none
+                            : (_repeatType == RepeatType.none
+                                ? RepeatType.daily
+                                : _repeatType),
+                        selectedWeekDays: _taskScheduleMode == 0
+                            ? []
+                            : _selectedWeekDays,
+                        finishDate: _taskScheduleMode == 0 ? null : _finishDate,
                         createdAt: DateTime.now(),
                       );
 
@@ -2368,7 +2850,7 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.button,
                       elevation: 3,
-                      shadowColor: AppColors.button.withOpacity(0.4),
+                      shadowColor: AppColors.button.withValues(alpha: 0.4),
                       padding: const EdgeInsets.symmetric(
                         vertical: 16,
                         horizontal: 20,
@@ -2462,6 +2944,88 @@ class _CreateTaskPageState extends State<CreateTaskPage> {
               ],
             );
           },
+        );
+      },
+    );
+  }
+
+  void _showEditSubtaskDialog(int index) {
+    if (index < 0 || index >= subtasks.length) return;
+    final sub = subtasks[index];
+    final editController = TextEditingController(text: sub["title"]);
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            L10n.tr("Edit Subtask", "Ubah Sub-tugas"),
+            style: TextStyle(
+              fontFamily: "Quicksand",
+              fontWeight: FontWeight.bold,
+              color: AppColors.button,
+            ),
+          ),
+          content: TextField(
+            controller: editController,
+            style: TextStyle(
+              color: AppColors.button,
+              fontFamily: "Nunito",
+            ),
+            decoration: InputDecoration(
+              hintText: L10n.tr("Edit subtask title", "Ubah judul sub-tugas"),
+              hintStyle: TextStyle(
+                color: AppColors.button.withValues(alpha: 0.5),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(
+                  color: AppColors.button,
+                  width: 2,
+                ),
+              ),
+            ),
+            autofocus: true,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(
+                L10n.tr("Cancel", "Batal"),
+                style: TextStyle(
+                  color: AppColors.button.withValues(alpha: 0.7),
+                ),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final text = editController.text.trim();
+                if (text.isNotEmpty) {
+                  setState(() {
+                    sub["title"] = text;
+                  });
+                  _autosaveDraft();
+                }
+                Navigator.pop(context);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.button,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: Text(
+                L10n.tr("Save", "Simpan"),
+                style: const TextStyle(color: Colors.white),
+              ),
+            ),
+          ],
         );
       },
     );

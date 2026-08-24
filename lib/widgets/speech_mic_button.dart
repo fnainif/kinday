@@ -70,7 +70,7 @@ class _SpeechMicButtonState extends State<SpeechMicButton> with SingleTickerProv
                   margin: const EdgeInsets.symmetric(horizontal: 8),
                   padding: const EdgeInsets.all(4),
                   decoration: BoxDecoration(
-                    color: activeColor.withOpacity(0.15),
+                    color: activeColor.withValues(alpha: 0.15),
                     shape: BoxShape.circle,
                   ),
                   child: Transform.scale(
@@ -81,7 +81,7 @@ class _SpeechMicButtonState extends State<SpeechMicButton> with SingleTickerProv
                         shape: BoxShape.circle,
                         boxShadow: [
                           BoxShadow(
-                            color: activeColor.withOpacity(0.4),
+                            color: activeColor.withValues(alpha: 0.4),
                             blurRadius: 8,
                             spreadRadius: 2,
                           ),
@@ -105,7 +105,7 @@ class _SpeechMicButtonState extends State<SpeechMicButton> with SingleTickerProv
                 color: Colors.transparent,
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: inactiveColor.withOpacity(0.3),
+                  color: inactiveColor.withValues(alpha: 0.3),
                   width: 1.5,
                 ),
               ),

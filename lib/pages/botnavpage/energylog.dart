@@ -592,7 +592,7 @@ class _EnergyPageState extends State<EnergyPage> {
                           majorGridLines: const MajorGridLines(width: 0),
                           axisLabelFormatter: (args) {
                             final hr = args.value.toInt();
-                            final displayHour = hr.toString().padLeft(2, '0') + ":00";
+                            final displayHour = "${hr.toString().padLeft(2, '0')}:00";
                             return ChartAxisLabel(
                               displayHour,
                               TextStyle(

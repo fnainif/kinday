@@ -19,6 +19,7 @@ import 'package:kinday/pages/additional/changepass.dart';
 import 'package:kinday/pages/additional/faq.dart';
 import 'package:kinday/pages/auth/login.dart';
 import 'package:kinday/pages/auth/terms_conditions.dart';
+import 'package:kinday/pages/service/google_calendar_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -43,11 +44,16 @@ class _SettingProfileState extends State<SettingProfile> {
   String _gmailEmail = "";
   String _passwordEmail = "";
 
+  // Google Calendar state
+  bool _isGcalConnected = false;
+  String? _gcalEmail;
+
   // Setting states
   bool _notificationsEnabled = true;
   String _currentTheme = "Lavender Dreams";
   String _aiBreakdownLevel = "Balanced";
   String _lastBackupTime = "Never";
+  bool _gcalIncludeSubCalendars = false;
 
   // Statistics states
   int _completedTasksCount = 0;
@@ -56,7 +62,6 @@ class _SettingProfileState extends State<SettingProfile> {
 
   // Loading state
   bool _isLoading = true;
-  bool _isPremium = false;
 
   @override
   void initState() {
@@ -187,6 +192,42 @@ class _SettingProfileState extends State<SettingProfile> {
       // Get focus time
       final totalFocus = await DBHelper().getTotalFocusMinutesForUser(userId);
 
+      final lastBackupStr = prefs.getString('last_backup_time');
+      String lastBackupTimeStr = "Never";
+      if (lastBackupStr != null) {
+        try {
+          final dt = DateTime.parse(lastBackupStr);
+          lastBackupTimeStr =
+              "${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
+        } catch (_) {}
+      }
+
+      // Firebase Auth linking status
+      final currentUser = FirebaseAuthService().currentUser;
+      final isFirebaseLoggedIn = currentUser != null;
+      final isGmailLinked = currentUser != null &&
+          currentUser.providerData.any((p) => p.providerId == 'google.com');
+      final isEmailLinked = currentUser != null &&
+          currentUser.providerData.any((p) => p.providerId == 'password');
+
+      String gmailEmail = "";
+      String passwordEmail = "";
+      if (currentUser != null) {
+        for (final p in currentUser.providerData) {
+          if (p.providerId == 'google.com') {
+            gmailEmail = p.email ?? "";
+          } else if (p.providerId == 'password') {
+            passwordEmail = p.email ?? "";
+          }
+        }
+      }
+
+      // Check Google Calendar connection
+      final gcalConnected = await GoogleCalendarService().isConnected();
+      final gcalEmail = GoogleCalendarService().userEmail;
+      final gcalIncludeSub =
+          await GoogleCalendarService().isIncludeSubCalendarsEnabled();
+
       if (!mounted) return;
       setState(() {
         _name = prefs.getString('user_name') ?? "User";
@@ -197,50 +238,78 @@ class _SettingProfileState extends State<SettingProfile> {
         _notificationsEnabled = prefs.getBool('notifications_enabled') ?? true;
         _currentTheme = prefs.getString('app_theme') ?? "Lavender Dreams";
         _aiBreakdownLevel = prefs.getString('ai_breakdown_level') ?? "Balanced";
-        _isPremium = PreferenceHandler.isPremium;
 
         _completedTasksCount = completedCount;
         _streakDays = streak;
         _totalFocusMinutes = totalFocus;
-
-        final lastBackupStr = prefs.getString('last_backup_time');
-        String lastBackupTimeStr = "Never";
-        if (lastBackupStr != null) {
-          try {
-            final dt = DateTime.parse(lastBackupStr);
-            lastBackupTimeStr =
-                "${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}";
-          } catch (_) {}
-        }
         _lastBackupTime = lastBackupTimeStr;
 
-        // Firebase Auth linking status
-        final currentUser = FirebaseAuthService().currentUser;
-        _isFirebaseLoggedIn = currentUser != null;
-        _isGmailLinked = currentUser != null &&
-            currentUser.providerData.any((p) => p.providerId == 'google.com');
-        _isEmailLinked = currentUser != null &&
-            currentUser.providerData.any((p) => p.providerId == 'password');
-        
-        String gmailEmail = "";
-        String passwordEmail = "";
-        if (currentUser != null) {
-          for (final p in currentUser.providerData) {
-            if (p.providerId == 'google.com') {
-              gmailEmail = p.email ?? "";
-            } else if (p.providerId == 'password') {
-              passwordEmail = p.email ?? "";
-            }
-          }
-        }
+        _isFirebaseLoggedIn = isFirebaseLoggedIn;
+        _isGmailLinked = isGmailLinked;
+        _isEmailLinked = isEmailLinked;
         _gmailEmail = gmailEmail;
         _passwordEmail = passwordEmail;
+
+        _isGcalConnected = gcalConnected;
+        _gcalEmail = gcalEmail;
+        _gcalIncludeSubCalendars = gcalIncludeSub;
 
         _isLoading = false;
       });
     } catch (e) {
       debugPrint("Error loading settings: $e");
       if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _handleToggleGcal() async {
+    setState(() {
+      _isLoading = true;
+    });
+    if (_isGcalConnected) {
+      await GoogleCalendarService().disconnect();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              L10n.tr("Google Calendar disconnected", "Google Calendar terputus"),
+            ),
+          ),
+        );
+      }
+    } else {
+      final error = await GoogleCalendarService().connect();
+      if (mounted) {
+        if (error == null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                L10n.tr(
+                  "Google Calendar connected successfully!",
+                  "Google Calendar berhasil terhubung!",
+                ),
+              ),
+              backgroundColor: AppColors.button,
+            ),
+          );
+        } else if (error != "cancelled") {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                "${L10n.tr("Failed to connect Google Calendar", "Gagal menghubungkan Google Calendar")}: $error",
+              ),
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      }
+    }
+    await _loadSettings();
+    TaskNotifier.notify();
+    if (mounted) {
       setState(() {
         _isLoading = false;
       });
@@ -1415,6 +1484,119 @@ class _SettingProfileState extends State<SettingProfile> {
     );
   }
 
+  void _showThemePreview(String newTheme) {
+    final previousTheme = _currentTheme;
+    AppColors.themeNotifier.value = newTheme;
+
+    showModalBottomSheet(
+      context: context,
+      isDismissible: false,
+      enableDrag: false,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final themeData = AppColors.themes[newTheme];
+        return PopScope(
+          canPop: false,
+          child: Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: themeData?.background2 ?? Colors.white,
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              boxShadow: const [
+                BoxShadow(color: Colors.black26, blurRadius: 10, spreadRadius: 2)
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  "Previewing $newTheme",
+                  style: TextStyle(
+                    fontFamily: "Quicksand",
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: themeData?.normaltext,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "Unlock this premium theme permanently for Rp 3.000",
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontFamily: "Nunito",
+                    fontSize: 14,
+                    color: themeData?.normaltext.withValues(alpha: 0.8),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () {
+                          AppColors.themeNotifier.value = previousTheme;
+                          Navigator.pop(context);
+                        },
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          side: BorderSide(color: themeData?.button ?? Colors.grey),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: Text(
+                          "Cancel",
+                          style: TextStyle(
+                            fontFamily: "Quicksand",
+                            fontWeight: FontWeight.bold,
+                            color: themeData?.button,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          await PreferenceHandler.unlockTheme(newTheme);
+                          setState(() {
+                            _currentTheme = newTheme;
+                          });
+                          AppColors.setTheme(newTheme);
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("$newTheme Unlocked!"),
+                                backgroundColor: Colors.green,
+                              ),
+                            );
+                          }
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          backgroundColor: themeData?.button,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        ),
+                        child: const Text(
+                          "Buy Rp 3.000",
+                          style: TextStyle(
+                            fontFamily: "Quicksand",
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (_isLoading) {
@@ -1653,7 +1835,7 @@ class _SettingProfileState extends State<SettingProfile> {
                               ),
                               Switch.adaptive(
                                 value: _notificationsEnabled,
-                                activeColor: AppColors.button,
+                                activeThumbColor: AppColors.button,
                                 activeTrackColor: AppColors.button.withValues(
                                   alpha: 0.5,
                                 ),
@@ -1729,7 +1911,7 @@ class _SettingProfileState extends State<SettingProfile> {
                                         fontFamily: "Quicksand",
                                         fontSize: 13,
                                       ),
-                                      items: [
+                                      items: const [
                                         "Lavender Dreams",
                                         "Sakura Bloom",
                                         "Matcha Garden",
@@ -1766,27 +1948,135 @@ class _SettingProfileState extends State<SettingProfile> {
                                             emoji = "🌲";
                                             break;
                                         }
-                                        final isPremiumTheme = name != "Lavender Dreams" && name != "Sakura Bloom";
-                                        final displayName = isPremiumTheme && !_isPremium ? "$name 👑" : name;
+
+                                        final isUnlocked = PreferenceHandler.unlockedThemes.contains(name);
+
                                         return DropdownMenuItem<String>(
                                           value: name,
-                                          child: Text(
-                                            "$emoji $displayName",
-                                            overflow: TextOverflow.ellipsis,
+                                          child: Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  "$emoji $name",
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              if (!isUnlocked)
+                                                const Icon(Icons.lock_rounded, size: 14, color: Colors.grey),
+                                            ],
                                           ),
                                         );
                                       }).toList(),
                                       onChanged: (value) {
                                         if (value != null) {
-                                          final isPremiumTheme = value != "Lavender Dreams" && value != "Sakura Bloom";
-                                          if (isPremiumTheme && !_isPremium) {
-                                            _showPremiumPaywallSheet(context, value);
+                                          if (!PreferenceHandler.unlockedThemes.contains(value)) {
+                                            _showThemePreview(value);
                                           } else {
                                             setState(() {
                                               _currentTheme = value;
                                             });
                                             AppColors.setTheme(value);
                                           }
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          Divider(
+                            height: 1,
+                            color: AppColors.containerline1.withValues(
+                              alpha: 0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          // AI Breakdown Detail
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.psychology_rounded,
+                                      color: AppColors.button,
+                                      size: 20,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      child: Text(
+                                        L10n.tr(
+                                          "AI Breakdown Level",
+                                          "Tingkat Detail AI",
+                                        ),
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.button,
+                                          fontFamily: "Quicksand",
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white.withValues(alpha: 0.6),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: AppColors.containerline1
+                                          .withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      isExpanded: true,
+                                      value: _aiBreakdownLevel,
+                                      dropdownColor: Colors.white,
+                                      iconEnabledColor: AppColors.button,
+                                      style: TextStyle(
+                                        color: AppColors.button,
+                                        fontWeight: FontWeight.bold,
+                                        fontFamily: "Quicksand",
+                                        fontSize: 13,
+                                      ),
+                                      items:
+                                          const [
+                                                "Simple",
+                                                "Balanced",
+                                                "Detailed",
+                                              ]
+                                              .map(
+                                                (val) => DropdownMenuItem(
+                                                  value: val,
+                                                  child: Text(
+                                                    val,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              )
+                                              .toList(),
+                                      onChanged: (value) {
+                                        if (value != null) {
+                                          setState(() {
+                                            _aiBreakdownLevel = value;
+                                          });
+                                          _saveSetting(
+                                            'ai_breakdown_level',
+                                            value,
+                                          );
                                         }
                                       },
                                     ),
@@ -1906,6 +2196,158 @@ class _SettingProfileState extends State<SettingProfile> {
                     ),
 
                     _buildSectionHeader(
+                      L10n.tr("Google Calendar Awareness", "Integrasi Google Calendar"),
+                    ),
+
+                    Container1(
+                      width: double.infinity,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF4285F4).withValues(alpha: 0.12),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const Icon(
+                                  Icons.event_note_rounded,
+                                  color: Color(0xFF4285F4),
+                                  size: 24,
+                                ),
+                              ),
+                              const SizedBox(width: 14),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "Google Calendar",
+                                      style: TextStyle(
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 15,
+                                        color: AppColors.button,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      _isGcalConnected
+                                          ? (_gcalEmail != null && _gcalEmail!.isNotEmpty
+                                              ? "${L10n.tr("Connected as", "Terhubung sebagai")} $_gcalEmail"
+                                              : L10n.tr("Connected (Read-Only)", "Terhubung (Hanya Baca)"))
+                                          : L10n.tr(
+                                              "Read your schedule to pace your energy",
+                                              "Baca agenda agar energi tetap terjaga",
+                                            ),
+                                      style: TextStyle(
+                                        fontFamily: "Nunito",
+                                        fontSize: 12,
+                                        color: AppColors.normaltext.withValues(alpha: 0.7),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              ElevatedButton(
+                                onPressed: _handleToggleGcal,
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: _isGcalConnected
+                                      ? Colors.red.shade400
+                                      : const Color(0xFF4285F4),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                    vertical: 8,
+                                  ),
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                child: Text(
+                                  _isGcalConnected
+                                      ? L10n.tr("Disconnect", "Putuskan")
+                                      : L10n.tr("Connect", "Hubungkan"),
+                                  style: const TextStyle(
+                                    fontFamily: "Quicksand",
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (_isGcalConnected) ...[
+                            const SizedBox(height: 12),
+                            Divider(
+                              height: 1,
+                              thickness: 0.8,
+                              color: AppColors.normaltext.withValues(alpha: 0.12),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.library_books_rounded,
+                                  size: 18,
+                                  color: AppColors.button.withValues(alpha: 0.8),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        L10n.tr(
+                                          "Sync Sub & Shared Calendars",
+                                          "Sinkronkan Kalender Bersama",
+                                        ),
+                                        style: TextStyle(
+                                          fontFamily: "Quicksand",
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 13,
+                                          color: AppColors.button,
+                                        ),
+                                      ),
+                                      Text(
+                                        L10n.tr(
+                                          "Include events from sub-calendars & shared calendars",
+                                          "Sertakan agenda dari sub-kalender & kalender bersama",
+                                        ),
+                                        style: TextStyle(
+                                          fontFamily: "Nunito",
+                                          fontSize: 11,
+                                          color: AppColors.normaltext.withValues(alpha: 0.7),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Switch.adaptive(
+                                  value: _gcalIncludeSubCalendars,
+                                  activeTrackColor: AppColors.button,
+                                  onChanged: (val) async {
+                                    setState(() {
+                                      _gcalIncludeSubCalendars = val;
+                                    });
+                                    await GoogleCalendarService()
+                                        .setIncludeSubCalendars(val);
+                                    TaskNotifier.notify();
+                                  },
+                                ),
+                              ],
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                    _buildSectionHeader(
                       L10n.tr("Account & Info", "Akun & Info"),
                     ),
 
@@ -1977,7 +2419,7 @@ class _SettingProfileState extends State<SettingProfile> {
                               if (await canLaunchUrl(url)) {
                                 await launchUrl(url, mode: LaunchMode.externalApplication);
                               } else {
-                                if (mounted) {
+                                if (context.mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
@@ -2202,41 +2644,6 @@ class _SettingProfileState extends State<SettingProfile> {
     );
   }
 
-  Widget _buildStatRow({
-    required IconData icon,
-    required String label,
-    required String value,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.button, size: 22),
-          const SizedBox(width: 12),
-          Text(
-            label,
-            style: TextStyle(
-              fontFamily: "Quicksand",
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.button,
-            ),
-          ),
-          const Spacer(),
-          Text(
-            value,
-            style: const TextStyle(
-              fontFamily: "Nunito",
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildListTile({
     required IconData icon,
     required String title,
@@ -2346,145 +2753,5 @@ class _SettingProfileState extends State<SettingProfile> {
       contentPadding: EdgeInsets.zero,
     );
   }
-
-  void _showPremiumPaywallSheet(BuildContext context, String requestedTheme) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      isScrollControlled: true,
-      builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: const BorderRadius.only(
-              topLeft: Radius.circular(24),
-              topRight: Radius.circular(24),
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
-                blurRadius: 10,
-                spreadRadius: 5,
-              ),
-            ],
-          ),
-          padding: const EdgeInsets.only(
-            left: 24,
-            right: 24,
-            top: 32,
-            bottom: 40,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 60,
-                height: 60,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFFFFD700), Color(0xFFFFA500)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  shape: BoxShape.circle,
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFFFFA500).withValues(alpha: 0.3),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.star_rounded,
-                  color: Colors.white,
-                  size: 40,
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                L10n.tr("Unlock Premium Themes 👑", "Buka Tema Eksklusif 👑"),
-                style: const TextStyle(
-                  fontFamily: "Quicksand",
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                  color: Colors.black87,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                L10n.tr(
-                  "The theme \"$requestedTheme\" is a premium feature. Unlock all exclusive themes and unlimited AI breakdowns!",
-                  "Tema \"$requestedTheme\" adalah fitur premium. Dapatkan akses penuh ke semua tema estetik dan pemecahan tugas AI tanpa batas!",
-                ),
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontFamily: "Nunito",
-                  fontSize: 14,
-                  color: Colors.grey[700],
-                ),
-              ),
-              const SizedBox(height: 28),
-              ElevatedButton(
-                onPressed: () async {
-                  await PreferenceHandler.setPremium(true);
-                  if (mounted) {
-                    setState(() {
-                      _isPremium = true;
-                      _currentTheme = requestedTheme;
-                    });
-                    AppColors.setTheme(requestedTheme);
-                    Navigator.pop(context);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          L10n.tr(
-                            "Premium trial activated! Enjoy unlimited themes and AI breakdowns.",
-                            "Uji coba Premium aktif! Nikmati semua tema dan pemecahan AI tanpa batas.",
-                          ),
-                        ),
-                      ),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.button,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size.fromHeight(50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
-                ),
-                child: Text(
-                  L10n.tr("Activate Free Premium Trial", "Aktifkan Uji Coba Premium (Gratis)"),
-                  style: const TextStyle(
-                    fontFamily: "Quicksand",
-                    fontWeight: FontWeight.bold,
-                    fontSize: 15,
-                  ),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                style: TextButton.styleFrom(
-                  minimumSize: const Size.fromHeight(40),
-                ),
-                child: Text(
-                  L10n.tr("Maybe Later", "Nanti Saja"),
-                  style: TextStyle(
-                    fontFamily: "Quicksand",
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
 }
+

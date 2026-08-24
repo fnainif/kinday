@@ -8,7 +8,10 @@ import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/constant/task_notifier.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/notification_helper.dart';
+import 'package:kinday/pages/service/google_calendar_service.dart';
 import 'package:kinday/pages/service/repeat_task_service.dart';
+import 'package:kinday/widgets/calendar_event_card.dart';
+import 'package:kinday/widgets/kinday_calendar_widget.dart';
 import 'package:kinday/widgets/speech_mic_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -24,12 +27,16 @@ class _TasklistpageState extends State<Tasklistpage> {
   int selectedTab = 1;
   late List<TaskCard> _tasks;
   int _currentEnergyLvl = 3;
+  DateTime _calendarSelectedDate = DateTime.now();
+  List<CalendarEventItem> _gcalEvents = [];
+  bool _isLoadingGcal = false;
 
   @override
   void initState() {
     super.initState();
     _tasks = [];
     _loadTasks();
+    _loadGcalEvents(_calendarSelectedDate);
     TaskNotifier.taskUpdated.addListener(_loadTasks);
   }
 
@@ -39,46 +46,29 @@ class _TasklistpageState extends State<Tasklistpage> {
     super.dispose();
   }
 
+  Future<void> _loadGcalEvents(DateTime date) async {
+    final connected = await GoogleCalendarService().isConnected();
+    if (!connected) {
+      if (mounted) setState(() => _gcalEvents = []);
+      return;
+    }
+    if (mounted) setState(() => _isLoadingGcal = true);
+    final events = await GoogleCalendarService().fetchEventsForDate(date);
+    if (mounted) {
+      setState(() {
+        _gcalEvents = events;
+        _isLoadingGcal = false;
+      });
+    }
+  }
+
   Future<void> _loadTasks() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('user_id') ?? 1;
-    var dbTasks = await DBHelper().getTasksForUser(userId);
 
     // Check and reset repeatable tasks for new day
-    final now = DateTime.now();
-    final todayStart = DateTime(now.year, now.month, now.day);
-    bool anyUpdated = false;
-
-    for (var task in dbTasks) {
-      if (task.repeatType != RepeatType.none) {
-        final lastOccur = task.lastOccurrenceDate;
-        if (lastOccur == null) {
-          task.lastOccurrenceDate = now;
-          await DBHelper().updateTask(task);
-          anyUpdated = true;
-        } else {
-          final lastOccurDay = DateTime(
-            lastOccur.year,
-            lastOccur.month,
-            lastOccur.day,
-          );
-          if (lastOccurDay.isBefore(todayStart)) {
-            task.isCompleted = false;
-            for (var sub in task.subtasks) {
-              sub['isDone'] = false;
-              sub['isCompleted'] = false;
-            }
-            task.lastOccurrenceDate = now;
-            await DBHelper().updateTask(task);
-            anyUpdated = true;
-          }
-        }
-      }
-    }
-
-    if (anyUpdated) {
-      dbTasks = await DBHelper().getTasksForUser(userId);
-    }
+    await RepeatTaskService.checkAndResetDailyRepeatTasks(userId);
+    final dbTasks = await DBHelper().getTasksForUser(userId);
 
     final latestEnergy = await DBHelper().getLatestEnergyForUser(userId);
     if (!mounted) return;
@@ -95,6 +85,8 @@ class _TasklistpageState extends State<Tasklistpage> {
     final descController = TextEditingController(text: task.description ?? "");
     int tempPriority = task.prioritytask;
     int tempEnergyLvl = task.energylvl;
+    int tempScheduleMode = task.repeatType == RepeatType.none ? 0 : 1;
+    DateTime? tempStartDate = task.startDate ?? task.dueDate ?? task.createdAt;
     DateTime? tempDueDate = task.dueDate;
     int? tempReminderMinutes = task.reminderMinutes;
     bool tempIsCompleted = task.isCompleted;
@@ -500,62 +492,462 @@ class _TasklistpageState extends State<Tasklistpage> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      // Due Date Selection
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            "Due Date",
+                      // Mode Selector: Single Task vs Repeated Task
+                      CustomSlidingSegmentedControl<int>(
+                        isStretch: true,
+                        decoration: BoxDecoration(
+                          color: AppColors.container2,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            width: 1,
+                            color: AppColors.containerline2,
+                          ),
+                        ),
+                        thumbDecoration: BoxDecoration(
+                          color: AppColors.button,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        initialValue: tempScheduleMode,
+                        children: {
+                          0: Text(
+                            L10n.tr("Single Task", "Tugas Sekali"),
                             style: TextStyle(
+                              fontFamily: "Quicksand",
                               fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                              color: AppColors.button,
+                              fontSize: 13,
+                              color: tempScheduleMode == 0
+                                  ? Colors.white
+                                  : AppColors.button,
                             ),
+                            textAlign: TextAlign.center,
                           ),
-                          ElevatedButton.icon(
-                            onPressed: () async {
-                              final picked = await showDatePicker(
-                                context: context,
-                                initialDate: tempDueDate ?? DateTime.now(),
-                                firstDate: DateTime(2020),
-                                lastDate: DateTime(2100),
-                              );
-                              if (picked != null) {
-                                setModalState(() {
-                                  tempDueDate = picked;
-                                });
+                          1: Text(
+                            L10n.tr("Repeated Task", "Tugas Berulang"),
+                            style: TextStyle(
+                              fontFamily: "Quicksand",
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              color: tempScheduleMode == 1
+                                  ? Colors.white
+                                  : AppColors.button,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        },
+                        onValueChanged: (val) {
+                          setModalState(() {
+                            tempScheduleMode = val;
+                            if (val == 0) {
+                              tempRepeatType = RepeatType.none;
+                              tempFinishDate = null;
+                              tempSelectedWeekDays = [];
+                            } else {
+                              if (tempRepeatType == RepeatType.none) {
+                                tempRepeatType = RepeatType.daily;
                               }
-                            },
-                            icon: const Icon(
-                              Icons.calendar_today,
-                              size: 16,
-                              color: Colors.white,
-                            ),
-                            label: Text(
-                              tempDueDate == null
-                                  ? L10n.tr("Choose Date", "Pilih Tanggal")
-                                  : "${tempDueDate!.day}/${tempDueDate!.month}/${tempDueDate!.year}",
-                              style: const TextStyle(color: Colors.white),
-                            ),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: AppColors.button,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(10),
-                              ),
-                            ),
-                          ),
-                        ],
+                            }
+                          });
+                        },
                       ),
-                      if (tempDueDate != null) ...[
-                        const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+
+                      if (tempScheduleMode == 0) ...[
+                        // --- SINGLE TASK FIELDS ---
+                        // 1. Start Date (Tanggal Mulai)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              "Due Time",
+                            Text(
+                              L10n.tr("Start Date", "Tanggal Mulai"),
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
+                                color: AppColors.button,
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: tempStartDate ?? DateTime.now(),
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime(2100),
+                                );
+                                if (picked != null) {
+                                  setModalState(() {
+                                    tempStartDate = picked;
+                                  });
+                                }
+                              },
+                              icon: const Icon(
+                                Icons.calendar_today,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                              label: Text(
+                                tempStartDate == null
+                                    ? L10n.tr("Today", "Hari Ini")
+                                    : "${tempStartDate!.day}/${tempStartDate!.month}/${tempStartDate!.year}",
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.button,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // 2. Due Date (Batas Waktu)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              L10n.tr("Due Date", "Batas Waktu"),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: AppColors.button,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                if (tempDueDate != null)
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.clear,
+                                      color: Colors.redAccent,
+                                      size: 20,
+                                    ),
+                                    onPressed: () {
+                                      setModalState(() {
+                                        tempDueDate = null;
+                                        tempDueTime = null;
+                                        tempReminderMinutes = null;
+                                      });
+                                    },
+                                  ),
+                                ElevatedButton.icon(
+                                  onPressed: () async {
+                                    final picked = await showDatePicker(
+                                      context: context,
+                                      initialDate: tempDueDate ?? (tempStartDate ?? DateTime.now()),
+                                      firstDate: DateTime(2020),
+                                      lastDate: DateTime(2100),
+                                    );
+                                    if (picked != null) {
+                                      setModalState(() {
+                                        tempDueDate = picked;
+                                      });
+                                    }
+                                  },
+                                  icon: const Icon(
+                                    Icons.calendar_today,
+                                    size: 16,
+                                    color: Colors.white,
+                                  ),
+                                  label: Text(
+                                    tempDueDate == null
+                                        ? L10n.tr("Choose Date", "Pilih Tanggal")
+                                        : "${tempDueDate!.day}/${tempDueDate!.month}/${tempDueDate!.year}",
+                                    style: const TextStyle(color: Colors.white),
+                                  ),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.button,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        if (tempDueDate != null) ...[
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                L10n.tr("Due Time", "Waktu Tenggat"),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: AppColors.button,
+                                ),
+                              ),
+                              Row(
+                                children: [
+                                  if (tempDueTime != null)
+                                    IconButton(
+                                      icon: const Icon(
+                                        Icons.clear,
+                                        color: Colors.redAccent,
+                                        size: 20,
+                                      ),
+                                      onPressed: () {
+                                        setModalState(() {
+                                          tempDueTime = null;
+                                        });
+                                      },
+                                    ),
+                                  ElevatedButton.icon(
+                                    onPressed: () async {
+                                      final picked = await showTimePicker(
+                                        context: context,
+                                        initialTime:
+                                            tempDueTime ?? TimeOfDay.now(),
+                                      );
+                                      if (picked != null) {
+                                        setModalState(() {
+                                          tempDueTime = picked;
+                                        });
+                                      }
+                                    },
+                                    icon: const Icon(
+                                      Icons.access_time,
+                                      size: 16,
+                                      color: Colors.white,
+                                    ),
+                                    label: Text(
+                                      tempDueTime == null
+                                          ? L10n.tr("Choose Time", "Pilih Jam")
+                                          : tempDueTime!.format(context),
+                                      style: const TextStyle(color: Colors.white),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: AppColors.button,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                L10n.tr("Reminder", "Pengingat"),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: AppColors.button,
+                                ),
+                              ),
+                              DropdownButton<int?>(
+                                value: tempReminderMinutes,
+                                dropdownColor: Colors.white,
+                                style: TextStyle(color: AppColors.button),
+                                items: [
+                                  DropdownMenuItem(
+                                    value: null,
+                                    child: Text(L10n.tr("None", "Tidak Ada")),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 0,
+                                    child: Text(L10n.tr("At due time", "Pada batas waktu")),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 5,
+                                    child: Text(L10n.tr("5 minutes before", "5 menit sebelum")),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 10,
+                                    child: Text(L10n.tr("10 minutes before", "10 menit sebelum")),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 15,
+                                    child: Text(L10n.tr("15 minutes before", "15 menit sebelum")),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 30,
+                                    child: Text(L10n.tr("30 minutes before", "30 menit sebelum")),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 60,
+                                    child: Text(L10n.tr("1 hour before", "1 jam sebelum")),
+                                  ),
+                                  DropdownMenuItem(
+                                    value: 1440,
+                                    child: Text(L10n.tr("1 day before", "1 hari sebelum")),
+                                  ),
+                                ],
+                                onChanged: (int? value) {
+                                  setModalState(() {
+                                    tempReminderMinutes = value;
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ] else ...[
+                        // --- REPEATED TASK FIELDS ---
+                        // 1. Repeat Frequency
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              L10n.tr("Repeat", "Ulang"),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: AppColors.button,
+                              ),
+                            ),
+                            DropdownButton<RepeatType>(
+                              value: tempRepeatType == RepeatType.none ? RepeatType.daily : tempRepeatType,
+                              dropdownColor: Colors.white,
+                              style: TextStyle(color: AppColors.button),
+                              items: [
+                                DropdownMenuItem(
+                                  value: RepeatType.daily,
+                                  child: Text(L10n.tr("Every Day", "Setiap Hari")),
+                                ),
+                                DropdownMenuItem(
+                                  value: RepeatType.selectedDays,
+                                  child: Text(L10n.tr("Every Few Days", "Setiap Beberapa Hari")),
+                                ),
+                                DropdownMenuItem(
+                                  value: RepeatType.weekly,
+                                  child: Text(L10n.tr("Every Week", "Setiap Minggu")),
+                                ),
+                                DropdownMenuItem(
+                                  value: RepeatType.monthly,
+                                  child: Text(L10n.tr("Every Month", "Setiap Bulan")),
+                                ),
+                                DropdownMenuItem(
+                                  value: RepeatType.yearly,
+                                  child: Text(L10n.tr("Every Year", "Setiap Tahun")),
+                                ),
+                              ],
+                              onChanged: (RepeatType? value) {
+                                setModalState(() {
+                                  tempRepeatType = value ?? RepeatType.daily;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                        if (tempRepeatType == RepeatType.selectedDays) ...[
+                          const SizedBox(height: 12),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children:
+                                [
+                                  {"label": "Mon", "value": DateTime.monday},
+                                  {"label": "Tue", "value": DateTime.tuesday},
+                                  {"label": "Wed", "value": DateTime.wednesday},
+                                  {"label": "Thu", "value": DateTime.thursday},
+                                  {"label": "Fri", "value": DateTime.friday},
+                                  {"label": "Sat", "value": DateTime.saturday},
+                                  {"label": "Sun", "value": DateTime.sunday},
+                                ].map((day) {
+                                  final isSelected = tempSelectedWeekDays
+                                      .contains(day["value"]);
+                                  return GestureDetector(
+                                    onTap: () {
+                                      setModalState(() {
+                                        if (isSelected) {
+                                          tempSelectedWeekDays.remove(
+                                            day["value"],
+                                          );
+                                        } else {
+                                          tempSelectedWeekDays.add(
+                                            day["value"] as int,
+                                          );
+                                        }
+                                      });
+                                    },
+                                    child: Container(
+                                      width: 38,
+                                      height: 38,
+                                      decoration: BoxDecoration(
+                                        color: isSelected
+                                            ? AppColors.button
+                                            : Colors.grey.shade200,
+                                        shape: BoxShape.circle,
+                                      ),
+                                      alignment: Alignment.center,
+                                      child: Text(
+                                        L10n.tr(day["label"] as String),
+                                        style: TextStyle(
+                                          color: isSelected
+                                              ? Colors.white
+                                              : Colors.black,
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }).toList(),
+                          ),
+                        ],
+                        const SizedBox(height: 16),
+                        // 2. Start Date (Tanggal Mulai)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              L10n.tr("Start Date", "Tanggal Mulai"),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: AppColors.button,
+                              ),
+                            ),
+                            ElevatedButton.icon(
+                              onPressed: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: tempStartDate ?? DateTime.now(),
+                                  firstDate: DateTime(2020),
+                                  lastDate: DateTime(2100),
+                                );
+                                if (picked != null) {
+                                  setModalState(() {
+                                    tempStartDate = picked;
+                                  });
+                                }
+                              },
+                              icon: const Icon(
+                                Icons.calendar_today,
+                                size: 16,
+                                color: Colors.white,
+                              ),
+                              label: Text(
+                                tempStartDate == null
+                                    ? L10n.tr("Today", "Hari Ini")
+                                    : "${tempStartDate!.day}/${tempStartDate!.month}/${tempStartDate!.year}",
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppColors.button,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // 3. Time (Jam Pelaksanaan)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              L10n.tr("Time", "Jam"),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: AppColors.button,
                               ),
                             ),
                             Row(
@@ -609,178 +1001,16 @@ class _TasklistpageState extends State<Tasklistpage> {
                           ],
                         ),
                         const SizedBox(height: 16),
+                        // 4. Finish Date (Ulang Sampai)
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            const Text(
-                              "Reminder",
+                            Text(
+                              L10n.tr("Finish Date", "Ulang Sampai"),
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 16,
-                              ),
-                            ),
-                            DropdownButton<int?>(
-                              value: tempReminderMinutes,
-                              dropdownColor: Colors.white,
-                              style: TextStyle(color: AppColors.button),
-                              items: const [
-                                DropdownMenuItem(
-                                  value: null,
-                                  child: Text("No reminder"),
-                                ),
-                                DropdownMenuItem(
-                                  value: 0,
-                                  child: Text("At due time"),
-                                ),
-                                DropdownMenuItem(
-                                  value: 5,
-                                  child: Text("5 minutes before"),
-                                ),
-                                DropdownMenuItem(
-                                  value: 10,
-                                  child: Text("10 minutes before"),
-                                ),
-                                DropdownMenuItem(
-                                  value: 15,
-                                  child: Text("15 minutes before"),
-                                ),
-                                DropdownMenuItem(
-                                  value: 30,
-                                  child: Text("30 minutes before"),
-                                ),
-                                DropdownMenuItem(
-                                  value: 60,
-                                  child: Text("1 hour before"),
-                                ),
-                                DropdownMenuItem(
-                                  value: 1440,
-                                  child: Text("1 day before"),
-                                ),
-                              ],
-                              onChanged: (int? value) {
-                                setModalState(() {
-                                  tempReminderMinutes = value;
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
-                      const SizedBox(height: 16),
-                      // Repeat configuration
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            "Repeat",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
-                          ),
-                          DropdownButton<RepeatType>(
-                            value: tempRepeatType,
-                            dropdownColor: Colors.white,
-                            style: TextStyle(color: AppColors.button),
-                            items: const [
-                              DropdownMenuItem(
-                                value: RepeatType.none,
-                                child: Text("None"),
-                              ),
-                              DropdownMenuItem(
-                                value: RepeatType.daily,
-                                child: Text("Every Day"),
-                              ),
-                              DropdownMenuItem(
-                                value: RepeatType.selectedDays,
-                                child: Text("Every Few Days"),
-                              ),
-                              DropdownMenuItem(
-                                value: RepeatType.weekly,
-                                child: Text("Every Week"),
-                              ),
-                              DropdownMenuItem(
-                                value: RepeatType.monthly,
-                                child: Text("Every Month"),
-                              ),
-                              DropdownMenuItem(
-                                value: RepeatType.yearly,
-                                child: Text("Every Year"),
-                              ),
-                            ],
-                            onChanged: (RepeatType? value) {
-                              setModalState(() {
-                                tempRepeatType = value ?? RepeatType.none;
-                              });
-                            },
-                          ),
-                        ],
-                      ),
-                      if (tempRepeatType == RepeatType.selectedDays) ...[
-                        const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children:
-                              [
-                                {"label": "Mon", "value": DateTime.monday},
-                                {"label": "Tue", "value": DateTime.tuesday},
-                                {"label": "Wed", "value": DateTime.wednesday},
-                                {"label": "Thu", "value": DateTime.thursday},
-                                {"label": "Fri", "value": DateTime.friday},
-                                {"label": "Sat", "value": DateTime.saturday},
-                                {"label": "Sun", "value": DateTime.sunday},
-                              ].map((day) {
-                                final isSelected = tempSelectedWeekDays
-                                    .contains(day["value"]);
-                                return GestureDetector(
-                                  onTap: () {
-                                    setModalState(() {
-                                      if (isSelected) {
-                                        tempSelectedWeekDays.remove(
-                                          day["value"],
-                                        );
-                                      } else {
-                                        tempSelectedWeekDays.add(
-                                          day["value"] as int,
-                                        );
-                                      }
-                                    });
-                                  },
-                                  child: Container(
-                                    width: 38,
-                                    height: 38,
-                                    decoration: BoxDecoration(
-                                      color: isSelected
-                                          ? AppColors.button
-                                          : Colors.grey.shade200,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      day["label"] as String,
-                                      style: TextStyle(
-                                        color: isSelected
-                                            ? Colors.white
-                                            : Colors.black,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }).toList(),
-                        ),
-                      ],
-                      if (tempRepeatType != RepeatType.none) ...[
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            const Text(
-                              "Finish Date",
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
+                                color: AppColors.button,
                               ),
                             ),
                             Row(
@@ -803,7 +1033,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                                     final picked = await showDatePicker(
                                       context: context,
                                       initialDate:
-                                          tempFinishDate ?? DateTime.now(),
+                                          tempFinishDate ?? (tempStartDate ?? DateTime.now()),
                                       firstDate: DateTime.now(),
                                       lastDate: DateTime(2100),
                                     );
@@ -835,6 +1065,65 @@ class _TasklistpageState extends State<Tasklistpage> {
                                   ),
                                 ),
                               ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        // 5. Reminder
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              L10n.tr("Reminder", "Pengingat"),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: AppColors.button,
+                              ),
+                            ),
+                            DropdownButton<int?>(
+                              value: tempReminderMinutes,
+                              dropdownColor: Colors.white,
+                              style: TextStyle(color: AppColors.button),
+                              items: [
+                                DropdownMenuItem(
+                                  value: null,
+                                  child: Text(L10n.tr("None", "Tidak Ada")),
+                                ),
+                                DropdownMenuItem(
+                                  value: 0,
+                                  child: Text(L10n.tr("At task time", "Pada jam tugas")),
+                                ),
+                                DropdownMenuItem(
+                                  value: 5,
+                                  child: Text(L10n.tr("5 minutes before", "5 menit sebelum")),
+                                ),
+                                DropdownMenuItem(
+                                  value: 10,
+                                  child: Text(L10n.tr("10 minutes before", "10 menit sebelum")),
+                                ),
+                                DropdownMenuItem(
+                                  value: 15,
+                                  child: Text(L10n.tr("15 minutes before", "15 menit sebelum")),
+                                ),
+                                DropdownMenuItem(
+                                  value: 30,
+                                  child: Text(L10n.tr("30 minutes before", "30 menit sebelum")),
+                                ),
+                                DropdownMenuItem(
+                                  value: 60,
+                                  child: Text(L10n.tr("1 hour before", "1 jam sebelum")),
+                                ),
+                                DropdownMenuItem(
+                                  value: 1440,
+                                  child: Text(L10n.tr("1 day before", "1 hari sebelum")),
+                                ),
+                              ],
+                              onChanged: (int? value) {
+                                setModalState(() {
+                                  tempReminderMinutes = value;
+                                });
+                              },
                             ),
                           ],
                         ),
@@ -1155,19 +1444,26 @@ class _TasklistpageState extends State<Tasklistpage> {
                                   task.description = descController.text.trim();
                                   task.prioritytask = tempPriority;
                                   task.energylvl = tempEnergyLvl;
-                                  task.dueDate = tempDueDate;
-                                  task.dueTime = tempDueDate != null
-                                      ? tempDueTime?.format(context)
-                                      : null;
+                                  task.startDate = tempStartDate ?? DateTime.now();
+                                  task.dueDate = tempScheduleMode == 0
+                                      ? tempDueDate
+                                      : (tempStartDate ?? DateTime.now());
+                                  task.dueTime = tempDueTime?.format(context);
                                   task.isCompleted = tempIsCompleted;
                                   task.subtasks =
                                       tempSubtasks; // Commit subtasks
-                                  task.reminderMinutes = tempDueDate != null
-                                      ? tempReminderMinutes
-                                      : null;
-                                  task.repeatType = tempRepeatType;
-                                  task.selectedWeekDays = tempSelectedWeekDays;
-                                  task.finishDate = tempFinishDate;
+                                  task.reminderMinutes = tempReminderMinutes;
+                                  task.repeatType = tempScheduleMode == 0
+                                      ? RepeatType.none
+                                      : (tempRepeatType == RepeatType.none
+                                          ? RepeatType.daily
+                                          : tempRepeatType);
+                                  task.selectedWeekDays = tempScheduleMode == 0
+                                      ? []
+                                      : tempSelectedWeekDays;
+                                  task.finishDate = tempScheduleMode == 0
+                                      ? null
+                                      : tempFinishDate;
                                 });
                                 await DBHelper().updateTask(task);
                                 await _loadTasks();
@@ -1283,11 +1579,11 @@ class _TasklistpageState extends State<Tasklistpage> {
               initialValue: selectedTab,
               children: {
                 1: Text(
-                  L10n.tr("Energy Level", "Tingkat Energi"),
+                  L10n.tr("Energy", "Energi"),
                   style: TextStyle(
                     fontFamily: "Quicksand",
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 13,
                     color: selectedTab == 1 ? Colors.white : AppColors.button,
                   ),
                 ),
@@ -1296,7 +1592,7 @@ class _TasklistpageState extends State<Tasklistpage> {
                   style: TextStyle(
                     fontFamily: "Quicksand",
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 13,
                     color: selectedTab == 2 ? Colors.white : AppColors.button,
                   ),
                 ),
@@ -1305,8 +1601,17 @@ class _TasklistpageState extends State<Tasklistpage> {
                   style: TextStyle(
                     fontFamily: "Quicksand",
                     fontWeight: FontWeight.bold,
-                    fontSize: 14,
+                    fontSize: 13,
                     color: selectedTab == 3 ? Colors.white : AppColors.button,
+                  ),
+                ),
+                4: Text(
+                  L10n.tr("Calendar", "Kalender"),
+                  style: TextStyle(
+                    fontFamily: "Quicksand",
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                    color: selectedTab == 4 ? Colors.white : AppColors.button,
                   ),
                 ),
               },
@@ -1314,6 +1619,9 @@ class _TasklistpageState extends State<Tasklistpage> {
                 setState(() {
                   selectedTab = value;
                 });
+                if (value == 4) {
+                  _loadGcalEvents(_calendarSelectedDate);
+                }
               },
             ),
             Expanded(
@@ -1325,14 +1633,193 @@ class _TasklistpageState extends State<Tasklistpage> {
                     )
                   : selectedTab == 2
                   ? DueDateView(tasks: _tasks, onEdit: _showEditTaskBottomSheet)
-                  : PriorityView(
+                  : selectedTab == 3
+                  ? PriorityView(
                       tasks: _tasks,
                       onEdit: _showEditTaskBottomSheet,
+                    )
+                  : CalendarTabView(
+                      tasks: _tasks,
+                      selectedDate: _calendarSelectedDate,
+                      gcalEvents: _gcalEvents,
+                      isLoadingGcal: _isLoadingGcal,
+                      onDateSelected: (date) {
+                        setState(() {
+                          _calendarSelectedDate = date;
+                        });
+                        _loadGcalEvents(date);
+                      },
+                      onEdit: _showEditTaskBottomSheet,
+                      onRefreshEvents: () =>
+                          _loadGcalEvents(_calendarSelectedDate),
                     ),
             ),
           ],
         ),
       ),
+    );
+  }
+}
+
+class CalendarTabView extends StatelessWidget {
+  final List<TaskCard> tasks;
+  final DateTime selectedDate;
+  final List<CalendarEventItem> gcalEvents;
+  final bool isLoadingGcal;
+  final ValueChanged<DateTime> onDateSelected;
+  final Function(TaskCard) onEdit;
+  final VoidCallback onRefreshEvents;
+
+  const CalendarTabView({
+    super.key,
+    required this.tasks,
+    required this.selectedDate,
+    required this.gcalEvents,
+    required this.isLoadingGcal,
+    required this.onDateSelected,
+    required this.onEdit,
+    required this.onRefreshEvents,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final dayTasks = tasks.where((t) {
+      if (t.isCompleted) return false;
+      return RepeatTaskService.shouldShowTaskOnDate(t, selectedDate);
+    }).toList();
+
+    final completedTasks = tasks.where((t) {
+      if (!t.isCompleted) return false;
+      return RepeatTaskService.shouldShowTaskOnDate(t, selectedDate);
+    }).toList();
+
+    Widget buildTaskCard(TaskCard task) {
+      task.onTap = () => onEdit(task);
+      return task;
+    }
+
+    return ListView(
+      physics: const BouncingScrollPhysics(),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      children: [
+        KinDayCalendarWidget(
+          selectedDate: selectedDate,
+          onDateSelected: onDateSelected,
+          tasks: tasks,
+          gcalEvents: gcalEvents,
+          isMonthlyMode: true,
+        ),
+        const SizedBox(height: 16),
+
+        // Google Calendar Section (if any events)
+        if (gcalEvents.isNotEmpty) ...[
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.event_note_rounded,
+                  size: 16,
+                  color: Color(0xFF4285F4),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  L10n.tr("Google Calendar Events", "Agenda Google Calendar"),
+                  style: const TextStyle(
+                    fontFamily: "Quicksand",
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Color(0xFF4285F4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          ...gcalEvents.map((e) => CalendarEventCard(
+                event: e,
+                onConverted: onRefreshEvents,
+              )),
+          const SizedBox(height: 12),
+        ],
+
+        // KinDay Tasks for Selected Date
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: Row(
+            children: [
+              Icon(Icons.check_circle_outline, size: 16, color: AppColors.button),
+              const SizedBox(width: 6),
+              Text(
+                "${L10n.tr("Tasks for", "Tugas")} ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
+                style: TextStyle(
+                  fontFamily: "Quicksand",
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                  color: AppColors.button,
+                ),
+              ),
+              const Spacer(),
+              Text(
+                "${dayTasks.length} ${L10n.tr("tasks", "tugas")}",
+                style: TextStyle(
+                  fontFamily: "Nunito",
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  color: AppColors.button.withValues(alpha: 0.7),
+                ),
+              ),
+            ],
+          ),
+        ),
+
+        if (dayTasks.isEmpty && gcalEvents.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24.0),
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Image.asset(
+                    "assets/images/lavender_bunny/Tidakadatugas.gif",
+                    height: 90,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    L10n.tr(
+                      "No tasks or events on this date!",
+                      "Tidak ada tugas atau agenda di tanggal ini!",
+                    ),
+                    style: TextStyle(
+                      fontFamily: "Nunito",
+                      fontSize: 12,
+                      color: AppColors.normaltext.withValues(alpha: 0.6),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          )
+        else
+          ...dayTasks.map((t) => buildTaskCard(t)),
+
+        if (completedTasks.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          Padding(
+            padding: const EdgeInsets.only(bottom: 8.0),
+            child: Text(
+              L10n.tr("Completed", "Selesai"),
+              style: TextStyle(
+                fontFamily: "Quicksand",
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+                color: AppColors.button,
+              ),
+            ),
+          ),
+          ...completedTasks.map((t) => buildTaskCard(t)),
+        ],
+        const SizedBox(height: 30),
+      ],
     );
   }
 }
@@ -1351,34 +1838,14 @@ class EnergyLevelView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    TimeOfDay? parseTimeOfDay(String? timeStr) {
-      if (timeStr == null || timeStr.isEmpty) return null;
-      try {
-        final parts = timeStr.split(':');
-        if (parts.length >= 2) {
-          final hourPart = parts[0].trim();
-          final minutePart = parts[1].trim();
-          int hour = int.parse(hourPart.replaceAll(RegExp(r'\D'), ''));
-          int minute = int.parse(minutePart.replaceAll(RegExp(r'\D'), ''));
-          if (timeStr.toLowerCase().contains('pm') && hour < 12) {
-            hour += 12;
-          } else if (timeStr.toLowerCase().contains('am') && hour == 12) {
-            hour = 0;
-          }
-          return TimeOfDay(hour: hour, minute: minute);
-        }
-      } catch (e) {
-        debugPrint("Error parsing TimeOfDay: $e");
-      }
-      return null;
-    }
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
     final activeTasks = tasks
         .where(
           (t) =>
               !t.isCompleted &&
-              (t.repeatType == RepeatType.none ||
-                  RepeatTaskService.shouldShowTaskOnDate(t, DateTime.now())),
+              RepeatTaskService.shouldShowTaskOnDate(t, today),
         )
         .toList();
     final recommendedTasks = activeTasks
@@ -1386,35 +1853,15 @@ class EnergyLevelView extends StatelessWidget {
         .toList();
 
     recommendedTasks.sort((a, b) {
-      // 1. Closest due date first (ascending)
-      if (a.dueDate != null && b.dueDate != null) {
-        final dateCompare = a.dueDate!.compareTo(b.dueDate!);
-        if (dateCompare != 0) {
-          return dateCompare;
-        }
-      } else if (a.dueDate != null && b.dueDate == null) {
-        return -1;
-      } else if (a.dueDate == null && b.dueDate != null) {
-        return 1;
+      // 1. Closest effective due date and time first (ascending)
+      final dtA = RepeatTaskService.getEffectiveDueDateTime(a, referenceDate: today);
+      final dtB = RepeatTaskService.getEffectiveDueDateTime(b, referenceDate: today);
+      final dtCompare = dtA.compareTo(dtB);
+      if (dtCompare != 0) {
+        return dtCompare;
       }
 
-      // 2. Closest due time first (ascending)
-      final timeA = parseTimeOfDay(a.dueTime);
-      final timeB = parseTimeOfDay(b.dueTime);
-      if (timeA != null && timeB != null) {
-        final minA = timeA.hour * 60 + timeA.minute;
-        final minB = timeB.hour * 60 + timeB.minute;
-        final timeCompare = minA.compareTo(minB);
-        if (timeCompare != 0) {
-          return timeCompare;
-        }
-      } else if (timeA != null && timeB == null) {
-        return -1;
-      } else if (timeA == null && timeB != null) {
-        return 1;
-      }
-
-      // 3. Highest priority first (descending)
+      // 2. Highest priority first (descending)
       return b.prioritytask.compareTo(a.prioritytask);
     });
 
@@ -1592,17 +2039,13 @@ class DueDateView extends StatelessWidget {
 
     final upcomingTasks = activeTasks.where((t) {
       if (t.repeatType != RepeatType.none) {
-        if (t.finishDate != null) {
-          final finishDay = DateTime(
-            t.finishDate!.year,
-            t.finishDate!.month,
-            t.finishDate!.day,
-          );
-          return finishDay.isAfter(tomorrowDate);
-        }
-        return true;
+        final next = RepeatTaskService.getNextOccurrenceDate(
+          t,
+          fromDate: tomorrowDate.add(const Duration(days: 1)),
+        );
+        return next != null;
       }
-      if (t.dueDate == null) return true;
+      if (t.dueDate == null) return false;
       final d = DateTime(t.dueDate!.year, t.dueDate!.month, t.dueDate!.day);
       return d.isAfter(tomorrowDate);
     }).toList();

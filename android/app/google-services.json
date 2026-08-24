@@ -14,19 +14,19 @@
       },
       "oauth_client": [
         {
-          "client_id": "397404342098-jpaj30h3g5chbmgppmqb4mqlc4rkj2pj.apps.googleusercontent.com",
+          "client_id": "397404342098-ablncsi48lqfvp75cih7ul0842gmh49n.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.harumone.kinday",
-            "certificate_hash": "033e8680d21f40e63b7eae5b0bbd8580cd819b57"
+            "certificate_hash": "369a9256e78ba276586938d30cceab2228554346"
           }
         },
         {
-          "client_id": "397404342098-ochk6bbtopb25rqr1mq01l6iaqsq98g2.apps.googleusercontent.com",
+          "client_id": "397404342098-qhfcddctv7h4jcb2a8qa5b87m846jc3c.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.harumone.kinday",
-            "certificate_hash": "31d9ce67b3449f44afebbc9c6e91d1271f907612"
+            "certificate_hash": "421359aca9bbba0495b07e7c2c66563306adf984"
           }
         },
         {

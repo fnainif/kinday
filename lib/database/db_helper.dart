@@ -25,7 +25,7 @@ class DBHelper {
 
     return await openDatabase(
       path,
-      version: 5,
+      version: 6,
       onCreate: (db, version) async {
         await db.execute('''
           CREATE TABLE users(
@@ -43,6 +43,7 @@ class DBHelper {
             description TEXT,
             energylvl INTEGER,
             prioritytask INTEGER,
+            startDate TEXT,
             dueDate TEXT,
             dueTime TEXT,
             isCompleted INTEGER,
@@ -142,6 +143,13 @@ class DBHelper {
             ''');
           } catch (e) {
             debugPrint("Error migrating database to v5: $e");
+          }
+        }
+        if (oldVersion < 6) {
+          try {
+            await db.execute('ALTER TABLE tasks ADD COLUMN startDate TEXT');
+          } catch (e) {
+            debugPrint("Error migrating database to v6: $e");
           }
         }
       },
@@ -253,6 +261,7 @@ class DBHelper {
       'description': task.description,
       'energylvl': task.energylvl,
       'prioritytask': task.prioritytask,
+      'startDate': task.startDate?.toIso8601String(),
       'dueDate': task.dueDate?.toIso8601String(),
       'dueTime': task.dueTime,
       'isCompleted': task.isCompleted ? 1 : 0,
@@ -277,6 +286,7 @@ class DBHelper {
     );
 
     return results.map((map) {
+      final startDateStr = map['startDate'] as String?;
       final dueDateStr = map['dueDate'] as String?;
       final subtasksStr = map['subtasks'] as String?;
       List<Map<String, dynamic>> parsedSubtasks = [];
@@ -321,12 +331,17 @@ class DBHelper {
       final lastOccurStr = map['lastOccurrenceDate'] as String?;
       final lastOccur = lastOccurStr != null ? DateTime.parse(lastOccurStr) : null;
 
+      final startDate = startDateStr != null
+          ? DateTime.parse(startDateStr)
+          : (dueDateStr != null ? DateTime.parse(dueDateStr) : createdAt);
+
       return TaskCard(
         id: map['id'] as int?,
         title: map['title'] as String,
         description: map['description'] as String?,
         energylvl: map['energylvl'] as int,
         prioritytask: map['prioritytask'] as int,
+        startDate: startDate,
         dueDate: dueDateStr != null ? DateTime.parse(dueDateStr) : null,
         dueTime: map['dueTime'] as String?,
         isCompleted: (map['isCompleted'] as int) == 1,
@@ -349,6 +364,7 @@ class DBHelper {
       'description': task.description,
       'energylvl': task.energylvl,
       'prioritytask': task.prioritytask,
+      'startDate': task.startDate?.toIso8601String(),
       'dueDate': task.dueDate?.toIso8601String(),
       'dueTime': task.dueTime,
       'isCompleted': task.isCompleted ? 1 : 0,

@@ -1,0 +1,32 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Helper function to check if the authenticated user owns the document
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Rules for 'users' collection and user-specific subcollections (e.g., backups)
+    match /users/{userId} {
+      // Allow user to read and write (create, update, delete) their own profile document
+      allow read, write: if isOwner(userId);
+
+      // Subcollection for automatic & manual user backups
+      match /backups/{backupId} {
+        allow read, write: if isOwner(userId);
+      }
+
+      // Allow owner access to all other nested subcollections under their user document
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+  }
+}

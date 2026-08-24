@@ -359,6 +359,7 @@ class TaskCard extends StatelessWidget {
     this.description,
     required this.energylvl,
     this.prioritytask = 1,
+    DateTime? startDate,
     this.dueDate,
     this.dueTime,
     this.onTap,
@@ -374,7 +375,8 @@ class TaskCard extends StatelessWidget {
     this.lastOccurrenceDate,
   }) : subtasks = subtasks ?? [],
        selectedWeekDays = selectedWeekDays ?? [],
-       createdAt = createdAt ?? DateTime.now();
+       createdAt = createdAt ?? DateTime.now(),
+       startDate = startDate ?? (dueDate ?? DateTime.now());
 
   static TaskCard? activePomodoroTask;
 
@@ -383,6 +385,7 @@ class TaskCard extends StatelessWidget {
   String? description;
   int energylvl;
   int prioritytask;
+  DateTime? startDate;
   DateTime? dueDate;
   String? dueTime;
   VoidCallback? onTap;
@@ -412,6 +415,44 @@ class TaskCard extends StatelessWidget {
     }
   }
 
+  String _getRepeatLabel() {
+    String timeStr = dueTime != null && dueTime!.isNotEmpty ? " $dueTime" : "";
+    switch (repeatType) {
+      case RepeatType.daily:
+        return "Daily$timeStr";
+      case RepeatType.selectedDays:
+        final days = selectedWeekDays.map((d) {
+          switch (d) {
+            case 1:
+              return "Mon";
+            case 2:
+              return "Tue";
+            case 3:
+              return "Wed";
+            case 4:
+              return "Thu";
+            case 5:
+              return "Fri";
+            case 6:
+              return "Sat";
+            case 7:
+              return "Sun";
+            default:
+              return "";
+          }
+        }).join(", ");
+        return "${days.isEmpty ? 'Repeat' : days}$timeStr";
+      case RepeatType.weekly:
+        return "Weekly$timeStr";
+      case RepeatType.monthly:
+        return "Monthly$timeStr";
+      case RepeatType.yearly:
+        return "Yearly$timeStr";
+      case RepeatType.none:
+        return "";
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -435,17 +476,48 @@ class TaskCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                if (dueDate != null) ...[
+                if (repeatType != RepeatType.none) ...[
+                  Icon(Icons.repeat, size: 12, color: AppColors.button),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      _getRepeatLabel(),
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.button,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ] else if (dueDate != null) ...[
                   Icon(Icons.calendar_today, size: 11, color: AppColors.button),
-                  const SizedBox(width: 3),
-                  Text(
-                    dueTime != null && dueTime!.isNotEmpty
-                        ? "${dueDate!.day}/${dueDate!.month}/${dueDate!.year}  $dueTime"
-                        : "${dueDate!.day}/${dueDate!.month}/${dueDate!.year}",
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
-                      color: AppColors.button,
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      dueTime != null && dueTime!.isNotEmpty
+                          ? "${dueDate!.day}/${dueDate!.month}/${dueDate!.year}  $dueTime"
+                          : "${dueDate!.day}/${dueDate!.month}/${dueDate!.year}",
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.button,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ] else if (startDate != null) ...[
+                  Icon(Icons.play_circle_outline, size: 11, color: AppColors.button),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      "${startDate!.day}/${startDate!.month}/${startDate!.year}",
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.button,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ],
