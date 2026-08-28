@@ -266,10 +266,14 @@ class CalendarEventCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark
             ? const Color(0xFF1E2235)
-            : const Color(0xFFEBF3FC), // Soft pastel blue/lavender
+            : (event.isGoogleTask
+                ? const Color(0xFFEDF8F2) // Soft pastel green for Google Tasks
+                : const Color(0xFFEBF3FC)), // Soft pastel blue for Calendar
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: const Color(0xFF8BB7F0).withValues(alpha: 0.35),
+          color: event.isGoogleTask
+              ? const Color(0xFF34A853).withValues(alpha: 0.35)
+              : const Color(0xFF8BB7F0).withValues(alpha: 0.35),
           width: 1.2,
         ),
       ),
@@ -282,28 +286,40 @@ class CalendarEventCard extends StatelessWidget {
                 child: Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF4285F4).withValues(alpha: 0.12),
+                    color: event.isGoogleTask
+                        ? const Color(0xFF0F9D58).withValues(alpha: 0.12)
+                        : const Color(0xFF4285F4).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.event_note_rounded,
+                      Icon(
+                        event.isGoogleTask
+                            ? Icons.task_alt_rounded
+                            : Icons.event_note_rounded,
                         size: 13,
-                        color: Color(0xFF4285F4),
+                        color: event.isGoogleTask
+                            ? const Color(0xFF0F9D58)
+                            : const Color(0xFF4285F4),
                       ),
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
-                          event.calendarName != null && event.calendarName!.trim().isNotEmpty
-                              ? "GCal • ${event.calendarName}"
-                              : "Google Calendar",
-                          style: const TextStyle(
+                          event.isGoogleTask
+                              ? (event.calendarName != null && event.calendarName!.trim().isNotEmpty
+                                  ? "GTasks • ${event.calendarName}"
+                                  : "Google Tasks")
+                              : (event.calendarName != null && event.calendarName!.trim().isNotEmpty
+                                  ? "GCal • ${event.calendarName}"
+                                  : "Google Calendar"),
+                          style: TextStyle(
                             fontFamily: "Quicksand",
                             fontWeight: FontWeight.bold,
                             fontSize: 11,
-                            color: Color(0xFF4285F4),
+                            color: event.isGoogleTask
+                                ? const Color(0xFF0F9D58)
+                                : const Color(0xFF4285F4),
                           ),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

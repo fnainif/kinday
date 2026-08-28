@@ -8,11 +8,9 @@ import 'package:kinday/constant/l10n.dart';
 import 'package:kinday/constant/task_notifier.dart';
 import 'package:kinday/database/db_helper.dart';
 import 'package:kinday/database/notification_helper.dart';
-import 'package:kinday/pages/service/google_calendar_service.dart';
 import 'package:kinday/pages/service/repeat_task_service.dart';
-import 'package:kinday/widgets/calendar_event_card.dart';
-import 'package:kinday/widgets/kinday_calendar_widget.dart';
 import 'package:kinday/widgets/speech_mic_button.dart';
+import 'package:kinday/widgets/task_list_item.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
 
@@ -27,16 +25,14 @@ class _TasklistpageState extends State<Tasklistpage> {
   int selectedTab = 1;
   late List<TaskCard> _tasks;
   int _currentEnergyLvl = 3;
-  DateTime _calendarSelectedDate = DateTime.now();
-  List<CalendarEventItem> _gcalEvents = [];
-  bool _isLoadingGcal = false;
+  bool _isListView = false;
+  bool _isEisenhowerMode = false;
 
   @override
   void initState() {
     super.initState();
     _tasks = [];
     _loadTasks();
-    _loadGcalEvents(_calendarSelectedDate);
     TaskNotifier.taskUpdated.addListener(_loadTasks);
   }
 
@@ -46,25 +42,11 @@ class _TasklistpageState extends State<Tasklistpage> {
     super.dispose();
   }
 
-  Future<void> _loadGcalEvents(DateTime date) async {
-    final connected = await GoogleCalendarService().isConnected();
-    if (!connected) {
-      if (mounted) setState(() => _gcalEvents = []);
-      return;
-    }
-    if (mounted) setState(() => _isLoadingGcal = true);
-    final events = await GoogleCalendarService().fetchEventsForDate(date);
-    if (mounted) {
-      setState(() {
-        _gcalEvents = events;
-        _isLoadingGcal = false;
-      });
-    }
-  }
-
   Future<void> _loadTasks() async {
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getInt('user_id') ?? 1;
+    final isListView = prefs.getBool('is_task_list_view_mode') ?? false;
+    final isEisenhower = prefs.getBool('is_eisenhower_matrix_mode') ?? false;
 
     // Check and reset repeatable tasks for new day
     await RepeatTaskService.checkAndResetDailyRepeatTasks(userId);
@@ -74,10 +56,19 @@ class _TasklistpageState extends State<Tasklistpage> {
     if (!mounted) return;
     setState(() {
       _tasks = dbTasks;
+      _isListView = isListView;
+      _isEisenhowerMode = isEisenhower;
       if (latestEnergy != null) {
         _currentEnergyLvl = latestEnergy;
       }
     });
+  }
+
+  Future<void> _toggleTaskComplete(TaskCard task, bool? isCompleted) async {
+    task.isCompleted = isCompleted ?? false;
+    await DBHelper().updateTask(task);
+    await _loadTasks();
+    TaskNotifier.notify();
   }
 
   void _showEditTaskBottomSheet(TaskCard task) {
@@ -1605,24 +1596,144 @@ class _TasklistpageState extends State<Tasklistpage> {
                     color: selectedTab == 3 ? Colors.white : AppColors.button,
                   ),
                 ),
-                4: Text(
-                  L10n.tr("Calendar", "Kalender"),
-                  style: TextStyle(
-                    fontFamily: "Quicksand",
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                    color: selectedTab == 4 ? Colors.white : AppColors.button,
-                  ),
-                ),
               },
               onValueChanged: (value) {
                 setState(() {
                   selectedTab = value;
                 });
-                if (value == 4) {
-                  _loadGcalEvents(_calendarSelectedDate);
-                }
               },
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 10, 20, 2),
+              child: Row(
+                children: [
+                  if (selectedTab == 3) ...[
+                    GestureDetector(
+                      onTap: () async {
+                        final newEisenhower = !_isEisenhowerMode;
+                        setState(() {
+                          _isEisenhowerMode = newEisenhower;
+                        });
+                        final prefs = await SharedPreferences.getInstance();
+                        await prefs.setBool('is_eisenhower_matrix_mode', newEisenhower);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _isEisenhowerMode
+                              ? AppColors.button
+                              : AppColors.button.withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppColors.button.withValues(alpha: 0.2),
+                            width: 1,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              _isEisenhowerMode
+                                  ? Icons.grid_view_rounded
+                                  : Icons.flag_outlined,
+                              size: 13,
+                              color: _isEisenhowerMode
+                                  ? Colors.white
+                                  : AppColors.button,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              _isEisenhowerMode
+                                  ? L10n.tr("Eisenhower Matrix", "Matriks Eisenhower")
+                                  : L10n.tr("Priority Levels", "Tingkat Prioritas"),
+                              style: TextStyle(
+                                fontFamily: "Quicksand",
+                                fontWeight: FontWeight.bold,
+                                fontSize: 11,
+                                color: _isEisenhowerMode
+                                    ? Colors.white
+                                    : AppColors.button,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    Icon(
+                      _isListView
+                          ? Icons.format_list_bulleted_rounded
+                          : Icons.view_agenda_rounded,
+                      size: 15,
+                      color: AppColors.button.withValues(alpha: 0.7),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _isListView
+                          ? L10n.tr("List View", "Tampilan Daftar")
+                          : L10n.tr("Card View", "Tampilan Kartu"),
+                      style: TextStyle(
+                        fontFamily: "Quicksand",
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: AppColors.button.withValues(alpha: 0.7),
+                      ),
+                    ),
+                  ],
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: () async {
+                      final newMode = !_isListView;
+                      setState(() {
+                        _isListView = newMode;
+                      });
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setBool('is_task_list_view_mode', newMode);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.button.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: AppColors.button.withValues(alpha: 0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            _isListView
+                                ? Icons.view_agenda_rounded
+                                : Icons.format_list_bulleted_rounded,
+                            size: 13,
+                            color: AppColors.button,
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            _isListView
+                                ? L10n.tr("Cards", "Kartu")
+                                : L10n.tr("List", "Daftar"),
+                            style: TextStyle(
+                              fontFamily: "Quicksand",
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                              color: AppColors.button,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
             Expanded(
               child: selectedTab == 1
@@ -1630,28 +1741,22 @@ class _TasklistpageState extends State<Tasklistpage> {
                       tasks: _tasks,
                       userEnergy: _currentEnergyLvl,
                       onEdit: _showEditTaskBottomSheet,
+                      isListView: _isListView,
+                      onToggleComplete: _toggleTaskComplete,
                     )
                   : selectedTab == 2
-                  ? DueDateView(tasks: _tasks, onEdit: _showEditTaskBottomSheet)
-                  : selectedTab == 3
-                  ? PriorityView(
+                  ? DueDateView(
                       tasks: _tasks,
                       onEdit: _showEditTaskBottomSheet,
+                      isListView: _isListView,
+                      onToggleComplete: _toggleTaskComplete,
                     )
-                  : CalendarTabView(
+                  : PriorityView(
                       tasks: _tasks,
-                      selectedDate: _calendarSelectedDate,
-                      gcalEvents: _gcalEvents,
-                      isLoadingGcal: _isLoadingGcal,
-                      onDateSelected: (date) {
-                        setState(() {
-                          _calendarSelectedDate = date;
-                        });
-                        _loadGcalEvents(date);
-                      },
                       onEdit: _showEditTaskBottomSheet,
-                      onRefreshEvents: () =>
-                          _loadGcalEvents(_calendarSelectedDate),
+                      isListView: _isListView,
+                      isEisenhowerMode: _isEisenhowerMode,
+                      onToggleComplete: _toggleTaskComplete,
                     ),
             ),
           ],
@@ -1661,180 +1766,22 @@ class _TasklistpageState extends State<Tasklistpage> {
   }
 }
 
-class CalendarTabView extends StatelessWidget {
-  final List<TaskCard> tasks;
-  final DateTime selectedDate;
-  final List<CalendarEventItem> gcalEvents;
-  final bool isLoadingGcal;
-  final ValueChanged<DateTime> onDateSelected;
-  final Function(TaskCard) onEdit;
-  final VoidCallback onRefreshEvents;
-
-  const CalendarTabView({
-    super.key,
-    required this.tasks,
-    required this.selectedDate,
-    required this.gcalEvents,
-    required this.isLoadingGcal,
-    required this.onDateSelected,
-    required this.onEdit,
-    required this.onRefreshEvents,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final dayTasks = tasks.where((t) {
-      if (t.isCompleted) return false;
-      return RepeatTaskService.shouldShowTaskOnDate(t, selectedDate);
-    }).toList();
-
-    final completedTasks = tasks.where((t) {
-      if (!t.isCompleted) return false;
-      return RepeatTaskService.shouldShowTaskOnDate(t, selectedDate);
-    }).toList();
-
-    Widget buildTaskCard(TaskCard task) {
-      task.onTap = () => onEdit(task);
-      return task;
-    }
-
-    return ListView(
-      physics: const BouncingScrollPhysics(),
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      children: [
-        KinDayCalendarWidget(
-          selectedDate: selectedDate,
-          onDateSelected: onDateSelected,
-          tasks: tasks,
-          gcalEvents: gcalEvents,
-          isMonthlyMode: true,
-        ),
-        const SizedBox(height: 16),
-
-        // Google Calendar Section (if any events)
-        if (gcalEvents.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.event_note_rounded,
-                  size: 16,
-                  color: Color(0xFF4285F4),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  L10n.tr("Google Calendar Events", "Agenda Google Calendar"),
-                  style: const TextStyle(
-                    fontFamily: "Quicksand",
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                    color: Color(0xFF4285F4),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          ...gcalEvents.map((e) => CalendarEventCard(
-                event: e,
-                onConverted: onRefreshEvents,
-              )),
-          const SizedBox(height: 12),
-        ],
-
-        // KinDay Tasks for Selected Date
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Row(
-            children: [
-              Icon(Icons.check_circle_outline, size: 16, color: AppColors.button),
-              const SizedBox(width: 6),
-              Text(
-                "${L10n.tr("Tasks for", "Tugas")} ${selectedDate.day}/${selectedDate.month}/${selectedDate.year}",
-                style: TextStyle(
-                  fontFamily: "Quicksand",
-                  fontWeight: FontWeight.bold,
-                  fontSize: 14,
-                  color: AppColors.button,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                "${dayTasks.length} ${L10n.tr("tasks", "tugas")}",
-                style: TextStyle(
-                  fontFamily: "Nunito",
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  color: AppColors.button.withValues(alpha: 0.7),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        if (dayTasks.isEmpty && gcalEvents.isEmpty)
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 24.0),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Image.asset(
-                    "assets/images/lavender_bunny/Tidakadatugas.gif",
-                    height: 90,
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    L10n.tr(
-                      "No tasks or events on this date!",
-                      "Tidak ada tugas atau agenda di tanggal ini!",
-                    ),
-                    style: TextStyle(
-                      fontFamily: "Nunito",
-                      fontSize: 12,
-                      color: AppColors.normaltext.withValues(alpha: 0.6),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          )
-        else
-          ...dayTasks.map((t) => buildTaskCard(t)),
-
-        if (completedTasks.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Padding(
-            padding: const EdgeInsets.only(bottom: 8.0),
-            child: Text(
-              L10n.tr("Completed", "Selesai"),
-              style: TextStyle(
-                fontFamily: "Quicksand",
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
-                color: AppColors.button,
-              ),
-            ),
-          ),
-          ...completedTasks.map((t) => buildTaskCard(t)),
-        ],
-        const SizedBox(height: 30),
-      ],
-    );
-  }
-}
-
-//Category Task berdasarkan Energy Level
+// Category Task berdasarkan Energy Level
 class EnergyLevelView extends StatelessWidget {
   const EnergyLevelView({
     super.key,
     required this.tasks,
     required this.userEnergy,
     required this.onEdit,
+    this.isListView = false,
+    this.onToggleComplete,
   });
+
   final List<TaskCard> tasks;
   final int userEnergy;
   final Function(TaskCard) onEdit;
+  final bool isListView;
+  final Function(TaskCard, bool?)? onToggleComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -1853,27 +1800,44 @@ class EnergyLevelView extends StatelessWidget {
         .toList();
 
     recommendedTasks.sort((a, b) {
-      // 1. Closest effective due date and time first (ascending)
       final dtA = RepeatTaskService.getEffectiveDueDateTime(a, referenceDate: today);
       final dtB = RepeatTaskService.getEffectiveDueDateTime(b, referenceDate: today);
       final dtCompare = dtA.compareTo(dtB);
       if (dtCompare != 0) {
         return dtCompare;
       }
-
-      // 2. Highest priority first (descending)
       return b.prioritytask.compareTo(a.prioritytask);
     });
 
     final lowEnergyTasks = activeTasks.where((t) => t.energylvl <= 2).toList();
     final highFocusTasks = activeTasks.where((t) => t.energylvl >= 4).toList()
-      ..sort(
-        (a, b) => b.energylvl.compareTo(a.energylvl),
-      ); // Sort dari energi terbesar
+      ..sort((a, b) => b.energylvl.compareTo(a.energylvl));
 
     Widget buildTaskCard(TaskCard task) {
       task.onTap = () => onEdit(task);
       return task;
+    }
+
+    Widget buildTaskList(List<TaskCard> taskList) {
+      if (taskList.isEmpty) return const SizedBox.shrink();
+      if (isListView) {
+        return Column(
+          children: taskList.map((t) => TaskListItem(
+            task: t,
+            onTap: () => onEdit(t),
+            onCompletedChanged: onToggleComplete != null
+                ? (val) => onToggleComplete!(t, val)
+                : null,
+          )).toList(),
+        );
+      }
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: taskList.map(buildTaskCard).toList(),
+        ),
+      );
     }
 
     Widget buildEmptyState(String message) {
@@ -1908,6 +1872,7 @@ class EnergyLevelView extends StatelessWidget {
       children: [
         Container1(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 10.0),
@@ -1929,18 +1894,13 @@ class EnergyLevelView extends StatelessWidget {
               if (recommendedTasks.isEmpty)
                 buildEmptyState(L10n.tr("No recommended tasks", "Tidak ada tugas disarankan"))
               else
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: recommendedTasks.map(buildTaskCard).toList(),
-                  ),
-                ),
+                buildTaskList(recommendedTasks),
             ],
           ),
         ),
         Container1(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 10.0),
@@ -1962,18 +1922,13 @@ class EnergyLevelView extends StatelessWidget {
               if (lowEnergyTasks.isEmpty)
                 buildEmptyState(L10n.tr("No low energy tasks", "Tidak ada tugas energi rendah"))
               else
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: lowEnergyTasks.map(buildTaskCard).toList(),
-                  ),
-                ),
+                buildTaskList(lowEnergyTasks),
             ],
           ),
         ),
         Container1(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 10.0),
@@ -1999,13 +1954,7 @@ class EnergyLevelView extends StatelessWidget {
               if (highFocusTasks.isEmpty)
                 buildEmptyState(L10n.tr("No high focus tasks", "Tidak ada tugas fokus tinggi"))
               else
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: highFocusTasks.map(buildTaskCard).toList(),
-                  ),
-                ),
+                buildTaskList(highFocusTasks),
             ],
           ),
         ),
@@ -2014,11 +1963,20 @@ class EnergyLevelView extends StatelessWidget {
   }
 }
 
-//Category Task berdasarkan Due Date
+// Category Task berdasarkan Due Date
 class DueDateView extends StatelessWidget {
-  const DueDateView({super.key, required this.tasks, required this.onEdit});
+  const DueDateView({
+    super.key,
+    required this.tasks,
+    required this.onEdit,
+    this.isListView = false,
+    this.onToggleComplete,
+  });
+
   final List<TaskCard> tasks;
   final Function(TaskCard) onEdit;
+  final bool isListView;
+  final Function(TaskCard, bool?)? onToggleComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -2057,6 +2015,28 @@ class DueDateView extends StatelessWidget {
       return task;
     }
 
+    Widget buildTaskList(List<TaskCard> taskList) {
+      if (taskList.isEmpty) return const SizedBox.shrink();
+      if (isListView) {
+        return Column(
+          children: taskList.map((t) => TaskListItem(
+            task: t,
+            onTap: () => onEdit(t),
+            onCompletedChanged: onToggleComplete != null
+                ? (val) => onToggleComplete!(t, val)
+                : null,
+          )).toList(),
+        );
+      }
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: taskList.map(buildTaskCard).toList(),
+        ),
+      );
+    }
+
     Widget buildEmptyState(String message) {
       return Padding(
         padding: const EdgeInsets.symmetric(vertical: 16.0),
@@ -2089,6 +2069,7 @@ class DueDateView extends StatelessWidget {
       children: [
         Container1(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 10.0),
@@ -2110,18 +2091,13 @@ class DueDateView extends StatelessWidget {
               if (todayTasks.isEmpty)
                 buildEmptyState(L10n.tr("No tasks today", "Tidak ada tugas hari ini"))
               else
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: todayTasks.map(buildTaskCard).toList(),
-                  ),
-                ),
+                buildTaskList(todayTasks),
             ],
           ),
         ),
         Container1(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 10.0),
@@ -2143,18 +2119,13 @@ class DueDateView extends StatelessWidget {
               if (tomorrowTasks.isEmpty)
                 buildEmptyState(L10n.tr("No tasks tomorrow", "Tidak ada tugas besok"))
               else
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: tomorrowTasks.map(buildTaskCard).toList(),
-                  ),
-                ),
+                buildTaskList(tomorrowTasks),
             ],
           ),
         ),
         Container1(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 10.0),
@@ -2176,18 +2147,13 @@ class DueDateView extends StatelessWidget {
               if (upcomingTasks.isEmpty)
                 buildEmptyState(L10n.tr("No upcoming tasks", "Tidak ada tugas mendatang"))
               else
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: upcomingTasks.map(buildTaskCard).toList(),
-                  ),
-                ),
+                buildTaskList(upcomingTasks),
             ],
           ),
         ),
         Container1(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 10.0),
@@ -2213,12 +2179,7 @@ class DueDateView extends StatelessWidget {
               if (completedTasks.isEmpty)
                 buildEmptyState(L10n.tr("No completed tasks", "Tidak ada tugas diselesaikan"))
               else
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: completedTasks.map(buildTaskCard).toList(),
-                  ),
-                ),
+                buildTaskList(completedTasks),
             ],
           ),
         ),
@@ -2227,11 +2188,22 @@ class DueDateView extends StatelessWidget {
   }
 }
 
-//Category Task berdasarkan priority
+// Category Task berdasarkan priority & Eisenhower Matrix
 class PriorityView extends StatelessWidget {
-  const PriorityView({super.key, required this.tasks, required this.onEdit});
+  const PriorityView({
+    super.key,
+    required this.tasks,
+    required this.onEdit,
+    this.isListView = false,
+    this.isEisenhowerMode = false,
+    this.onToggleComplete,
+  });
+
   final List<TaskCard> tasks;
   final Function(TaskCard) onEdit;
+  final bool isListView;
+  final bool isEisenhowerMode;
+  final Function(TaskCard, bool?)? onToggleComplete;
 
   @override
   Widget build(BuildContext context) {
@@ -2243,15 +2215,32 @@ class PriorityView extends StatelessWidget {
                   RepeatTaskService.shouldShowTaskOnDate(t, DateTime.now())),
         )
         .toList();
-    final highPriority = activeTasks.where((t) => t.prioritytask == 3).toList();
-    final midPriority = activeTasks.where((t) => t.prioritytask == 2).toList();
-    final lowPriority = activeTasks
-        .where((t) => t.prioritytask == 1 || t.prioritytask == 0)
-        .toList();
 
     Widget buildTaskCard(TaskCard task) {
       task.onTap = () => onEdit(task);
       return task;
+    }
+
+    Widget buildTaskList(List<TaskCard> taskList) {
+      if (taskList.isEmpty) return const SizedBox.shrink();
+      if (isListView) {
+        return Column(
+          children: taskList.map((t) => TaskListItem(
+            task: t,
+            onTap: () => onEdit(t),
+            onCompletedChanged: onToggleComplete != null
+                ? (val) => onToggleComplete!(t, val)
+                : null,
+          )).toList(),
+        );
+      }
+      return SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          children: taskList.map(buildTaskCard).toList(),
+        ),
+      );
     }
 
     Widget buildEmptyState(String message) {
@@ -2280,12 +2269,388 @@ class PriorityView extends StatelessWidget {
       );
     }
 
+    // --- EISENHOWER MATRIX MODE ---
+    if (isEisenhowerMode) {
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final tomorrow = today.add(const Duration(days: 1));
+
+      bool isUrgent(TaskCard t) {
+        if (t.repeatType != RepeatType.none) {
+          return RepeatTaskService.shouldShowTaskOnDate(t, today) ||
+              RepeatTaskService.shouldShowTaskOnDate(t, tomorrow);
+        }
+        if (t.dueDate == null) return false;
+        final due = DateTime(t.dueDate!.year, t.dueDate!.month, t.dueDate!.day);
+        return due.isBefore(tomorrow.add(const Duration(days: 1)));
+      }
+
+      bool isImportant(TaskCard t) {
+        return t.prioritytask >= 2; // High (3) or Mid (2)
+      }
+
+      final q1DoFirst =
+          activeTasks.where((t) => isImportant(t) && isUrgent(t)).toList();
+      final q2Schedule =
+          activeTasks.where((t) => isImportant(t) && !isUrgent(t)).toList();
+      final q3Delegate =
+          activeTasks.where((t) => !isImportant(t) && isUrgent(t)).toList();
+      final q4Eliminate =
+          activeTasks.where((t) => !isImportant(t) && !isUrgent(t)).toList();
+
+      Widget buildQuadrantCard({
+        required String title,
+        required String subtitle,
+        required String code,
+        required Color color,
+        required IconData icon,
+        required List<TaskCard> taskList,
+        required String emptyText,
+      }) {
+        return Container1(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10.0),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(icon, size: 14, color: color),
+                          const SizedBox(width: 4),
+                          Text(
+                            code,
+                            style: TextStyle(
+                              fontFamily: "Quicksand",
+                              fontWeight: FontWeight.bold,
+                              fontSize: 11,
+                              color: color,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: TextStyle(
+                              fontFamily: "Quicksand",
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                              color: AppColors.button,
+                            ),
+                          ),
+                          Text(
+                            subtitle,
+                            style: TextStyle(
+                              fontFamily: "Nunito",
+                              fontSize: 10.5,
+                              color: AppColors.normaltext.withValues(alpha: 0.65),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.button.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        "${taskList.length}",
+                        style: TextStyle(
+                          fontFamily: "Nunito",
+                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: AppColors.button,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (taskList.isEmpty)
+                buildEmptyState(emptyText)
+              else
+                buildTaskList(taskList),
+            ],
+          ),
+        );
+      }
+
+      return ListView(
+        shrinkWrap: true,
+        physics: const BouncingScrollPhysics(),
+        children: [
+          // 2x2 Matrix Overview Summary Box
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.75),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: AppColors.containerline1,
+                  width: 1,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.grid_view_rounded,
+                        size: 14,
+                        color: AppColors.button,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        L10n.tr("Eisenhower Matrix Overview", "Ringkasan Matriks Eisenhower"),
+                        style: TextStyle(
+                          fontFamily: "Quicksand",
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: AppColors.button,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.red.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                L10n.tr("Q1 • Do First", "Q1 • Kerjakan"),
+                                style: const TextStyle(
+                                  fontFamily: "Quicksand",
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                  color: Colors.red,
+                                ),
+                              ),
+                              Text(
+                                "${q1DoFirst.length} ${L10n.tr("tasks", "tugas")}",
+                                style: TextStyle(
+                                  fontFamily: "Nunito",
+                                  fontSize: 10,
+                                  color: Colors.red.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blue.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.blue.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                L10n.tr("Q2 • Schedule", "Q2 • Jadwalkan"),
+                                style: const TextStyle(
+                                  fontFamily: "Quicksand",
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                              Text(
+                                "${q2Schedule.length} ${L10n.tr("tasks", "tugas")}",
+                                style: TextStyle(
+                                  fontFamily: "Nunito",
+                                  fontSize: 10,
+                                  color: Colors.blue.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.orange.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                L10n.tr("Q3 • Delegate", "Q3 • Delegasikan"),
+                                style: const TextStyle(
+                                  fontFamily: "Quicksand",
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                  color: Colors.orange,
+                                ),
+                              ),
+                              Text(
+                                "${q3Delegate.length} ${L10n.tr("tasks", "tugas")}",
+                                style: TextStyle(
+                                  fontFamily: "Nunito",
+                                  fontSize: 10,
+                                  color: Colors.orange.shade800,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: Colors.blueGrey.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.blueGrey.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                L10n.tr("Q4 • Eliminate", "Q4 • Tunda/Hapus"),
+                                style: const TextStyle(
+                                  fontFamily: "Quicksand",
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 11,
+                                  color: Colors.blueGrey,
+                                ),
+                              ),
+                              Text(
+                                "${q4Eliminate.length} ${L10n.tr("tasks", "tugas")}",
+                                style: TextStyle(
+                                  fontFamily: "Nunito",
+                                  fontSize: 10,
+                                  color: Colors.blueGrey.shade700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 4),
+
+          // Q1: Do First
+          buildQuadrantCard(
+            title: L10n.tr("Do First", "Kerjakan Sekarang"),
+            subtitle: L10n.tr("Important & Urgent — Focus on these today!", "Penting & mendesak — selesaikan sekarang!"),
+            code: "Q1",
+            color: Colors.red.shade400,
+            icon: Icons.local_fire_department_rounded,
+            taskList: q1DoFirst,
+            emptyText: L10n.tr("No urgent & important tasks!", "Tidak ada tugas mendesak & penting!"),
+          ),
+
+          // Q2: Schedule
+          buildQuadrantCard(
+            title: L10n.tr("Schedule & Plan", "Jadwalkan & Rencanakan"),
+            subtitle: L10n.tr("Important, Not Urgent — High long-term value.", "Penting tapi belum mendesak — bernilai tinggi."),
+            code: "Q2",
+            color: Colors.blue.shade500,
+            icon: Icons.calendar_month_rounded,
+            taskList: q2Schedule,
+            emptyText: L10n.tr("No scheduled important tasks.", "Tidak ada tugas penting yang perlu dijadwalkan."),
+          ),
+
+          // Q3: Delegate / Quick
+          buildQuadrantCard(
+            title: L10n.tr("Delegate / Quick Finish", "Cepat Selesaikan / Delegasi"),
+            subtitle: L10n.tr("Urgent, Less Important — Finish fast or delegate.", "Mendesak tapi prioritas rendah — selesaikan cepat."),
+            code: "Q3",
+            color: Colors.orange.shade500,
+            icon: Icons.bolt_rounded,
+            taskList: q3Delegate,
+            emptyText: L10n.tr("No quick urgent tasks.", "Tidak ada tugas cepat/delegasi."),
+          ),
+
+          // Q4: Eliminate / Backlog
+          buildQuadrantCard(
+            title: L10n.tr("Don't Do / Backlog", "Tunda / Backlog"),
+            subtitle: L10n.tr("Not Urgent & Low Priority — Drop or save for later.", "Tidak mendesak & prioritas rendah — tunda/evaluasi."),
+            code: "Q4",
+            color: Colors.blueGrey.shade400,
+            icon: Icons.inventory_2_outlined,
+            taskList: q4Eliminate,
+            emptyText: L10n.tr("No backlog tasks.", "Tidak ada tugas di backlog."),
+          ),
+        ],
+      );
+    }
+
+    // --- STANDARD PRIORITY LEVELS MODE ---
+    final highPriority = activeTasks.where((t) => t.prioritytask == 3).toList();
+    final midPriority = activeTasks.where((t) => t.prioritytask == 2).toList();
+    final lowPriority = activeTasks
+        .where((t) => t.prioritytask == 1 || t.prioritytask == 0)
+        .toList();
+
     return ListView(
       shrinkWrap: true,
       physics: const BouncingScrollPhysics(),
       children: [
         Container1(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 10.0),
@@ -2307,18 +2672,13 @@ class PriorityView extends StatelessWidget {
               if (highPriority.isEmpty)
                 buildEmptyState(L10n.tr("No high priority tasks", "Tidak ada tugas prioritas tinggi"))
               else
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: highPriority.map(buildTaskCard).toList(),
-                  ),
-                ),
+                buildTaskList(highPriority),
             ],
           ),
         ),
         Container1(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 10.0),
@@ -2340,18 +2700,13 @@ class PriorityView extends StatelessWidget {
               if (midPriority.isEmpty)
                 buildEmptyState(L10n.tr("No medium priority tasks", "Tidak ada tugas prioritas sedang"))
               else
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: midPriority.map(buildTaskCard).toList(),
-                  ),
-                ),
+                buildTaskList(midPriority),
             ],
           ),
         ),
         Container1(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Padding(
                 padding: const EdgeInsets.only(bottom: 10.0),
@@ -2373,13 +2728,7 @@ class PriorityView extends StatelessWidget {
               if (lowPriority.isEmpty)
                 buildEmptyState(L10n.tr("No low priority tasks", "Tidak ada tugas prioritas rendah"))
               else
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const BouncingScrollPhysics(),
-                  child: Row(
-                    children: lowPriority.map(buildTaskCard).toList(),
-                  ),
-                ),
+                buildTaskList(lowPriority),
             ],
           ),
         ),
@@ -2387,3 +2736,5 @@ class PriorityView extends StatelessWidget {
     );
   }
 }
+
+

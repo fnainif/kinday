@@ -45,6 +45,7 @@ class _HomepageState extends State<Homepage> {
   List<CalendarEventItem> _gcalEvents = [];
   bool _isGcalConnected = false;
   bool _isCalendarMonthly = false;
+  bool _isAgendaVisible = true;
 
   @override
   void initState() {
@@ -109,16 +110,14 @@ class _HomepageState extends State<Homepage> {
         if (aUrgent && !bUrgent) return -1;
         if (!aUrgent && bUrgent) return 1;
 
-        // 2. Closest effective due date and time first (ascending)
-        final dtA = RepeatTaskService.getEffectiveDueDateTime(a, referenceDate: today);
-        final dtB = RepeatTaskService.getEffectiveDueDateTime(b, referenceDate: today);
-        final dtCompare = dtA.compareTo(dtB);
-        if (dtCompare != 0) {
-          return dtCompare;
-        }
+        // 2. Highest priority first
+        final priorityCompare = b.prioritytask.compareTo(a.prioritytask);
+        if (priorityCompare != 0) return priorityCompare;
 
-        // 3. Highest priority first (descending)
-        return b.prioritytask.compareTo(a.prioritytask);
+        // 3. Closest energy match
+        final aDiff = (a.energylvl - userEnergy).abs();
+        final bDiff = (b.energylvl - userEnergy).abs();
+        return aDiff.compareTo(bDiff);
       });
       suggested = filteredTasks.first;
     }
@@ -131,6 +130,7 @@ class _HomepageState extends State<Homepage> {
     }
 
     final isCalendarMonthly = prefs.getBool('is_calendar_monthly') ?? false;
+    final isAgendaVisible = prefs.getBool('is_dashboard_agenda_visible') ?? true;
 
     if (!mounted) return;
     setState(() {
@@ -148,6 +148,7 @@ class _HomepageState extends State<Homepage> {
       _isGcalConnected = isGcal;
       _gcalEvents = gcalEvents;
       _isCalendarMonthly = isCalendarMonthly;
+      _isAgendaVisible = isAgendaVisible;
     });
   }
 
@@ -531,7 +532,7 @@ class _HomepageState extends State<Homepage> {
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
-                                L10n.tr("Log Energy", "Catat"),
+                                L10n.tr("Log", "Catat"),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.bold,
                                 ),
@@ -1130,90 +1131,126 @@ class _HomepageState extends State<Homepage> {
                           ),
                           const SizedBox(height: 16),
 
-                          // Selected Date Header
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.event_available_rounded,
-                                size: 16,
-                                color: AppColors.button,
+                          // Selected Date Header with Toggle Expand/Collapse
+                          InkWell(
+                            borderRadius: BorderRadius.circular(10),
+                            onTap: () async {
+                              final newVisible = !_isAgendaVisible;
+                              setState(() {
+                                _isAgendaVisible = newVisible;
+                              });
+                              final prefs =
+                                  await SharedPreferences.getInstance();
+                              await prefs.setBool(
+                                'is_dashboard_agenda_visible',
+                                newVisible,
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 4.0,
                               ),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  "${L10n.tr("Agenda for", "Agenda")} ${_dashboardSelectedDate.day}/${_dashboardSelectedDate.month}/${_dashboardSelectedDate.year}",
-                                  style: TextStyle(
-                                    fontFamily: "Quicksand",
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 14,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.event_available_rounded,
+                                    size: 16,
                                     color: AppColors.button,
                                   ),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                  const SizedBox(width: 6),
+                                  Expanded(
+                                    child: Text(
+                                      "${L10n.tr("Agenda for", "Agenda")} ${_dashboardSelectedDate.day}/${_dashboardSelectedDate.month}/${_dashboardSelectedDate.year}",
+                                      style: TextStyle(
+                                        fontFamily: "Quicksand",
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14,
+                                        color: AppColors.button,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    "${selectedDateTasks.length + _gcalEvents.length} ${L10n.tr("items", "item")}",
+                                    style: TextStyle(
+                                      fontFamily: "Nunito",
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 12,
+                                      color: AppColors.button.withValues(
+                                        alpha: 0.7,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    _isAgendaVisible
+                                        ? Icons.keyboard_arrow_up_rounded
+                                        : Icons.keyboard_arrow_down_rounded,
+                                    size: 20,
+                                    color: AppColors.button,
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 6),
-                              Text(
-                                "${selectedDateTasks.length + _gcalEvents.length} ${L10n.tr("items", "item")}",
-                                style: TextStyle(
-                                  fontFamily: "Nunito",
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 12,
-                                  color: AppColors.button.withValues(alpha: 0.7),
+                            ),
+                          ),
+
+                          if (_isAgendaVisible) ...[
+                            const SizedBox(height: 10),
+
+                            // Google Calendar events for selected date
+                            if (_gcalEvents.isNotEmpty) ...[
+                              ..._gcalEvents.map(
+                                (e) => Padding(
+                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  child: CalendarEventCard(
+                                    event: e,
+                                    onConverted: _loadHomepageData,
+                                  ),
                                 ),
                               ),
                             ],
-                          ),
-                          const SizedBox(height: 10),
 
-                          // Google Calendar events for selected date
-                          if (_gcalEvents.isNotEmpty) ...[
-                            ..._gcalEvents.map(
-                              (e) => Padding(
-                                padding: const EdgeInsets.only(bottom: 8.0),
-                                child: CalendarEventCard(
-                                  event: e,
-                                  onConverted: _loadHomepageData,
-                                ),
+                            // Tasks for selected date
+                            if (selectedDateTasks.isNotEmpty) ...[
+                              ...selectedDateTasks.map(
+                                (t) => _buildDashboardTaskItem(t),
                               ),
-                            ),
-                          ],
+                            ],
 
-                          // Tasks for selected date
-                          if (selectedDateTasks.isNotEmpty) ...[
-                            ...selectedDateTasks.map(
-                              (t) => _buildDashboardTaskItem(t),
-                            ),
-                          ],
-
-                          // Empty State if no tasks and no gcal events
-                          if (selectedDateTasks.isEmpty && _gcalEvents.isEmpty) ...[
-                            Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 16.0),
-                              child: Center(
-                                child: Column(
-                                  children: [
-                                    Image.asset(
-                                      "assets/images/lavender_bunny/Tidakadatugas.gif",
-                                      height: 80,
-                                    ),
-                                    const SizedBox(height: 6),
-                                    Text(
-                                      L10n.tr(
-                                        "No tasks or events on this date!",
-                                        "Tidak ada tugas atau agenda di tanggal ini!",
+                            // Empty State if no tasks and no gcal events
+                            if (selectedDateTasks.isEmpty &&
+                                _gcalEvents.isEmpty) ...[
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 16.0),
+                                child: Center(
+                                  child: Column(
+                                    children: [
+                                      Image.asset(
+                                        "assets/images/lavender_bunny/Tidakadatugas.gif",
+                                        height: 80,
                                       ),
-                                      style: TextStyle(
-                                        fontFamily: "Nunito",
-                                        fontSize: 12,
-                                        color: AppColors.normaltext.withValues(
-                                          alpha: 0.6,
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        L10n.tr(
+                                          "No tasks or events on this date!",
+                                          "Tidak ada tugas atau agenda di tanggal ini!",
+                                        ),
+                                        style: TextStyle(
+                                          fontFamily: "Nunito",
+                                          fontSize: 12,
+                                          color: AppColors.normaltext
+                                              .withValues(
+                                            alpha: 0.6,
+                                          ),
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
                               ),
-                            ),
+                            ],
                           ],
                         ],
                       ),

@@ -2224,7 +2224,7 @@ class _SettingProfileState extends State<SettingProfile> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      "Google Calendar",
+                                      "Google Calendar & Tasks",
                                       style: TextStyle(
                                         fontFamily: "Quicksand",
                                         fontWeight: FontWeight.bold,
@@ -2239,8 +2239,8 @@ class _SettingProfileState extends State<SettingProfile> {
                                               ? "${L10n.tr("Connected as", "Terhubung sebagai")} $_gcalEmail"
                                               : L10n.tr("Connected (Read-Only)", "Terhubung (Hanya Baca)"))
                                           : L10n.tr(
-                                              "Read your schedule to pace your energy",
-                                              "Baca agenda agar energi tetap terjaga",
+                                              "Sync your schedule & to-do tasks gently",
+                                              "Sinkronkan agenda & tugas Google dengan tenang",
                                             ),
                                       style: TextStyle(
                                         fontFamily: "Nunito",
